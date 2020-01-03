@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.coordinator;
 
+import com.google.common.collect.ImmutableMap;
 import dd.kms.hippodamus.aggregation.Aggregator;
 
 import java.util.concurrent.ExecutorService;
@@ -17,6 +18,10 @@ public class TaskCoordinators
 	// TODO: Remove this method; only used for current tests
 	public static <S, T> AggregatingTaskCoordinator<S, T> createAggregatingTaskCoordinator(Aggregator<S, T> aggregator, ExecutorService executorService) {
 		ExecutorServiceWrapper executorServiceWrapper = new ExecutorServiceWrapper(executorService, true);
-		return new AggregatingTaskCoordinatorImpl<>(aggregator, executorServiceWrapper, executorServiceWrapper);
+		ImmutableMap<Integer, ExecutorServiceWrapper> executorServiceWrappersById = ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
+			.put(ExecutorServiceIds.REGULAR, executorServiceWrapper)
+			.put(ExecutorServiceIds.IO, executorServiceWrapper)
+			.build();
+		return new AggregatingTaskCoordinatorImpl<>(aggregator, executorServiceWrappersById);
 	}
 }

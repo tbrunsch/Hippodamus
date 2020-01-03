@@ -2,6 +2,7 @@ package dd.kms.hippodamus.handles.impl;
 
 import dd.kms.hippodamus.coordinator.TaskCoordinator;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 
@@ -10,12 +11,12 @@ import java.util.concurrent.Future;
 
 public class DefaultResultHandle<T> extends AbstractHandle implements ResultHandle<T>
 {
-	private final ExecutorService			executorService;
-	private final ExceptionalCallable<T, ?> callable;
-	private Future<T>						futureResult;
-	private T								result;
+	private final ExecutorService						executorService;
+	private final StoppableExceptionalCallable<T, ?>	callable;
+	private Future<T>									futureResult;
+	private T											result;
 
-	public DefaultResultHandle(TaskCoordinator coordinator, ExecutorService executorService, ExceptionalCallable<T, ?> callable) {
+	public DefaultResultHandle(TaskCoordinator coordinator, ExecutorService executorService, StoppableExceptionalCallable<T, ?> callable) {
 		super(coordinator,  new HandleState(false, false));
 		this.executorService = executorService;
 		this.callable = callable;
@@ -53,7 +54,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 
 	private T executeCallable() {
 		try {
-			T result = callable.call();
+			T result = callable.call(this::hasStopped);
 			setResult(result);
 			return result;
 		} catch (InterruptedException e) {

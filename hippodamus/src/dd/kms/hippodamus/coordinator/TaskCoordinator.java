@@ -2,6 +2,8 @@ package dd.kms.hippodamus.coordinator;
 
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
@@ -11,70 +13,60 @@ import java.util.concurrent.ExecutorService;
 public interface TaskCoordinator extends AutoCloseable
 {
 	/**
-	 * Executes a runnable with the default {@link ExecutorService} of this {@code TaskCoordinator} and returns
-	 * a handle to the resulting task. If not configured explicitly, then the default ExecutorService is the
-	 * common {@link java.util.concurrent.ForkJoinPool}.<br/>
-	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
-	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle exceptions of type E.
-	 *				Note that this is the only chance for the compiler to know the exact exception type.
-	 */
-	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, Handle... dependencies) throws E;
-
-	/**
-	 * Executes a runnable with the IO {@link ExecutorService} of this {@code TaskCoordinator} and returns
-	 * a handle to the resulting task. If not configured explicitly, then the IO ExecutorService is a dedicated
-	 * single-threaded ExecutorService.<br/>
-	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
-	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
-	 */
-	<E extends Exception> Handle executeIO(ExceptionalRunnable<E> runnable, Handle... dependencies) throws E;
-
-	/**
-	 * Executes a runnable with the specified {@link ExecutorService} of this {@code TaskCoordinator} and returns
+	 * Executes a runnable with the {@link ExecutorService} specified by {@code executorServiceId} and returns
 	 * a handle to the resulting task.<br/>
 	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
+	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed.<br/>
+	 * <br/>
+	 * Use the predefined executor service IDs {@link ExecutorServiceIds#REGULAR} and {@link ExecutorServiceIds#IO}
+	 * to refer to the executor service for regular and IO tasks, respectively. You can also use a custom ID to
+	 * refer to an executor service you have registered under for that ID before.
 	 *
 	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
 	 */
-	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, ExecutorService executorService, Handle... dependencies) throws E;
+	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E;
 
 	/**
-	 * Executes a callable with the default {@link ExecutorService} of this {@code TaskCoordinator} and returns
-	 * a handle to the resulting task. If not configured explicitly, then the default ExecutorService is the
-	 * common {@link java.util.concurrent.ForkJoinPool}.<br/>
+	 * Executes a stoppable runnable with the {@link ExecutorService} specified by {@code executorServiceId} and
+	 * returns a handle to the resulting task.<br/>
 	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
-	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle exceptions of type E.
-	 *				Note that this is the only chance for the compiler to know the exact exception type.
-	 */
-	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, Handle... dependencies) throws E;
-
-	/**
-	 * Executes a callable with the IO {@link ExecutorService} of this {@code TaskCoordinator} and returns
-	 * a handle to the resulting task. If not configured explicitly, then the IO ExecutorService is a dedicated
-	 * single-threaded ExecutorService.<br/>
+	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed.<br/>
 	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
+	 * Use the predefined executor service IDs {@link ExecutorServiceIds#REGULAR} and {@link ExecutorServiceIds#IO}
+	 * to refer to the executor service for regular and IO tasks, respectively. You can also use a custom ID to
+	 * refer to an executor service you have registered under for that ID before.
 	 *
 	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
 	 */
-	<V, E extends Exception> ResultHandle<V> executeIO(ExceptionalCallable<V, E> callable, Handle... dependencies) throws E;
+	<E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E;
 
 	/**
-	 * Executes a callable with the specified {@link ExecutorService} of this {@code TaskCoordinator} and returns
-	 * a handle to the resulting task.<br/>
+	 * Executes a callable with the specified {@link ExecutorService} specified by {@code executorServiceId} and
+	 * returns a handle to the resulting task.<br/>
 	 * <br/>
-	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.
+	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.<br/>
+	 * <br/>
+	 * Use the predefined executor service IDs {@link ExecutorServiceIds#REGULAR} and {@link ExecutorServiceIds#IO}
+	 * to refer to the executor service for regular and IO tasks, respectively. You can also use a custom ID to
+	 * refer to an executor service you have registered under for that ID before.
 	 *
 	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
 	 */
-	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, ExecutorService executorService, Handle... dependencies) throws E;
+	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E;
+
+	/**
+	 * Executes a stoppable callable with the specified {@link ExecutorService} specified by {@code executorServiceId}
+	 * and returns a handle to the resulting task.<br/>
+	 * <br/>
+	 * The task will not be submitted to the ExecutorService unless all dependencies have completed.<br/>
+	 * <br/>
+	 * Use the predefined executor service IDs {@link ExecutorServiceIds#REGULAR} and {@link ExecutorServiceIds#IO}
+	 * to refer to the executor service for regular and IO tasks, respectively. You can also use a custom ID to
+	 * refer to an executor service you have registered under for that ID before.
+	 *
+	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 */
+	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E;
 
 	/**
 	 * Stops all tasks created by this service and all of their dependencies.

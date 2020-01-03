@@ -3,6 +3,7 @@ package dd.kms.hippodamus.aggregation;
 import dd.kms.hippodamus.common.NamedInstances;
 import dd.kms.hippodamus.common.ReadableValue;
 import dd.kms.hippodamus.coordinator.AggregatingTaskCoordinator;
+import dd.kms.hippodamus.coordinator.ExecutorServiceIds;
 import dd.kms.hippodamus.coordinator.TaskCoordinators;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
@@ -19,6 +20,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
+
+import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
 
 /**
  * This test focuses on computing the disjunction of two Boolean {@link Callable}s that are executed
@@ -64,8 +67,8 @@ public class DisjunctionTest
 		Handle h2;
 		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(disjunctionAggregator, executorService)) {
 			disjunctionValue = coordinator.getResultValue();
-			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
-			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));
+			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1), REGULAR);
+			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2), REGULAR);
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");
 			return;

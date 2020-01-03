@@ -4,13 +4,14 @@ import dd.kms.hippodamus.aggregation.Aggregator;
 import dd.kms.hippodamus.common.ReadableValue;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalSupplier;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.Map;
 
 class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implements AggregatingTaskCoordinator<S, T>
 {
@@ -22,25 +23,20 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 		this.aggregator = aggregator;
 	}
 
-	AggregatingTaskCoordinatorImpl(Aggregator<S, T> aggregator, ExecutorServiceWrapper regularTaskExecutorServiceWrapper, ExecutorServiceWrapper ioTaskExecutorServiceWrapper) {
+	AggregatingTaskCoordinatorImpl(Aggregator<S, T> aggregator, Map<Integer, ExecutorServiceWrapper> executorServiceWrappersById) {
 		// TODO: Should also be called via a builder
-		super(regularTaskExecutorServiceWrapper, ioTaskExecutorServiceWrapper);
+		super(executorServiceWrappersById);
 		this.aggregator = aggregator;
 	}
 
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable, Handle... dependencies) throws E {
-		return register(() -> super.execute(callable, dependencies));
+	public <E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable, int executorServiceId, Handle... dependencies) throws E {
+		return register(() -> super.execute(callable, executorServiceId, dependencies));
 	}
 
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregateIO(ExceptionalCallable<S, E> callable, Handle... dependencies) throws E {
-		return register(() -> super.executeIO(callable, dependencies));
-	}
-
-	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable, ExecutorService executorService, Handle... dependencies) throws E {
-		return register(() -> super.execute(callable, executorService, dependencies));
+	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, int executorServiceId, Handle... dependencies) throws E {
+		return register(() -> super.execute(callable, executorServiceId, dependencies));
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.aggregation;
 
 import dd.kms.hippodamus.common.ReadableValue;
+import dd.kms.hippodamus.coordinator.ExecutorServiceIds;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.coordinator.AggregatingTaskCoordinator;
 import dd.kms.hippodamus.coordinator.TaskCoordinators;
@@ -13,6 +14,9 @@ import org.junit.runners.Parameterized;
 
 import java.util.Arrays;
 import java.util.Collection;
+
+import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.IO;
+import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
 
 /**
  * This test simulates the element-wise comparison of two objects. The elements of one object
@@ -89,9 +93,9 @@ public class ElementwiseComparisonTest
 				int index = i;
 				boolean equal = elementComparisonResults[i];
 				expectedResult &= equal;
-				ResultHandle<Integer> loadElementHandle = coordinator.executeIO(() -> simulateLoadElement(index));
-				ResultHandle<Integer> generateElementHandle = coordinator.execute(() -> simulateGenerateElement(index, equal));
-				coordinator.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()), loadElementHandle, generateElementHandle);
+				ResultHandle<Integer> loadElementHandle = coordinator.execute(() -> simulateLoadElement(index), IO);
+				ResultHandle<Integer> generateElementHandle = coordinator.execute(() -> simulateGenerateElement(index, equal), REGULAR);
+				coordinator.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()), REGULAR, loadElementHandle, generateElementHandle);
 			}
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");

@@ -1,8 +1,8 @@
 package dd.kms.hippodamus.coordinator;
 
-import dd.kms.hippodamus.exceptions.ExceptionalCallable;
-import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
-import dd.kms.hippodamus.exceptions.Exceptions;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import dd.kms.hippodamus.exceptions.*;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.handles.impl.DefaultResultHandle;
@@ -14,11 +14,10 @@ import java.util.concurrent.ExecutorService;
 
 class BasicTaskCoordinator implements TaskCoordinator
 {
-	private final ExecutorServiceWrapper	regularTaskExecutorServiceWrapper;
-	private final ExecutorServiceWrapper	ioTaskExecutorServiceWrapper;
+	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersById;
 
-	private final HandleDependencyManager	handleDependencyManager;
-	private final Map<Integer, String>		handleNamesByHashCode				= new HashMap<>();
+	private final HandleDependencyManager				handleDependencyManager;
+	private final Map<Integer, String>					handleNamesByHashCode			= new HashMap<>();
 
 	/**
 	 * The field may be set from a different thread than the one the coordinator is running in.
@@ -31,47 +30,42 @@ class BasicTaskCoordinator implements TaskCoordinator
 	private Throwable						exception;
 
 	BasicTaskCoordinator() {
-		this(ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER, ExecutorServiceWrapper.create(1));
+		this(ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
+				.put(ExecutorServiceIds.REGULAR,	ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER)
+				.put(ExecutorServiceIds.IO,			ExecutorServiceWrapper.create(1))
+				.build());
 	}
 
-	BasicTaskCoordinator(ExecutorServiceWrapper regularTaskExecutorServiceWrapper, ExecutorServiceWrapper ioTaskExecutorServiceWrapper) {
-		this.regularTaskExecutorServiceWrapper = regularTaskExecutorServiceWrapper;
-		this.ioTaskExecutorServiceWrapper = ioTaskExecutorServiceWrapper;
+	BasicTaskCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersById) {
+		this.executorServiceWrappersById = ImmutableMap.copyOf(executorServiceWrappersById);
 		this.handleDependencyManager = new HandleDependencyManager(this);
 	}
 
 	@Override
-	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, Handle... dependencies) throws E {
-		return execute(Exceptions.asCallable(runnable), dependencies);
+	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E {
+		return execute(Exceptions.asStoppable(runnable), executorServiceId, dependencies);
 	}
 
 	@Override
-	public <E extends Exception> Handle executeIO(ExceptionalRunnable<E> runnable, Handle... dependencies) throws E {
-		return executeIO(Exceptions.asCallable(runnable), dependencies);
+	public <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E {
+		return execute(Exceptions.asCallable(runnable), executorServiceId, dependencies);
 	}
 
 	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, Handle... dependencies) throws E {
-		return execute(callable, regularTaskExecutorServiceWrapper.getExecutorService(), dependencies);
+	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E {
+		return execute(Exceptions.asStoppable(callable), executorServiceId, Optional.empty(), dependencies);
 	}
 
 	@Override
-	public final <V, E extends Exception> ResultHandle<V> executeIO(ExceptionalCallable<V, E> callable, Handle... dependencies) throws E {
-		return execute(callable, ioTaskExecutorServiceWrapper.getExecutorService(), dependencies);
-	}
-
-	@Override
-	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, ExecutorService executorService, Handle... dependencies) throws E {
-		return execute(Exceptions.asCallable(runnable), executorService, dependencies);
-	}
-
-	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, ExecutorService executorService, Handle... dependencies) throws E {
-		return execute(callable, executorService, Optional.empty(), dependencies);
+	public final <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E {
+		return execute(callable, executorServiceId, Optional.empty(), dependencies);
 	}
 
 	// TODO: Offer option to run with name
-	private <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, ExecutorService executorService, Optional<String> optName, Handle... dependencies) throws E {
+	private <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, int executorServiceId, Optional<String> optName, Handle... dependencies) throws E {
+		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersById.get(executorServiceId);
+		Preconditions.checkNotNull(executorServiceWrapper, "Unknown executor service ID " + executorServiceId + ". Use ExecutorServiceIds.REGULAR or ExecutorServiceIds.IO or a custom ID you have registered an executor service for.");
+		ExecutorService executorService = executorServiceWrapper.getExecutorService();
 		synchronized (this) {
 			String name = optName.isPresent() ? optName.get() : createGenericTaskName();
 			checkException();
@@ -178,8 +172,19 @@ class BasicTaskCoordinator implements TaskCoordinator
 			}
 			checkException();
 		} finally {
-			regularTaskExecutorServiceWrapper.close();
-			ioTaskExecutorServiceWrapper.close();
+			Throwable throwable = null;
+			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappersById.values()) {
+				try {
+					executorServiceWrapper.close();
+				} catch (Throwable t) {
+					if (throwable == null) {
+						throwable = t;
+					}
+				}
+			}
+			if (throwable != null) {
+				throw new IllegalStateException("Exception when closing executor services: " + throwable.getMessage(), throwable);
+			}
 		}
 	}
 }

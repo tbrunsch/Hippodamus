@@ -13,4 +13,19 @@ public class Exceptions
 			return null;
 		};
 	}
+
+	public static <E extends Throwable> StoppableExceptionalCallable<Void, E> asCallable(StoppableExceptionalRunnable<E> runnable) {
+		return stopFlag -> {
+			runnable.run(stopFlag);
+			return null;
+		};
+	}
+
+	public static <E extends Throwable> StoppableExceptionalRunnable<E> asStoppable(ExceptionalRunnable<E> runnable) {
+		return stopFlag -> runnable.run();
+	}
+
+	public static <V, E extends Throwable> StoppableExceptionalCallable<V, E> asStoppable(ExceptionalCallable<V, E> callable) {
+		return stopFlag -> callable.call();
+	}
 }
