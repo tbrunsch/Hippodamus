@@ -19,6 +19,15 @@ class BasicTaskCoordinator implements TaskCoordinator
 	private final HandleDependencyManager				handleDependencyManager;
 	private final Map<Integer, String>					handleNamesByHashCode			= new HashMap<>();
 
+	private boolean										permitTaskSubmission			= true;
+
+	/**
+	 * This field contains all handles that can already be submitted, but whose submission is denied
+	 * because {@link #permitTaskSubmission} is {@code false}. These handles will be submitted as
+	 * soon as {@code permitTaskSubmission} is set to {@code true}.
+	 */
+	private final List<Handle>							pendingHandles					= new ArrayList<>();
+
 	/**
 	 * The field may be set from a different thread than the one the coordinator is running in.
 	 * However, the coordinator will regularly check it
@@ -27,7 +36,7 @@ class BasicTaskCoordinator implements TaskCoordinator
 	 *     <li>when the coordinator is closing</li>
 	 * </ul>
 	 */
-	private Throwable						exception;
+	private Throwable									exception;
 
 	BasicTaskCoordinator() {
 		this(ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
@@ -82,7 +91,7 @@ class BasicTaskCoordinator implements TaskCoordinator
 				handleDependencyManager.addDependencies(resultHandle, dependencies);
 				boolean allDependenciesCompleted = Arrays.stream(dependencies).allMatch(Handle::hasCompleted);
 				if (allDependenciesCompleted) {
-					resultHandle.submit();
+					scheduleForSubmission(resultHandle);
 				}
 			}
 			return resultHandle;
@@ -98,6 +107,29 @@ class BasicTaskCoordinator implements TaskCoordinator
 		int hashCode = System.identityHashCode(handle);
 		String name = handleNamesByHashCode.get(hashCode);
 		return name == null ? "Unknown handle " + hashCode : name;
+	}
+
+	@Override
+	public void permitTaskSubmission(boolean permit) {
+		synchronized (this) {
+			permitTaskSubmission = permit;
+			if (permit) {
+				pendingHandles.forEach(Handle::submit);
+				pendingHandles.clear();
+			}
+		}
+	}
+
+	/**
+	 * Must be called with a lock on {@code this}. Submits the handle if {@link #permitTaskSubmission}
+	 * is {@code true} or collects it for later submission otherwise.
+	 */
+	private void scheduleForSubmission(Handle handle) {
+		if (permitTaskSubmission) {
+			handle.submit();
+		} else {
+			pendingHandles.add(handle);
+		}
 	}
 
 	private String createGenericTaskName() {
@@ -126,7 +158,7 @@ class BasicTaskCoordinator implements TaskCoordinator
 	private void onCompletion(Handle handle) {
 		synchronized (this) {
 			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
-			executableHandles.forEach(Handle::submit);
+			executableHandles.forEach(this::scheduleForSubmission);
 		}
 	}
 
@@ -164,6 +196,9 @@ class BasicTaskCoordinator implements TaskCoordinator
 	@Override
 	public void close() throws InterruptedException {
 		try {
+			if (!permitTaskSubmission) {
+				stop();
+			}
 			Collection<Handle> managedHandles = handleDependencyManager.getManagedHandles();
 			for (Handle handle : managedHandles) {
 				while (!handle.hasCompleted() && !handle.hasStopped()) {
