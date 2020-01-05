@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.handles;
 
-import dd.kms.hippodamus.common.ReadableValue;
+import java.util.function.Supplier;
 
-public interface ResultHandle<T> extends Handle, ReadableValue<T>
+public interface ResultHandle<T> extends Handle, Supplier<T>
 {
 }

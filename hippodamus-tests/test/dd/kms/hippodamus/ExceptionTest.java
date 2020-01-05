@@ -1,11 +1,7 @@
 package dd.kms.hippodamus;
 
-import com.google.common.base.Preconditions;
-import dd.kms.hippodamus.common.ValueContainer;
-import dd.kms.hippodamus.coordinator.ExecutorServiceIds;
 import dd.kms.hippodamus.coordinator.TaskCoordinator;
 import dd.kms.hippodamus.coordinator.TaskCoordinators;
-import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,8 +43,8 @@ public class ExceptionTest
 	@Test
 	public void testExceptions() {
 		try (TaskCoordinator coordinator = TaskCoordinators.createTaskCoordinator()) {
-			coordinator.execute(() -> run1(), REGULAR);
-			coordinator.execute(() -> run2(), REGULAR);
+			coordinator.execute(this::run1, REGULAR);
+			coordinator.execute(this::run2, REGULAR);
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");
 		} catch (Exception1 exception1) {

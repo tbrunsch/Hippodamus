@@ -57,9 +57,6 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 			T result = callable.call(this::hasStopped);
 			setResult(result);
 			return result;
-		} catch (InterruptedException e) {
-			/* neither a result nor a computational exception */
-			return null;
 		} catch (Throwable throwable) {
 			setException(throwable);
 			return null;

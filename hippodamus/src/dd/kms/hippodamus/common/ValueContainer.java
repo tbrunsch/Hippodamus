@@ -1,6 +1,8 @@
 package dd.kms.hippodamus.common;
 
-public class ValueContainer<T> implements ReadableValue<T>, WritableValue<T>
+import java.util.function.Supplier;
+
+public class ValueContainer<T> implements Supplier<T>, WritableValue<T>
 {
 	private T value;
 

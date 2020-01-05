@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutorService;
 
 public class TaskCoordinators
 {
-	public static BasicTaskCoordinator createTaskCoordinator() {
+	public static TaskCoordinator createTaskCoordinator() {
 		return new BasicTaskCoordinator();
 	}
 

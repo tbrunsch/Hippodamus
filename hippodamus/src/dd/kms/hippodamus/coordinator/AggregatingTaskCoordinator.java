@@ -1,12 +1,12 @@
 package dd.kms.hippodamus.coordinator;
 
-import dd.kms.hippodamus.common.ReadableValue;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 /**
  * Special {@link TaskCoordinator} for aggregating results of callables that are
@@ -40,9 +40,9 @@ public interface AggregatingTaskCoordinator<S, T> extends TaskCoordinator
 	<E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, int executorServiceId, Handle... dependencies) throws E;
 
 	/**
-	 * @return The {@link ReadableValue} that stores the aggregated result.
+	 * @return The {@link Supplier} that stores the aggregated result.
 	 */
-	ReadableValue<T> getResultValue();
+	Supplier<T> getResultValue();
 
 	@Override
 	void close() throws InterruptedException;

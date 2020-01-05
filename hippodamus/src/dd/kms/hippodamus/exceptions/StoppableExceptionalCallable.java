@@ -1,9 +1,9 @@
 package dd.kms.hippodamus.exceptions;
 
-import dd.kms.hippodamus.common.ReadableValue;
+import java.util.function.Supplier;
 
 @FunctionalInterface
 public interface StoppableExceptionalCallable<V, E extends Throwable>
 {
-	V call(ReadableValue<Boolean> stopFlag) throws E, InterruptedException;
+	V call(Supplier<Boolean> stopFlag) throws E;
 }

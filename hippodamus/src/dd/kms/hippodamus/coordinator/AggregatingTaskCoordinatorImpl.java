@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.coordinator;
 
 import dd.kms.hippodamus.aggregation.Aggregator;
-import dd.kms.hippodamus.common.ReadableValue;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalSupplier;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
@@ -12,6 +11,7 @@ import dd.kms.hippodamus.logging.LogLevel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implements AggregatingTaskCoordinator<S, T>
 {
@@ -40,7 +40,7 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 	}
 
 	@Override
-	public ReadableValue<T> getResultValue() {
+	public Supplier<T> getResultValue() {
 		return new AggregationResultValue();
 	}
 
@@ -50,13 +50,7 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 				return super.createStoppedHandle();
 			}
 			final ResultHandle<S> handle;
-			try {
-				handle = handleSupplier.get();
-			} catch (InterruptedException e) {
-				// TODO: think how to handle this: can it occur? should we pretend it to occur?
-				e.printStackTrace();
-				throw new IllegalStateException(e);
-			}
+			handle = handleSupplier.get();
 			handle.onCompletion(() -> aggregate(handle.get()));
 			aggregatedHandles.add(handle);
 			return handle;
@@ -98,7 +92,7 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 		}
 	}
 
-	private class AggregationResultValue implements ReadableValue<T>
+	private class AggregationResultValue implements Supplier<T>
 	{
 		@Override
 		public T get() {

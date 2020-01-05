@@ -8,5 +8,5 @@ Die Methode erhält dann den hasStopped-Getter seines Handles.
 @FunctionalInterface
 public interface ExceptionalCallable<V, E extends Throwable>
 {
-	V call() throws E, InterruptedException;
+	V call() throws E;
 }

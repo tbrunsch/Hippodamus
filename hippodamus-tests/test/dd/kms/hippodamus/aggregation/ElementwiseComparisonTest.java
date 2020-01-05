@@ -1,10 +1,8 @@
 package dd.kms.hippodamus.aggregation;
 
-import dd.kms.hippodamus.common.ReadableValue;
-import dd.kms.hippodamus.coordinator.ExecutorServiceIds;
-import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.coordinator.AggregatingTaskCoordinator;
 import dd.kms.hippodamus.coordinator.TaskCoordinators;
+import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -12,11 +10,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.Supplier;
 
 import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.IO;
 import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
+import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
 /**
  * This test simulates the element-wise comparison of two objects. The elements of one object
@@ -52,26 +54,26 @@ public class ElementwiseComparisonTest
 	 * <br/>
 	 * This motivates the following time constraints that we test for:<br/>
 	 * <br/>
-	 *       {@code L <= time <=L+500} for<br/>
+	 *       {@code L <= time <= L+PRECISION_MS} for<br/>
 	 * <br/>
 	 * 		{@code L = n*LOAD_TIME_MS + COMPARISON_TIME_MS}
 	 */
 	private static final long	LOAD_TIME_MS		= 2000;
 	private static final long	GENERATION_TIME_MS	= 800;
 	private static final long	COMPARISON_TIME_MS	= 1000;
+	private static final long	PRECISION_MS		= 500;
 
 	@Parameterized.Parameters(name = "comparison results = {0}, {1}, {2}")
-	public static Collection<Object> getParameters() {
-		return Arrays.asList(
-			new Object[]{ false, false, false },
-			new Object[]{ false, false, true },
-			new Object[]{ false, true, false },
-			new Object[]{ false, true, true },
-			new Object[]{ true, false, false },
-			new Object[]{ true, false, true },
-			new Object[]{ true, true, false },
-			new Object[]{ true, true, true }
-		);
+	public static Object getParameters() {
+		List<Object[]> parameters = new ArrayList<>();
+		for (boolean cmp1 : BOOLEANS) {
+			for (boolean cmp2 : BOOLEANS) {
+				for (boolean cmp3 : BOOLEANS) {
+					parameters.add(new Object[]{ cmp1, cmp2, cmp3 });
+				}
+			}
+		}
+		return parameters;
 	}
 
 	private final boolean[] elementComparisonResults;
@@ -83,7 +85,7 @@ public class ElementwiseComparisonTest
 	@Test
 	public void testComparison() {
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
-		ReadableValue<Boolean> comparisonValue;
+		Supplier<Boolean> comparisonValue;
 		boolean expectedResult = true;
 		StopWatch stopWatch = new StopWatch();
 		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(conjunctionAggregator)) {
@@ -139,7 +141,7 @@ public class ElementwiseComparisonTest
 		}
 
 		long lowerBoundMs = numRequiredTasksForComparison * LOAD_TIME_MS + COMPARISON_TIME_MS;
-		long upperBoundMs = lowerBoundMs + 500;
+		long upperBoundMs = lowerBoundMs + PRECISION_MS;
 		Assert.assertTrue("The calculation took " + elapsedTimeMs + " ms, but it should have taken at least " + lowerBoundMs + " ms", lowerBoundMs <= elapsedTimeMs);
 		Assert.assertTrue("The calculation took " + elapsedTimeMs + " ms, but it should have taken less than " + upperBoundMs + " ms", elapsedTimeMs <= upperBoundMs);
 	}
