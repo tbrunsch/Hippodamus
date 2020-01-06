@@ -11,10 +11,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.function.Supplier;
 
 import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.IO;
 import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
@@ -85,12 +82,9 @@ public class ElementwiseComparisonTest
 	@Test
 	public void testComparison() {
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
-		Supplier<Boolean> comparisonValue;
 		boolean expectedResult = true;
 		StopWatch stopWatch = new StopWatch();
 		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(conjunctionAggregator)) {
-			comparisonValue = coordinator.getResultValue();
-
 			for (int i = 0; i < elementComparisonResults.length; i++) {
 				int index = i;
 				boolean equal = elementComparisonResults[i];
@@ -105,7 +99,7 @@ public class ElementwiseComparisonTest
 		}
 		checkTimeConstraints(stopWatch.getElapsedTimeMs());
 
-		Assert.assertTrue(comparisonValue.get() == expectedResult);
+		Assert.assertTrue(conjunctionAggregator.getAggregatedValue() == expectedResult);
 	}
 
 	private int simulateLoadElement(int index) {

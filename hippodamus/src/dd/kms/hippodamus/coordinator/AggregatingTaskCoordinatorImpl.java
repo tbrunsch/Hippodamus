@@ -11,7 +11,6 @@ import dd.kms.hippodamus.logging.LogLevel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implements AggregatingTaskCoordinator<S, T>
 {
@@ -37,11 +36,6 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 	@Override
 	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, int executorServiceId, Handle... dependencies) throws E {
 		return register(() -> super.execute(callable, executorServiceId, dependencies));
-	}
-
-	@Override
-	public Supplier<T> getResultValue() {
-		return new AggregationResultValue();
 	}
 
 	private <E extends Exception> ResultHandle<S> register(ExceptionalSupplier<ResultHandle<S>, E> handleSupplier) throws E {
@@ -89,14 +83,6 @@ class AggregatingTaskCoordinatorImpl<S, T> extends BasicTaskCoordinator implemen
 				// handle the case that at least one aggregation task has been stopped manually
 				throw new InterruptedException("Not all handles have completed");
 			}
-		}
-	}
-
-	private class AggregationResultValue implements Supplier<T>
-	{
-		@Override
-		public T get() {
-			return aggregator.getAggregatedValue();
 		}
 	}
 }

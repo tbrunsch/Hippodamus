@@ -60,11 +60,9 @@ public class DisjunctionTest
 	public void testDisjunction() {
 		ExecutorService executorService = executorServiceSupplier.get();
 		Aggregator<Boolean, Boolean> disjunctionAggregator = Aggregators.disjunction();
-		Supplier<Boolean> disjunctionValue;
 		Handle h1;
 		Handle h2;
 		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(disjunctionAggregator, executorService)) {
-			disjunctionValue = coordinator.getResultValue();
 			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1), REGULAR);
 			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2), REGULAR);
 		} catch (InterruptedException e) {
@@ -104,7 +102,7 @@ public class DisjunctionTest
 		/*
 		 * Check result
 		 */
-		Assert.assertEquals(disjunctionValue.get(), expectedResult);
+		Assert.assertEquals(disjunctionAggregator.getAggregatedValue(), expectedResult);
 
 		// TODO: remove
 		System.out.println();

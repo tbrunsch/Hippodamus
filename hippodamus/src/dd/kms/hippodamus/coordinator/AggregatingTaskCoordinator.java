@@ -6,7 +6,6 @@ import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 
 /**
  * Special {@link TaskCoordinator} for aggregating results of callables that are
@@ -38,11 +37,6 @@ public interface AggregatingTaskCoordinator<S, T> extends TaskCoordinator
 	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
 	 */
 	<E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, int executorServiceId, Handle... dependencies) throws E;
-
-	/**
-	 * @return The {@link Supplier} that stores the aggregated result.
-	 */
-	Supplier<T> getResultValue();
 
 	@Override
 	void close() throws InterruptedException;
