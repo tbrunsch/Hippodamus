@@ -1,11 +1,11 @@
 package dd.kms.hippodamus.handles.impl;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 public class StoppedResultHandle<T> extends AbstractHandle implements ResultHandle<T>
 {
-	public StoppedResultHandle(TaskCoordinator coordinator) {
+	public StoppedResultHandle(ExecutionCoordinator coordinator) {
 		super(coordinator, new HandleState(false, true));
 	}
 

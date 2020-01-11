@@ -1,6 +1,5 @@
 package dd.kms.hippodamus.coordinator;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
@@ -16,23 +15,18 @@ class HandleDependencyManager
 	 */
 	private static final int	SET_THRESHOLD	= 5;
 
-	private final TaskCoordinator					owner;
+	private final ExecutionCoordinator owner;
 	private final Multimap<Handle, Handle>			dependentHandles			= ArrayListMultimap.create();
 	private final Map<Handle, Collection<Handle>>	pendingHandleDependencies	= new HashMap<>();
 
-	HandleDependencyManager(TaskCoordinator owner) {
+	HandleDependencyManager(ExecutionCoordinator owner) {
 		this.owner = owner;
 	}
 
-	void addDependencies(Handle handle, Handle... dependencies) {
-		Preconditions.checkArgument(handle.getTaskCoordinator() == owner, "Internal error: Using dependency manager to manage handle of other task coordinator");
-		Collection<Handle> handleDependencies = dependencies.length >= SET_THRESHOLD ? new HashSet<>() : new LinkedList<>();
+	void addDependencies(Handle handle, Collection<Handle> dependencies) {
+		Collection<Handle> handleDependencies = dependencies.size() >= SET_THRESHOLD ? new HashSet<>() : new LinkedList<>();
 		for (Handle dependency : dependencies) {
 			if (dependency.hasCompleted()) {
-				continue;
-			}
-			if (dependency.getTaskCoordinator() != owner) {
-				// TODO: Reconsider how to handle this case
 				continue;
 			}
 			dependentHandles.put(dependency, handle);

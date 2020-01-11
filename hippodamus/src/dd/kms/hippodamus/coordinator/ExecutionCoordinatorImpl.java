@@ -12,9 +12,9 @@ import dd.kms.hippodamus.logging.LogLevel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-class BasicTaskCoordinator implements TaskCoordinator
+class ExecutionCoordinatorImpl implements ExecutionCoordinator
 {
-	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersById;
+	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
 
 	private final HandleDependencyManager				handleDependencyManager;
 	private final Map<Integer, String>					handleNamesByHashCode			= new HashMap<>();
@@ -38,47 +38,38 @@ class BasicTaskCoordinator implements TaskCoordinator
 	 */
 	private Throwable									exception;
 
-	BasicTaskCoordinator() {
+	ExecutionCoordinatorImpl() {
 		this(ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
-				.put(ExecutorServiceIds.REGULAR,	ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER)
-				.put(ExecutorServiceIds.IO,			ExecutorServiceWrapper.create(1))
+				.put(TaskType.REGULAR,	ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER)
+				.put(TaskType.IO,			ExecutorServiceWrapper.create(1))
 				.build());
 	}
 
-	BasicTaskCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersById) {
-		this.executorServiceWrappersById = ImmutableMap.copyOf(executorServiceWrappersById);
+	ExecutionCoordinatorImpl(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType) {
+		this.executorServiceWrappersByTaskType = ImmutableMap.copyOf(executorServiceWrappersByTaskType);
 		this.handleDependencyManager = new HandleDependencyManager(this);
 	}
 
-	@Override
-	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E {
-		return execute(Exceptions.asStoppable(runnable), executorServiceId, dependencies);
+	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, ExecutionConfiguration configuration) {
+		return execute(Exceptions.asStoppable(runnable), configuration);
 	}
 
-	@Override
-	public <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable, int executorServiceId, Handle... dependencies) throws E {
-		return execute(Exceptions.asCallable(runnable), executorServiceId, dependencies);
+	<E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable, ExecutionConfiguration configuration) {
+		return execute(Exceptions.asCallable(runnable), configuration);
 	}
 
-	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E {
-		return execute(Exceptions.asStoppable(callable), executorServiceId, Optional.empty(), dependencies);
+	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
+		return execute(Exceptions.asStoppable(callable), configuration);
 	}
 
-	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, int executorServiceId, Handle... dependencies) throws E {
-		return execute(callable, executorServiceId, Optional.empty(), dependencies);
-	}
-
-	// TODO: Offer option to run with name
-	private <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, int executorServiceId, Optional<String> optName, Handle... dependencies) throws E {
-		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersById.get(executorServiceId);
-		Preconditions.checkNotNull(executorServiceWrapper, "Unknown executor service ID " + executorServiceId + ". Use ExecutorServiceIds.REGULAR or ExecutorServiceIds.IO or a custom ID you have registered an executor service for.");
+	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
+		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		ExecutorService executorService = executorServiceWrapper.getExecutorService();
+		String name = getTaskName(configuration);
+		Collection<Handle> dependencies = configuration.getDependencies();
 		synchronized (this) {
-			String name = optName.isPresent() ? optName.get() : createGenericTaskName();
 			checkException();
-			boolean dependencyStopped = Arrays.stream(dependencies).anyMatch(Handle::hasStopped);
+			boolean dependencyStopped = dependencies.stream().anyMatch(Handle::hasStopped);
 			final ResultHandle<V> resultHandle;
 			if (dependencyStopped) {
 				resultHandle = createStoppedHandle();
@@ -87,15 +78,37 @@ class BasicTaskCoordinator implements TaskCoordinator
 				resultHandle = new DefaultResultHandle<>(this, executorService, callable);
 				registerHandleName(resultHandle, name);
 				resultHandle.onCompletion(() -> onCompletion(resultHandle));
-				resultHandle.onException(e -> onException(resultHandle, e));
+				resultHandle.onException(this::onException);
 				handleDependencyManager.addDependencies(resultHandle, dependencies);
-				boolean allDependenciesCompleted = Arrays.stream(dependencies).allMatch(Handle::hasCompleted);
+				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
 				if (allDependenciesCompleted) {
 					scheduleForSubmission(resultHandle);
 				}
 			}
 			return resultHandle;
 		}
+	}
+
+	private String getTaskName(ExecutionConfiguration configuration) {
+		Optional<String> taskName = configuration.getName();
+		String nameSuggestion = taskName.orElse(createGenericTaskName());
+		return createUniqueTaskName(nameSuggestion);
+	}
+
+	private String createUniqueTaskName(String suggestion) {
+		String name = suggestion;
+		Collection<String> existingNames = handleNamesByHashCode.values();
+		int index = 2;
+		while (existingNames.contains(name)) {
+			name = suggestion + " (" + index++ + ")";
+		}
+		return name;
+	}
+
+	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
+		final int taskType = configuration.getTaskType();
+		return Preconditions.checkNotNull(executorServiceWrappersByTaskType.get(taskType),
+			"No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
 	}
 
 	private void registerHandleName(Handle handle, String name) {
@@ -140,13 +153,13 @@ class BasicTaskCoordinator implements TaskCoordinator
 		return new StoppedResultHandle<>(this);
 	}
 
-	void checkException() {
+	private void checkException() {
 		if (exception != null) {
 			Exceptions.throwUnchecked(exception);
 		}
 	}
 
-	private void onException(Handle handle, Throwable exception) {
+	private void onException(Throwable exception) {
 		synchronized (this) {
 			if (this.exception == null) {
 				this.exception = exception;
@@ -195,6 +208,7 @@ class BasicTaskCoordinator implements TaskCoordinator
 
 	@Override
 	public void close() throws InterruptedException {
+		Throwable throwable = null;
 		try {
 			if (!permitTaskSubmission) {
 				stop();
@@ -207,8 +221,7 @@ class BasicTaskCoordinator implements TaskCoordinator
 			}
 			checkException();
 		} finally {
-			Throwable throwable = null;
-			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappersById.values()) {
+			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappersByTaskType.values()) {
 				try {
 					executorServiceWrapper.close();
 				} catch (Throwable t) {
@@ -217,9 +230,38 @@ class BasicTaskCoordinator implements TaskCoordinator
 					}
 				}
 			}
-			if (throwable != null) {
-				throw new IllegalStateException("Exception when closing executor services: " + throwable.getMessage(), throwable);
-			}
 		}
+		if (throwable != null) {
+			throw new IllegalStateException("Exception when closing executor services: " + throwable.getMessage(), throwable);
+		}
+	}
+
+	/**
+	 * The following methods are only syntactic sugar for simplifying the calls and
+	 * delegate to a real builder.
+	 */
+	@Override
+	public final <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable) throws E {
+		return configure().execute(runnable);
+	}
+
+	@Override
+	public final <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable) throws E {
+		return configure().execute(runnable);
+	}
+
+	@Override
+	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable) throws E {
+		return configure().execute(callable);
+	}
+
+	@Override
+	public final <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable) throws E {
+		return configure().execute(callable);
+	}
+
+	@Override
+	public ExecutionConfigurationBuilder<?> configure() {
+		return new ExecutionConfigurationBuilderImpl<>(this);
 	}
 }

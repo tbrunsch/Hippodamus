@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.handles.impl;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
-import dd.kms.hippodamus.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
@@ -16,7 +15,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	private Future<T>									futureResult;
 	private T											result;
 
-	public DefaultResultHandle(TaskCoordinator coordinator, ExecutorService executorService, StoppableExceptionalCallable<T, ?> callable) {
+	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorService executorService, StoppableExceptionalCallable<T, ?> callable) {
 		super(coordinator,  new HandleState(false, false));
 		this.executorService = executorService;
 		this.callable = callable;
@@ -37,7 +36,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 		if (!hasCompleted() && !isCompleting()) {
 			// TODO: Nice feature, but maybe there are some use cases where the user just did not know about
 			// this dependency and prefers to wait instead?
-			getTaskCoordinator().log(LogLevel.INTERNAL_ERROR, this, "Accessing handle value although it has not completed");
+			getExecutionCoordinator().log(LogLevel.INTERNAL_ERROR, this, "Accessing handle value although it has not completed");
 		}
 		return result;
 	}

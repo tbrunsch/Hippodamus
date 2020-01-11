@@ -1,6 +1,6 @@
 package dd.kms.hippodamus.handles.impl;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
 
@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 abstract class AbstractHandle implements Handle
 {
-	private final TaskCoordinator				coordinator;
+	private final ExecutionCoordinator coordinator;
 	private final Deque<Runnable> 				completionListeners	= new LinkedList<>();
 	private final Deque<Consumer<Throwable>>	exceptionHandlers	= new LinkedList<>();
 	final HandleState							state;
@@ -20,19 +20,19 @@ abstract class AbstractHandle implements Handle
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
 	 * it is not trivial when to update the flags state, before or after calling the listeners.
-	 * Since the {@link TaskCoordinator} is polling the "stopped" and "completed" flags, these
-	 * flags must be set after calling the listeners because otherwise the {@code TaskCoordinator}
+	 * Since the {@link ExecutionCoordinator} is polling the "stopped" and "completed" flags, these
+	 * flags must be set after calling the listeners because otherwise the {@code ExecutionCoordinator}
 	 * may close before the listeners have been informed. On the other hand, one listener might
 	 * also change a handle's flag. This will reorder the state changes and can be critical
 	 * for example for short-circuit evaluation: A change to "completed" may trigger a "stop"
 	 * for all handles via a completion listener, making the handle stop before it has set the
-	 * "completed" flag. The {@code TaskCoordinator} may now close before the handle's "completed"
+	 * "completed" flag. The {@code ExecutionCoordinator} may now close before the handle's "completed"
 	 * flag is set.<br/>
 	 * As a consequence, we need this field to maintain the order of the flags that are set.
 	 */
 	private final List<StateFlag>			pendingFlags		= new ArrayList<>();
 
-	AbstractHandle(TaskCoordinator coordinator, HandleState state) {
+	AbstractHandle(ExecutionCoordinator coordinator, HandleState state) {
 		this.coordinator = coordinator;
 		this.state = new HandleState(state);
 	}
@@ -70,7 +70,7 @@ abstract class AbstractHandle implements Handle
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
 				return;
 			}
-			// TODO: Stopping the tasks is responsibility of the task coordintor => remove this line
+			// TODO: Stopping the tasks is responsibility of the execution coordinator => remove this line
 			addPendingFlag(StateFlag.STOPPED);
 			try {
 				exceptionHandlers.forEach(handler -> handler.accept(exception));
@@ -144,10 +144,10 @@ abstract class AbstractHandle implements Handle
 	public void onCompletion(Runnable listener) {
 		synchronized (coordinator) {
 			/*
-			 * This method will be called by BasicTaskCoordinator first, then possibly by derived classes, and
+			 * This method will be called by ExecutionCoordinator first, then possibly by derived classes, and
 			 * then possibly by users. We want the listeners to be called in reverse order. Among others for the
 			 * reason, that submitting dependent tasks may be prevented by the other listeners (e.g., due to
-			 * short circuit evaluation exploited by AggregatingTaskCoordinatorImpl).
+			 * short circuit evaluation exploited by AggregationCoordinator).
 			 */
 			completionListeners.addFirst(listener);
 			if (state.isFlagSet(StateFlag.COMPLETED)) {
@@ -174,7 +174,7 @@ abstract class AbstractHandle implements Handle
 	}
 
 	@Override
-	public final TaskCoordinator getTaskCoordinator() {
+	public final ExecutionCoordinator getExecutionCoordinator() {
 		return coordinator;
 	}
 

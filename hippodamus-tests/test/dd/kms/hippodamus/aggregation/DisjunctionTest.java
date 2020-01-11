@@ -1,8 +1,8 @@
 package dd.kms.hippodamus.aggregation;
 
 import dd.kms.hippodamus.common.NamedInstances;
-import dd.kms.hippodamus.coordinator.AggregatingTaskCoordinator;
-import dd.kms.hippodamus.coordinator.TaskCoordinators;
+import dd.kms.hippodamus.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.handles.Handle;
 import org.junit.Assert;
 import org.junit.Test;
@@ -18,7 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
-import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
 /**
@@ -62,9 +61,9 @@ public class DisjunctionTest
 		Aggregator<Boolean, Boolean> disjunctionAggregator = Aggregators.disjunction();
 		Handle h1;
 		Handle h2;
-		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(disjunctionAggregator, executorService)) {
-			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1), REGULAR);
-			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2), REGULAR);
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.createAggregationCoordinator(disjunctionAggregator, executorService)) {
+			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
+			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");
 			return;
@@ -103,9 +102,6 @@ public class DisjunctionTest
 		 * Check result
 		 */
 		Assert.assertEquals(disjunctionAggregator.getAggregatedValue(), expectedResult);
-
-		// TODO: remove
-		System.out.println();
 	}
 
 	/*

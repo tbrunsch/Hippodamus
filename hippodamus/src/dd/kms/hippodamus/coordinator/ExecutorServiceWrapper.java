@@ -15,8 +15,6 @@ class ExecutorServiceWrapper implements AutoCloseable
 	private final ExecutorService	executorService;
 	private final boolean			shutdownRequired;
 
-	private boolean					closed;
-
 	ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired) {
 		this.executorService = executorService;
 		this.shutdownRequired = shutdownRequired;
@@ -26,17 +24,10 @@ class ExecutorServiceWrapper implements AutoCloseable
 		return executorService;
 	}
 
-	public synchronized void submit(Runnable runnable) {
-		if (!closed) {
-			executorService.submit(runnable);
-		}
-	}
-
 	@Override
 	public synchronized void close() {
 		if (shutdownRequired) {
 			executorService.shutdownNow();
 		}
-		closed = true;
 	}
 }

@@ -1,7 +1,7 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
-import dd.kms.hippodamus.coordinator.TaskCoordinators;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -10,8 +10,6 @@ import org.junit.runners.Parameterized;
 
 import java.util.Arrays;
 import java.util.Collection;
-
-import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
 
 /**
  * This test focuses on how the framework handles exceptions.<br/>
@@ -42,9 +40,9 @@ public class ExceptionTest
 
 	@Test
 	public void testExceptions() {
-		try (TaskCoordinator coordinator = TaskCoordinators.createTaskCoordinator()) {
-			coordinator.execute(this::run1, REGULAR);
-			coordinator.execute(this::run2, REGULAR);
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+			coordinator.execute(this::run1);
+			coordinator.execute(this::run2);
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");
 		} catch (Exception1 exception1) {

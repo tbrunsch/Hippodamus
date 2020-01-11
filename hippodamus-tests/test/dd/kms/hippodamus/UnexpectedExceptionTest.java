@@ -1,12 +1,11 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
-import dd.kms.hippodamus.coordinator.TaskCoordinators;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
 // TODO: Document problem and solution
@@ -31,8 +30,8 @@ public class UnexpectedExceptionTest
 	public void testUnexpectedException() {
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtUnexpectedException = false;
-		try (TaskCoordinator coordinator = TaskCoordinators.createTaskCoordinator()) {
-			coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS), REGULAR);
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+			coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS));
 			throwUnexpectedException(true);
 		} catch (InterruptedException e) {
 			// TODO: What is the benefit of this exception?
@@ -58,9 +57,9 @@ public class UnexpectedExceptionTest
 		for (boolean throwException : BOOLEANS) {
 			StopWatch stopWatch = new StopWatch();
 			boolean caughtUnexpectedException = false;
-			try (TaskCoordinator coordinator = TaskCoordinators.createTaskCoordinator()) {
+			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 				coordinator.permitTaskSubmission(false);
-				coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS), REGULAR);
+				coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS));
 				throwUnexpectedException(throwException);
 				coordinator.permitTaskSubmission(true);
 			} catch (InterruptedException e) {

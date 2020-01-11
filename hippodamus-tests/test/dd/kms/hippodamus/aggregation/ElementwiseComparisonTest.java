@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.aggregation;
 
-import dd.kms.hippodamus.coordinator.AggregatingTaskCoordinator;
-import dd.kms.hippodamus.coordinator.TaskCoordinators;
+import dd.kms.hippodamus.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
@@ -13,8 +13,7 @@ import org.junit.runners.Parameterized;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.IO;
-import static dd.kms.hippodamus.coordinator.ExecutorServiceIds.REGULAR;
+import static dd.kms.hippodamus.coordinator.TaskType.IO;
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
 /**
@@ -84,14 +83,22 @@ public class ElementwiseComparisonTest
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
 		boolean expectedResult = true;
 		StopWatch stopWatch = new StopWatch();
-		try (AggregatingTaskCoordinator<Boolean, Boolean> coordinator = TaskCoordinators.createAggregatingTaskCoordinator(conjunctionAggregator)) {
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.createAggregationCoordinator(conjunctionAggregator)) {
 			for (int i = 0; i < elementComparisonResults.length; i++) {
 				int index = i;
 				boolean equal = elementComparisonResults[i];
 				expectedResult &= equal;
-				ResultHandle<Integer> loadElementHandle = coordinator.execute(() -> simulateLoadElement(index), IO);
-				ResultHandle<Integer> generateElementHandle = coordinator.execute(() -> simulateGenerateElement(index, equal), REGULAR);
-				coordinator.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()), REGULAR, loadElementHandle, generateElementHandle);
+				ResultHandle<Integer> loadElementHandle = coordinator.configure()
+					.name("Load element " + index)
+					.taskType(IO)
+					.execute(() -> simulateLoadElement(index));
+				ResultHandle<Integer> generateElementHandle = coordinator.configure()
+					.name("Generate element " + index)
+					.execute(() -> simulateGenerateElement(index, equal));
+				coordinator.configure()
+					.name("Compare element " + index)
+					.dependencies(loadElementHandle, generateElementHandle)
+					.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()));
 			}
 		} catch (InterruptedException e) {
 			Assert.fail("Interrupted exception");

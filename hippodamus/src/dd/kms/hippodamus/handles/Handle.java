@@ -1,6 +1,6 @@
 package dd.kms.hippodamus.handles;
 
-import dd.kms.hippodamus.coordinator.TaskCoordinator;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 
 import java.util.function.Consumer;
 
@@ -34,9 +34,9 @@ public interface Handle
 	void stop();
 
 	/**
-	 * @return The {@link TaskCoordinator} this handle was created by.
+	 * @return The {@link ExecutionCoordinator} this handle was created by.
 	 */
-	TaskCoordinator getTaskCoordinator();
+	ExecutionCoordinator getExecutionCoordinator();
 
 	/**
 	 * Installs a listener that is called when the task completes. That call will be in the thread that executed the
