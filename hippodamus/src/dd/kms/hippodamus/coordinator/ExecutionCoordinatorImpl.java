@@ -207,7 +207,7 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	@Override
-	public void close() throws InterruptedException {
+	public void close() {
 		Throwable throwable = null;
 		try {
 			if (!permitTaskSubmission) {

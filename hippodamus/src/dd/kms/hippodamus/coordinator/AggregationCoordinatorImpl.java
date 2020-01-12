@@ -67,7 +67,7 @@ class AggregationCoordinatorImpl<S, T>
 	}
 
 	@Override
-	public void close() throws InterruptedException {
+	public void close() {
 		super.close();
 		if (aggregationCompletedEarlier) {
 			return;
@@ -80,9 +80,6 @@ class AggregationCoordinatorImpl<S, T>
 				if (!handle.hasStopped()) {
 					log(LogLevel.INTERNAL_ERROR, handle, "Coordinator closed although task has neither completed nor stopped");
 				}
-				// TODO: Do we have to handle the following case in the basic close method?
-				// handle the case that at least one aggregation task has been stopped manually
-				throw new InterruptedException("Not all handles have completed");
 			}
 		}
 	}

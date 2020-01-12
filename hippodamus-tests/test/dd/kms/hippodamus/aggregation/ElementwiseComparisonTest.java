@@ -101,9 +101,6 @@ public class ElementwiseComparisonTest
 					.dependencies(loadElementHandle, generateElementHandle)
 					.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()));
 			}
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
-			return;
 		}
 		checkTimeConstraints(stopWatch.getElapsedTimeMs());
 

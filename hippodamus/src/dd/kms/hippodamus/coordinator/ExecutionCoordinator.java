@@ -47,5 +47,5 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	void log(LogLevel logLevel, Handle handle, String message);
 
 	@Override
-	void close() throws InterruptedException;
+	void close();
 }

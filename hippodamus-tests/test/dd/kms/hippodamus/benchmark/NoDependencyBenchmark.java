@@ -108,9 +108,6 @@ public class NoDependencyBenchmark
 			for (int i = 0; i < numTasks; i++) {
 				coordinator.execute(this::runTask);
 			}
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
-			return 0;
 		}
 		return stopWatch.getElapsedTimeMs();
 	}

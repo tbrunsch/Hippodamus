@@ -34,8 +34,6 @@ public class StoppableTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(this::run1);
 			coordinator.execute(this::run2WithoutStopReaction);
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
 		} catch (ExpectedException e) {
 			caughtException = true;
 		}
@@ -67,8 +65,6 @@ public class StoppableTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(this::run1);
 			coordinator.execute(this::run2WithStopReaction);
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
 		} catch (ExpectedException e) {
 			caughtException = true;
 		}

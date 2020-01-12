@@ -1,7 +1,7 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.Coordinators;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -33,12 +33,9 @@ public class UnexpectedExceptionTest
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtUnexpectedException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS));
+			coordinator.execute(() -> TestUtils.sleep(TASK_DURATION_MS));
 			throwUnexpectedException(true);
-		} catch (InterruptedException e) {
-			// TODO: What is the benefit of this exception?
-			Assert.fail("Interrupted exception");
-		} catch (Throwable t) {
+		} catch (UnexpectedException e) {
 			caughtUnexpectedException = true;
 		}
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();

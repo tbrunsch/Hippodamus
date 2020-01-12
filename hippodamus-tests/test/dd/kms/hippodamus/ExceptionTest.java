@@ -43,8 +43,6 @@ public class ExceptionTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(this::run1);
 			coordinator.execute(this::run2);
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
 		} catch (Exception1 exception1) {
 			Assert.assertTrue("Unexpected exception in task 1", throwExceptionInTask1);
 			return;
