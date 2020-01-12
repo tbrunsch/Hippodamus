@@ -3,6 +3,7 @@ package dd.kms.hippodamus;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.testUtils.StopWatch;
+import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -28,6 +29,7 @@ public class UnexpectedExceptionTest
 	 */
 	@Test
 	public void testUnexpectedException() {
+		TestUtils.waitForEmptyCommonForkJoinPool();
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtUnexpectedException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
@@ -55,6 +57,7 @@ public class UnexpectedExceptionTest
 	@Test
 	public void testUnexpectedExceptionWithImmediateStop() {
 		for (boolean throwException : BOOLEANS) {
+			TestUtils.waitForEmptyCommonForkJoinPool();
 			StopWatch stopWatch = new StopWatch();
 			boolean caughtUnexpectedException = false;
 			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {

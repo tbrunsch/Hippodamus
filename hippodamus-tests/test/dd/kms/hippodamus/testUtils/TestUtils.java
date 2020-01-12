@@ -1,5 +1,7 @@
 package dd.kms.hippodamus.testUtils;
 
+import java.util.concurrent.ForkJoinPool;
+
 public class TestUtils
 {
 	public static final boolean[]	BOOLEANS	= { false, true };
@@ -21,6 +23,13 @@ public class TestUtils
 			} catch (InterruptedException ignored) {
 
 			}
+		}
+	}
+
+	public static void waitForEmptyCommonForkJoinPool() {
+		ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+		while (!forkJoinPool.isQuiescent()) {
+			TestUtils.sleep(100);
 		}
 	}
 }

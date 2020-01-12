@@ -80,6 +80,7 @@ public class ElementwiseComparisonTest
 
 	@Test
 	public void testComparison() {
+		TestUtils.waitForEmptyCommonForkJoinPool();
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
 		boolean expectedResult = true;
 		StopWatch stopWatch = new StopWatch();
