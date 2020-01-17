@@ -1,5 +1,10 @@
-package dd.kms.hippodamus.coordinator;
+package dd.kms.hippodamus.execution.configuration;
 
+import dd.kms.hippodamus.coordinator.Coordinators;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.execution.ExecutionManager;
+import dd.kms.hippodamus.coordinator.TaskType;
+import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.handles.Handle;
 
 import java.util.Collection;
@@ -18,7 +23,7 @@ public interface ExecutionConfigurationBuilder<B extends ExecutionConfigurationB
 	 * the task should be submitted to.<br/>
 	 * <br/>
 	 * You can use predefined task types {@link TaskType#REGULAR} (default) and {@link TaskType#IO} or define
-	 * custom types and register {@code ExecutorService}s for these types (see TODO).
+	 * custom types and register {@code ExecutorService}s for these types (see {@link Coordinators#} and {@link ExecutionCoordinatorBuilder#executorService(int, ExecutorService, boolean)}).
 	 */
 	B taskType(int type);
 

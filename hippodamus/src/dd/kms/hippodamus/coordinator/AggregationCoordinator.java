@@ -1,5 +1,8 @@
 package dd.kms.hippodamus.coordinator;
 
+import dd.kms.hippodamus.execution.AggregationManager;
+import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilder;
+
 /**
  * Special {@link ExecutionCoordinator} for aggregating results of callables that are
  * evaluated in parallel.

@@ -1,19 +1,22 @@
 package dd.kms.hippodamus.coordinator;
 
 import dd.kms.hippodamus.aggregation.Aggregator;
+import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalSupplier;
 import dd.kms.hippodamus.exceptions.Exceptions;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilder;
+import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilderImpl;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-class AggregationCoordinatorImpl<S, T>
+public class AggregationCoordinatorImpl<S, T>
 	extends ExecutionCoordinatorImpl
 	implements AggregationCoordinator<S, T>
 {
@@ -21,21 +24,12 @@ class AggregationCoordinatorImpl<S, T>
 	private final List<ResultHandle<S>>	aggregatedHandles			= new ArrayList<>();
 	private boolean						aggregationCompletedEarlier;
 
-	AggregationCoordinatorImpl(Aggregator<S, T> aggregator) {
+	public AggregationCoordinatorImpl(Aggregator<S, T> aggregator, CoordinatorConfiguration coordinatorConfiguration) {
+		super(coordinatorConfiguration);
 		this.aggregator = aggregator;
 	}
 
-	AggregationCoordinatorImpl(Aggregator<S, T> aggregator, Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType) {
-		// TODO: Should also be called via a builder
-		super(executorServiceWrappersByTaskType);
-		this.aggregator = aggregator;
-	}
-
-	<E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable, ExecutionConfiguration configuration) throws E {
-		return aggregate(Exceptions.asStoppable(callable), configuration);
-	}
-
-	<E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, ExecutionConfiguration configuration) throws E {
+	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, ExecutionConfiguration configuration) throws E {
 		return register(() -> super.execute(callable, configuration));
 	}
 

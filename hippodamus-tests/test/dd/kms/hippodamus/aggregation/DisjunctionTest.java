@@ -3,6 +3,9 @@ package dd.kms.hippodamus.aggregation;
 import dd.kms.hippodamus.common.NamedInstances;
 import dd.kms.hippodamus.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.coordinator.Coordinators;
+import dd.kms.hippodamus.coordinator.TaskType;
+import dd.kms.hippodamus.coordinator.configuration.AggregationCoordinatorBuilder;
+import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.handles.Handle;
 import org.junit.Assert;
 import org.junit.Test;
@@ -61,7 +64,10 @@ public class DisjunctionTest
 		Aggregator<Boolean, Boolean> disjunctionAggregator = Aggregators.disjunction();
 		Handle h1;
 		Handle h2;
-		try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.createAggregationCoordinator(disjunctionAggregator, executorService)) {
+		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
+			.configureAggregationCoordinator(disjunctionAggregator)
+			.executorService(TaskType.REGULAR, executorService, true);
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = coordinatorBuilder.build()) {
 			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
 			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));
 		} catch (InterruptedException e) {

@@ -1,18 +1,17 @@
-package dd.kms.hippodamus.coordinator;
+package dd.kms.hippodamus.execution.configuration;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import dd.kms.hippodamus.exceptions.ExceptionalCallable;
-import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
-import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
-import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
+import dd.kms.hippodamus.coordinator.ExecutionCoordinatorImpl;
+import dd.kms.hippodamus.coordinator.TaskType;
+import dd.kms.hippodamus.exceptions.*;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
 
-class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
+public class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
 {
 	final T						coordinator;
 
@@ -20,7 +19,7 @@ class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B ex
 	private int					taskType		= TaskType.REGULAR;
 	private Collection<Handle>	dependencies	= ImmutableList.of();
 
-	ExecutionConfigurationBuilderImpl(T coordinator) {
+	public ExecutionConfigurationBuilderImpl(T coordinator) {
 		this.coordinator = coordinator;
 	}
 
@@ -51,17 +50,17 @@ class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B ex
 
 	@Override
 	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable) {
-		return coordinator.execute(runnable, createConfiguration());
+		return execute(Exceptions.asStoppable(runnable));
 	}
 
 	@Override
 	public <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable) {
-		return coordinator.execute(runnable, createConfiguration());
+		return execute(Exceptions.asCallable(runnable));
 	}
 
 	@Override
 	public <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable) {
-		return coordinator.execute(callable, createConfiguration());
+		return execute(Exceptions.asStoppable(callable));
 	}
 
 	@Override

@@ -2,28 +2,28 @@ package dd.kms.hippodamus.handles.impl;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class DefaultResultHandle<T> extends AbstractHandle implements ResultHandle<T>
 {
-	private final ExecutorService						executorService;
+	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 	private Future<T>									futureResult;
 	private T											result;
 
-	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorService executorService, StoppableExceptionalCallable<T, ?> callable) {
+	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable) {
 		super(coordinator,  new HandleState(false, false));
-		this.executorService = executorService;
+		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 	}
 
 	@Override
 	void doSubmit() {
-		futureResult = executorService.submit(this::executeCallable);
+		futureResult = executorServiceWrapper.submit(this::executeCallable);
 	}
 
 	@Override

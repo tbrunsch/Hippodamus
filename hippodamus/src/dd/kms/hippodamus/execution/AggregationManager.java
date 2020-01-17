@@ -1,10 +1,10 @@
-package dd.kms.hippodamus.coordinator;
+package dd.kms.hippodamus.execution;
 
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.ResultHandle;
 
-interface AggregationManager<S>
+public interface AggregationManager<S>
 {
 	/**
 	 * Executes an {@link ExceptionalCallable} and returns a handle to the resulting task.<br/>

@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.coordinator;
+package dd.kms.hippodamus.execution;
 
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
@@ -7,7 +7,7 @@ import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 
-interface ExecutionManager
+public interface ExecutionManager
 {
 	/**
 	 * Executes an {@link ExceptionalRunnable} and returns a handle to the resulting task.

@@ -1,6 +1,8 @@
 package dd.kms.hippodamus.coordinator;
 
 import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
+import dd.kms.hippodamus.execution.ExecutionManager;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
 

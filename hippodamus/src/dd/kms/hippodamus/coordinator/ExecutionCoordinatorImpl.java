@@ -1,8 +1,12 @@
 package dd.kms.hippodamus.coordinator;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
+import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.exceptions.*;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilderImpl;
+import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.handles.impl.DefaultResultHandle;
@@ -12,21 +16,21 @@ import dd.kms.hippodamus.logging.LogLevel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-class ExecutionCoordinatorImpl implements ExecutionCoordinator
+public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 {
-	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
+	private final CoordinatorConfiguration coordinatorConfiguration;
 
-	private final HandleDependencyManager				handleDependencyManager;
-	private final Map<Integer, String>					handleNamesByHashCode			= new HashMap<>();
+	private final HandleDependencyManager			handleDependencyManager;
+	private final Map<Integer, String>				handleNamesByHashCode			= new HashMap<>();
 
-	private boolean										permitTaskSubmission			= true;
+	private boolean									permitTaskSubmission			= true;
 
 	/**
 	 * This field contains all handles that can already be submitted, but whose submission is denied
 	 * because {@link #permitTaskSubmission} is {@code false}. These handles will be submitted as
 	 * soon as {@code permitTaskSubmission} is set to {@code true}.
 	 */
-	private final List<Handle>							pendingHandles					= new ArrayList<>();
+	private final List<Handle>						pendingHandles					= new ArrayList<>();
 
 	/**
 	 * The field may be set from a different thread than the one the coordinator is running in.
@@ -36,35 +40,15 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 *     <li>when the coordinator is closing</li>
 	 * </ul>
 	 */
-	private Throwable									exception;
+	private Throwable								exception;
 
-	ExecutionCoordinatorImpl() {
-		this(ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
-				.put(TaskType.REGULAR,	ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER)
-				.put(TaskType.IO,			ExecutorServiceWrapper.create(1))
-				.build());
-	}
-
-	ExecutionCoordinatorImpl(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType) {
-		this.executorServiceWrappersByTaskType = ImmutableMap.copyOf(executorServiceWrappersByTaskType);
+	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
+		this.coordinatorConfiguration = coordinatorConfiguration;
 		this.handleDependencyManager = new HandleDependencyManager(this);
 	}
 
-	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable, ExecutionConfiguration configuration) {
-		return execute(Exceptions.asStoppable(runnable), configuration);
-	}
-
-	<E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable, ExecutionConfiguration configuration) {
-		return execute(Exceptions.asCallable(runnable), configuration);
-	}
-
-	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
-		return execute(Exceptions.asStoppable(callable), configuration);
-	}
-
-	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
+	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
-		ExecutorService executorService = executorServiceWrapper.getExecutorService();
 		String name = getTaskName(configuration);
 		Collection<Handle> dependencies = configuration.getDependencies();
 		synchronized (this) {
@@ -75,7 +59,8 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 				resultHandle = createStoppedHandle();
 				registerHandleName(resultHandle, name);
 			} else {
-				resultHandle = new DefaultResultHandle<>(this, executorService, callable);
+				// TODO: propagate flag verifyDependencies
+				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable);
 				registerHandleName(resultHandle, name);
 				resultHandle.onCompletion(() -> onCompletion(resultHandle));
 				resultHandle.onException(this::onException);
@@ -106,7 +91,8 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
-		final int taskType = configuration.getTaskType();
+		int taskType = configuration.getTaskType();
+		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
 		return Preconditions.checkNotNull(executorServiceWrappersByTaskType.get(taskType),
 			"No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
 	}
@@ -150,6 +136,7 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	<T> ResultHandle<T> createStoppedHandle() {
+		// TODO: propagate flag verifyDependencies
 		return new StoppedResultHandle<>(this);
 	}
 
@@ -193,7 +180,7 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 
 	@Override
 	public void log(LogLevel logLevel, Handle handle, String message) {
-		// TODO
+		// TODO: evaluate logger and minLogLevel; synchronization is not job of the coordinator
 		if (logLevel == LogLevel.DEBUGGING) {
 			return;
 		}
@@ -221,7 +208,8 @@ class ExecutionCoordinatorImpl implements ExecutionCoordinator
 			}
 			checkException();
 		} finally {
-			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappersByTaskType.values()) {
+			Collection<ExecutorServiceWrapper> executorServiceWrappers = coordinatorConfiguration.getExecutorServiceWrappersByTaskType().values();
+			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappers) {
 				try {
 					executorServiceWrapper.close();
 				} catch (Throwable t) {

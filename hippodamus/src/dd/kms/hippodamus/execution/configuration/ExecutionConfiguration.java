@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.coordinator;
+package dd.kms.hippodamus.execution.configuration;
 
 import dd.kms.hippodamus.handles.Handle;
 
@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Optional;
 
-class ExecutionConfiguration
+public class ExecutionConfiguration
 {
 	private final @Nullable String		name;
 	private final int					taskType;
@@ -18,15 +18,15 @@ class ExecutionConfiguration
 		this.dependencies = dependencies;
 	}
 
-	Optional<String> getName() {
+	public Optional<String> getName() {
 		return Optional.ofNullable(name);
 	}
 
-	int getTaskType() {
+	public int getTaskType() {
 		return taskType;
 	}
 
-	Collection<Handle> getDependencies() {
+	public Collection<Handle> getDependencies() {
 		return dependencies;
 	}
 }

@@ -1,27 +1,26 @@
 package dd.kms.hippodamus.coordinator;
 
-import com.google.common.collect.ImmutableMap;
 import dd.kms.hippodamus.aggregation.Aggregator;
-
-import java.util.concurrent.ExecutorService;
+import dd.kms.hippodamus.coordinator.configuration.AggregationCoordinatorBuilder;
+import dd.kms.hippodamus.coordinator.configuration.AggregationCoordinatorBuilderImpl;
+import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilderImpl;
 
 public class Coordinators
 {
 	public static ExecutionCoordinator createExecutionCoordinator() {
-		return new ExecutionCoordinatorImpl();
+		return configureExecutionCoordinator().build();
+	}
+
+	public static ExecutionCoordinatorBuilder<?> configureExecutionCoordinator() {
+		return new ExecutionCoordinatorBuilderImpl<>();
 	}
 
 	public static <S, T> AggregationCoordinator<S, T> createAggregationCoordinator(Aggregator<S, T> aggregator) {
-		return new AggregationCoordinatorImpl<>(aggregator);
+		return configureAggregationCoordinator(aggregator).build();
 	}
 
-	// TODO: Remove this method; only used for current tests
-	public static <S, T> AggregationCoordinator<S, T> createAggregationCoordinator(Aggregator<S, T> aggregator, ExecutorService executorService) {
-		ExecutorServiceWrapper executorServiceWrapper = new ExecutorServiceWrapper(executorService, true);
-		ImmutableMap<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = ImmutableMap.<Integer, ExecutorServiceWrapper>builder()
-			.put(TaskType.REGULAR, executorServiceWrapper)
-			.put(TaskType.IO, executorServiceWrapper)
-			.build();
-		return new AggregationCoordinatorImpl<>(aggregator, executorServiceWrappersByTaskType);
+	public static <S, T> AggregationCoordinatorBuilder<S, T> configureAggregationCoordinator(Aggregator<S, T> aggregator) {
+		return new AggregationCoordinatorBuilderImpl<>(aggregator);
 	}
 }
