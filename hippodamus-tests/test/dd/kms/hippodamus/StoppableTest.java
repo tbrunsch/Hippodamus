@@ -24,7 +24,7 @@ public class StoppableTest
 	private static final long	TIME_UNTIL_EXCEPTION_MS	= 500;
 	private static final long	TASK_2_SLEEP_INTERVAL	= 100;
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
-	private static final long	PRECISION_MS			= 300;
+	private static final long	PRECISION_MS			= 500;
 
 	@Test
 	public void testStopWithoutStopReaction() {
