@@ -12,6 +12,7 @@ import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.handles.impl.DefaultResultHandle;
 import dd.kms.hippodamus.handles.impl.StoppedResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
+import dd.kms.hippodamus.logging.Logger;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +42,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 * </ul>
 	 */
 	private Throwable								exception;
+
+	private boolean									closing;
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
 		this.coordinatorConfiguration = coordinatorConfiguration;
@@ -180,21 +183,30 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 
 	@Override
 	public void log(LogLevel logLevel, Handle handle, String message) {
-		// TODO: evaluate logger and minLogLevel; synchronization is not job of the coordinator
-		if (logLevel == LogLevel.DEBUGGING) {
+		LogLevel minimumLogLevel = coordinatorConfiguration.getMinimumLogLevel();
+		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
-		synchronized (this) {
-			String name = getHandleName(handle);
-			System.out.println(name + ": " + message);
-			if (logLevel == LogLevel.INTERNAL_ERROR) {
-				throw new IllegalStateException(message);
+		String name = null;
+		if (closing) {
+			// no handles will be added anymore => no synchronization required to obtain handle name
+			name = getHandleName(handle);
+		} else {
+			synchronized (this) {
+				name = getHandleName(handle);
 			}
+		}
+		Logger logger = coordinatorConfiguration.getLogger();
+		logger.log(logLevel, name, message);
+		if (logLevel == LogLevel.INTERNAL_ERROR) {
+			stop();
+			throw new IllegalStateException(message);
 		}
 	}
 
 	@Override
 	public void close() {
+		closing = true;
 		Throwable throwable = null;
 		try {
 			if (!permitTaskSubmission) {
