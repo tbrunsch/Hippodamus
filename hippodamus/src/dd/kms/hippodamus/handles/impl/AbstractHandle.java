@@ -182,7 +182,7 @@ abstract class AbstractHandle implements Handle
 	 * Pending Flags
 	 */
 	private void addPendingFlag(StateFlag flag) {
-		coordinator.log(LogLevel.STATE, this, flag.getTransactionBeginString());
+		coordinator.log(LogLevel.DEBUGGING, this, flag.getTransactionBeginString());
 		pendingFlags.add(flag);
 	}
 
