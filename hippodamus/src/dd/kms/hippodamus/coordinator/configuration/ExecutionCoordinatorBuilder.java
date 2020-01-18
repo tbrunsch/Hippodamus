@@ -41,7 +41,6 @@ public interface ExecutionCoordinatorBuilder<B extends ExecutionCoordinatorBuild
 	 */
 	B minimumLogLevel(LogLevel minimumLogLevel);
 
-	// TODO: Ensure that the behavior for false is not to return null, but wait until result provided (or stopped or exception)
 	/**
 	 * Specifies whether accessing values of tasks that have not yet completed results in an exception. This
 	 * value defaults to false.<br/>
@@ -53,7 +52,9 @@ public interface ExecutionCoordinatorBuilder<B extends ExecutionCoordinatorBuild
 	 * <br/>
 	 * If a user aims at specifying all dependencies correctly for optimum coordination, then accessing the value of
 	 * a handle of a task that has not yet completed indicates and error and should result in an exception. This can
-	 * be achieved by setting this flag to {@code true}.
+	 * be achieved by setting this flag to {@code true}. In this case, an {@link IllegalStateException} will be
+	 * thrown in the {@link ExecutionCoordinator}'s thread that should be catched after the {@code ExecutionCoordinator}'s
+	 * try-block.
 	 */
 	B verifyDependencies(boolean verifyDependencies);
 

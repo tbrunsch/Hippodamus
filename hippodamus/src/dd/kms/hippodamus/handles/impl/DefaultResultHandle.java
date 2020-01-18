@@ -12,13 +12,16 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 {
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
+	private final boolean								verifyDependencies;
+
 	private Future<T>									futureResult;
 	private T											result;
 
-	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable) {
+	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
 		super(coordinator,  new HandleState(false, false));
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
+		this.verifyDependencies = verifyDependencies;
 	}
 
 	@Override
@@ -33,12 +36,28 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 
 	@Override
 	public T get() {
-		if (!hasCompleted() && !isCompleting()) {
-			// TODO: Nice feature, but maybe there are some use cases where the user just did not know about
-			// this dependency and prefers to wait instead?
-			getExecutionCoordinator().log(LogLevel.INTERNAL_ERROR, this, "Accessing handle value although it has not completed");
+		if (hasCompleted() || isCompleting()) {
+			return result;
 		}
-		return result;
+		if (verifyDependencies) {
+			ExecutionCoordinator coordinator = getExecutionCoordinator();
+			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Accessing handle value although it has not completed");
+			return null;
+		}
+		while (true) {
+			if (hasCompleted() || isCompleting()) {
+				return result;
+			}
+			if (hasStopped()) {
+				return null;
+			}
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				stop();
+				return null;
+			}
+		}
 	}
 
 	private void setResult(T value) {

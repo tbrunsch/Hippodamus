@@ -15,7 +15,6 @@ import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 
 public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 {
@@ -62,8 +61,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 				resultHandle = createStoppedHandle();
 				registerHandleName(resultHandle, name);
 			} else {
-				// TODO: propagate flag verifyDependencies
-				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable);
+				boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
+				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable, verifyDependencies);
 				registerHandleName(resultHandle, name);
 				resultHandle.onCompletion(() -> onCompletion(resultHandle));
 				resultHandle.onException(this::onException);
@@ -139,7 +138,6 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	<T> ResultHandle<T> createStoppedHandle() {
-		// TODO: propagate flag verifyDependencies
 		return new StoppedResultHandle<>(this);
 	}
 
@@ -199,8 +197,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		Logger logger = coordinatorConfiguration.getLogger();
 		logger.log(logLevel, name, message);
 		if (logLevel == LogLevel.INTERNAL_ERROR) {
+			onException(new IllegalStateException(message));
 			stop();
-			throw new IllegalStateException(message);
 		}
 	}
 
