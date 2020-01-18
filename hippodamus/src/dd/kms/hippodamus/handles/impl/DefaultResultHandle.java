@@ -4,7 +4,6 @@ import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.handles.ResultHandle;
-import dd.kms.hippodamus.logging.LogLevel;
 
 import java.util.concurrent.Future;
 
@@ -12,16 +11,14 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 {
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
-	private final boolean								verifyDependencies;
 
 	private Future<T>									futureResult;
 	private T											result;
 
 	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
-		super(coordinator,  new HandleState(false, false));
+		super(coordinator,  new HandleState(false, false), verifyDependencies);
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
-		this.verifyDependencies = verifyDependencies;
 	}
 
 	@Override
@@ -35,29 +32,22 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	}
 
 	@Override
+	boolean doWaitForFuture() {
+		if (futureResult == null) {
+			return false;
+		}
+		try {
+			futureResult.get();
+		} catch (Exception ignored) {
+			/* waiting also finishes when an exception occurs */
+		}
+		return true;
+	}
+
+	@Override
 	public T get() {
-		if (hasCompleted() || isCompleting()) {
-			return result;
-		}
-		if (verifyDependencies) {
-			ExecutionCoordinator coordinator = getExecutionCoordinator();
-			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Accessing handle value although it has not completed");
-			return null;
-		}
-		while (true) {
-			if (hasCompleted() || isCompleting()) {
-				return result;
-			}
-			if (hasStopped()) {
-				return null;
-			}
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				stop();
-				return null;
-			}
-		}
+		join();
+		return result;
 	}
 
 	private void setResult(T value) {

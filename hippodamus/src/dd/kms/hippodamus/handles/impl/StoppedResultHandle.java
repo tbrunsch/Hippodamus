@@ -5,8 +5,8 @@ import dd.kms.hippodamus.handles.ResultHandle;
 
 public class StoppedResultHandle<T> extends AbstractHandle implements ResultHandle<T>
 {
-	public StoppedResultHandle(ExecutionCoordinator coordinator) {
-		super(coordinator, new HandleState(false, true));
+	public StoppedResultHandle(ExecutionCoordinator coordinator, boolean verifyDependencies) {
+		super(coordinator, new HandleState(false, true), verifyDependencies);
 	}
 
 	@Override
@@ -22,5 +22,10 @@ public class StoppedResultHandle<T> extends AbstractHandle implements ResultHand
 	@Override
 	void doStop() {
 		throw new IllegalStateException("Internal error: A stopped handle should not be stopped again");
+	}
+
+	@Override
+	boolean doWaitForFuture() {
+		return false;
 	}
 }

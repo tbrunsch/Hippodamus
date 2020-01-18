@@ -49,6 +49,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		this.handleDependencyManager = new HandleDependencyManager(this);
 	}
 
+	// TODO: Coordinator should reject this if it has already been closed
 	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		String name = getTaskName(configuration);
@@ -138,7 +139,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	<T> ResultHandle<T> createStoppedHandle() {
-		return new StoppedResultHandle<>(this);
+		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
+		return new StoppedResultHandle<>(this, verifyDependencies);
 	}
 
 	private void checkException() {

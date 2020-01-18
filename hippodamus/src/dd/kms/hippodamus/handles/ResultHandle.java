@@ -7,14 +7,16 @@ public interface ResultHandle<T> extends Handle, Supplier<T>
 	/**
 	 * Returns the value of the callable associated with that handle.
 	 *
-	 * @return	The value of the callable associated with that handle. The behavior of that method
-	 * depends on whether dependencies are verified or not (cf. {@link dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
+	 * @return	The value of the callable associated with that handle.<br/>
+	 * <br/>
+	 * The behavior of that method depends on whether dependencies are verified or not (cf.
+	 * {@link dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
 	 * <ul>
 	 *     <li>
 	 *         If dependencies are verified, then the call returns null and throws an {@link IllegalStateException}
 	 *         in the {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}'s thread if the handle has not already
 	 *         completed. The reason for this is that in this mode it is assumed that tasks are never executed
-	 *         before their dependencies have been resolved. If a task calls {@link #get()} of a result handle,
+	 *         before their dependencies have been resolved. If a task calls {@code get()} of a result handle,
 	 *         then that result handle should be listed as dependency of that task. Only if this is not the case,
 	 *         which we consider an error in this mode, calling {@code get()} before the handle has completed
 	 *         is possible. This justifies an exception to inform the user about a missing dependency.

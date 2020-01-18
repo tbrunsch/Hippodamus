@@ -16,6 +16,7 @@ abstract class AbstractHandle implements Handle
 	private final Deque<Runnable> 				completionListeners	= new LinkedList<>();
 	private final Deque<Consumer<Throwable>>	exceptionHandlers	= new LinkedList<>();
 	final HandleState							state;
+	private final boolean						verifyDependencies;
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
@@ -32,13 +33,15 @@ abstract class AbstractHandle implements Handle
 	 */
 	private final List<StateFlag>			pendingFlags		= new ArrayList<>();
 
-	AbstractHandle(ExecutionCoordinator coordinator, HandleState state) {
+	AbstractHandle(ExecutionCoordinator coordinator, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.state = new HandleState(state);
+		this.verifyDependencies = verifyDependencies;
 	}
 
 	abstract void doSubmit();
 	abstract void doStop();
+	abstract boolean doWaitForFuture();
 
 	void markAsCompleted() {
 		synchronized (coordinator) {
@@ -52,9 +55,6 @@ abstract class AbstractHandle implements Handle
 			addPendingFlag(StateFlag.COMPLETED);
 			try {
 				completionListeners.forEach(Runnable::run);
-			} catch (Exception e) {
-				// TODO
-				e.printStackTrace();
 			} finally {
 				setPendingFlags();
 			}
@@ -70,13 +70,8 @@ abstract class AbstractHandle implements Handle
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
 				return;
 			}
-			// TODO: Stopping the tasks is responsibility of the execution coordinator => remove this line
-			addPendingFlag(StateFlag.STOPPED);
 			try {
 				exceptionHandlers.forEach(handler -> handler.accept(exception));
-			} catch (Exception e) {
-				// TODO
-				e.printStackTrace();
 			} finally {
 				state.setException(exception);
 				setPendingFlags();
@@ -93,9 +88,6 @@ abstract class AbstractHandle implements Handle
 			addPendingFlag(StateFlag.SUBMITTED);
 			try {
 				doSubmit();
-			} catch (Exception e) {
-				// TODO
-				e.printStackTrace();
 			} finally {
 				setPendingFlags();
 			}
@@ -114,11 +106,37 @@ abstract class AbstractHandle implements Handle
 				if (state.isFlagSet(StateFlag.SUBMITTED)) {
 					doStop();
 				}
-			} catch (Exception e) {
-				// TODO
-				e.printStackTrace();
 			} finally {
 				setPendingFlags();
+			}
+		}
+	}
+
+	@Override
+	public void join() {
+		if (hasCompleted() || isCompleting()) {
+			return;
+		}
+		if (verifyDependencies) {
+			ExecutionCoordinator coordinator = getExecutionCoordinator();
+			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
+			return;
+		}
+		while (true) {
+			if (doWaitForFuture()) {
+				return;
+			}
+			if (hasCompleted() || isCompleting()) {
+				return;
+			}
+			if (hasStopped()) {
+				return;
+			}
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				stop();
+				return;
 			}
 		}
 	}
