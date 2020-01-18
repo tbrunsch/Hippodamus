@@ -2,7 +2,6 @@ package dd.kms.hippodamus.benchmark;
 
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -16,12 +15,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
-// TODO: Add further benchmarks (with differently complex dependency structures and with exceptions)
 /**
- * The main purpose of {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator} is
- * handling exceptions and dependencies. If there are no dependencies, then other
- * approaches with less overhead may be a better alternative. However, we still want
- * to ensure that the framework overhead is not too large.
+ * One of the main purposes of {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}s is
+ * handling exceptions and dependencies. If there are no dependencies, then other approaches
+ * with less overhead may be a better alternative. However, we want to ensure that the
+ * framework overhead is not too large.
  */
 @RunWith(Parameterized.class)
 public class NoDependencyBenchmark
@@ -51,11 +49,14 @@ public class NoDependencyBenchmark
 
 	@Test
 	public void benchmarkNoDependencies() {
-		long threadsTimeMs = runWithDedicatedThreads();
-		long futureTimeMs = runWithCompletableFutures();
-		long coordinatorTimeMs = runWithCoordinator();
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		long threadsTimeMs = BenchmarkUtils.measureTime(this::runWithDedicatedThreads);
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		long futureTimeMs = BenchmarkUtils.measureTime(this::runWithCompletableFutures);
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		long coordinatorTimeMs = BenchmarkUtils.measureTime(this::runWithCoordinator);
 
-		System.out.println(MessageFormat.format("Times (threads/futures/coordinators): {0} ms/{1} ms/{2} ms", threadsTimeMs, futureTimeMs, coordinatorTimeMs));
+		System.out.println(MessageFormat.format("Times (threads/futures/coordinator): {0} ms/{1} ms/{2} ms", threadsTimeMs, futureTimeMs, coordinatorTimeMs));
 
 		long minTimeMs = Math.min(threadsTimeMs, futureTimeMs);
 		long maxAllowedTimeMs = Math.round(TOLERANCE*minTimeMs + PRECISION_MS);
@@ -63,8 +64,7 @@ public class NoDependencyBenchmark
 		Assert.assertTrue("Coordinator took too much time", coordinatorTimeMs <= maxAllowedTimeMs);
 	}
 
-	private long runWithDedicatedThreads() {
-		StopWatch stopWatch = new StopWatch();
+	private void runWithDedicatedThreads() {
 		List<Thread> threads = new ArrayList<>(numTasks);
 		for (int i = 0; i < numTasks; i++) {
 			Thread thread = new Thread(this::runTask);
@@ -80,11 +80,9 @@ public class NoDependencyBenchmark
 			}
 		}
 		Assert.assertFalse("An interrupted exception occurred in the thread approach", exception);
-		return stopWatch.getElapsedTimeMs();
 	}
 
-	private long runWithCompletableFutures() {
-		StopWatch stopWatch = new StopWatch();
+	private void runWithCompletableFutures() {
 		List<Future> futures = new ArrayList<>(numTasks);
 		for (int i = 0; i < numTasks; i++) {
 			Future future = CompletableFuture.runAsync(this::runTask);
@@ -99,17 +97,14 @@ public class NoDependencyBenchmark
 			}
 		}
 		Assert.assertFalse("An interrupted exception occurred in the thread approach", exception);
-		return stopWatch.getElapsedTimeMs();
 	}
 
-	private long runWithCoordinator() {
-		StopWatch stopWatch = new StopWatch();
+	private void runWithCoordinator() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 0; i < numTasks; i++) {
 				coordinator.execute(this::runTask);
 			}
 		}
-		return stopWatch.getElapsedTimeMs();
 	}
 
 	private void runTask() {
