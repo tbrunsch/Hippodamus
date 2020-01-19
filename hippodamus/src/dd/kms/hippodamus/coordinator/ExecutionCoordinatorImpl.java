@@ -42,6 +42,19 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 */
 	private Throwable								exception;
 
+	/**
+	 * This field is required to ensure that {@link #checkException()} does not throw an exception twice.<br/>
+	 * <br/>
+	 * <b>Necessity:</b> Assume that an exception is thrown inside the try-block due to a call of
+	 * {@link #checkException()}. This will cause the {@link #close()} method to be called automatically,
+	 * which also checks for an existing exception to be thrown by calling {@code checkException()}. If this
+	 * method would throw the stored exception again, then we had two exceptions to be thrown. Such conflicts
+	 * are resolved by automatically calling {@link Throwable#addSuppressed(Throwable)}. However, this method
+	 * fails if both exceptions are identical. In that case, we would obtain an {@link IllegalArgumentException}
+	 * "Self-suppression not permitted" instead, which is not what we want.
+	 */
+	private boolean									hasThrownException;
+
 	private boolean									closing;
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
@@ -144,7 +157,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	private void checkException() {
-		if (exception != null) {
+		if (exception != null && !hasThrownException) {
+			hasThrownException = true;
 			Exceptions.throwUnchecked(exception);
 		}
 	}

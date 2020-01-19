@@ -23,6 +23,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	}
 
 	public <V> Future<V> submit(Callable<V> callable) {
+		// TODO: How to handle RejectedExecutionException?
 		return executorService.submit(callable);
 	}
 
