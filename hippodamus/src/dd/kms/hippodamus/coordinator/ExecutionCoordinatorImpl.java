@@ -156,7 +156,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		return new StoppedResultHandle<>(this, verifyDependencies);
 	}
 
-	private void checkException() {
+	@Override
+	public void checkException() {
 		if (exception != null && !hasThrownException) {
 			hasThrownException = true;
 			Exceptions.throwUnchecked(exception);

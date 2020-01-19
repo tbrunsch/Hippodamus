@@ -46,6 +46,17 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	 */
 	void stopDependentHandles(Handle handle);
 
+	/**
+	 * Checks if any of the current tasks has already thrown an exception. If so, it throws that exception,
+	 * provided it has not already thrown them in a previous call to {@code checkException()}.<br/>
+	 * <br/>
+	 * Calling this method is usually <b>not necessary</b> because it is automatically calling when executing
+	 * further tasks and at the end of the try-block. However, if you decide, for whatever reason, that you
+	 * need a time-consuming block in the {@link ExecutionCoordinator}'s thread within the coordinator's try-block,
+	 * then it makes sense to call that method on a regular basis to react to exceptions faster.
+	 */
+	void checkException();
+
 	void log(LogLevel logLevel, Handle handle, String message);
 
 	@Override
