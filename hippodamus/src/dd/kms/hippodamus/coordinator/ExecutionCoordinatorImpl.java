@@ -79,7 +79,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable, verifyDependencies);
 				registerHandleName(resultHandle, name);
 				resultHandle.onCompletion(() -> onCompletion(resultHandle));
-				resultHandle.onException(this::onException);
+				resultHandle.onException(() -> onException(resultHandle));
 				handleDependencyManager.addDependencies(resultHandle, dependencies);
 				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
 				if (allDependenciesCompleted) {
@@ -90,6 +90,9 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 	}
 
+	/*
+	 * Task names
+	 */
 	private String getTaskName(ExecutionConfiguration configuration) {
 		Optional<String> taskName = configuration.getName();
 		String nameSuggestion = taskName.orElse(createGenericTaskName());
@@ -106,11 +109,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		return name;
 	}
 
-	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
-		int taskType = configuration.getTaskType();
-		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
-		return Preconditions.checkNotNull(executorServiceWrappersByTaskType.get(taskType),
-			"No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
+	private String createGenericTaskName() {
+		return "Task " + (handleDependencyManager.getManagedHandles().size() + 1);
 	}
 
 	private void registerHandleName(Handle handle, String name) {
@@ -118,10 +118,29 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		handleNamesByHashCode.put(hashCode, name);
 	}
 
-	private String getHandleName(Handle handle) {
+	@Override
+	public String getTaskName(Handle handle) {
+		if (closing) {
+			// no handles will be added anymore => no synchronization required to obtain handle name
+			return doGetTaskName(handle);
+		} else {
+			synchronized (this) {
+				return doGetTaskName(handle);
+			}
+		}
+	}
+
+	private String doGetTaskName(Handle handle) {
 		int hashCode = System.identityHashCode(handle);
 		String name = handleNamesByHashCode.get(hashCode);
 		return name == null ? "Unknown handle " + hashCode : name;
+	}
+
+	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
+		int taskType = configuration.getTaskType();
+		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
+		return Preconditions.checkNotNull(executorServiceWrappersByTaskType.get(taskType),
+			"No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
 	}
 
 	@Override
@@ -147,10 +166,6 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 	}
 
-	private String createGenericTaskName() {
-		return "Task " + (handleDependencyManager.getManagedHandles().size() + 1);
-	}
-
 	<T> ResultHandle<T> createStoppedHandle() {
 		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 		return new StoppedResultHandle<>(this, verifyDependencies);
@@ -164,19 +179,23 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 	}
 
-	private void onException(Throwable exception) {
-		synchronized (this) {
-			if (this.exception == null) {
-				this.exception = exception;
-				stop();
-			}
-		}
-	}
-
 	private void onCompletion(Handle handle) {
 		synchronized (this) {
 			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
 			executableHandles.forEach(this::scheduleForSubmission);
+		}
+	}
+
+	private void onException(Handle handle) {
+		onException(handle.getException(), false);
+	}
+
+	private void onException(Throwable exception, boolean overwriteIfExists) {
+		synchronized (this) {
+			if (overwriteIfExists || this.exception == null) {
+				this.exception = exception;
+				stop();
+			}
 		}
 	}
 
@@ -202,19 +221,15 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
-		String name = null;
-		if (closing) {
-			// no handles will be added anymore => no synchronization required to obtain handle name
-			name = getHandleName(handle);
-		} else {
-			synchronized (this) {
-				name = getHandleName(handle);
-			}
-		}
+		String name = getTaskName(handle);
 		Logger logger = coordinatorConfiguration.getLogger();
 		logger.log(logLevel, name, message);
 		if (logLevel == LogLevel.INTERNAL_ERROR) {
-			onException(new IllegalStateException(message));
+			/*
+			 * The internal exception should overwrite a potential task exception because it indicates a fundamental
+			 * problem that must be fixed and must therefore not be hidden.
+			 */
+			onException(new IllegalStateException(message), true);
 			stop();
 		}
 	}

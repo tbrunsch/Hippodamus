@@ -45,6 +45,7 @@ public class ExceptionTest
 			coordinator.execute(this::run2);
 		} catch (Exception1 exception1) {
 			Assert.assertTrue("Unexpected exception in task 1", throwExceptionInTask1);
+			Assert.assertFalse("Exception from task 2 should have been thrown instead", throwExceptionInTask2);
 			return;
 		} catch (Exception2 exception2) {
 			Assert.assertTrue("Unexpected exception in task 2", throwExceptionInTask2);
@@ -54,7 +55,7 @@ public class ExceptionTest
 	}
 
 	private void run1() throws Exception1 {
-		TestUtils.sleep(500);
+		TestUtils.sleep(1000);
 		if (throwExceptionInTask1) {
 			throw new Exception1();
 		}

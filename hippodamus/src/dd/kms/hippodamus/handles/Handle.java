@@ -1,7 +1,9 @@
 package dd.kms.hippodamus.handles;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 public interface Handle
@@ -32,6 +34,18 @@ public interface Handle
 	 * be added later to a service, then they will be assigned a handle that is already stopped and will never run.
 	 */
 	void stop();
+
+	/**
+	 * @return the exception, if the task associated has thrown one, or null otherwise.
+	 */
+	@Nullable Throwable getException();
+
+	/**
+	 * @return the name of the task associated with this handle. This is either the custom name specified
+	 * 			by calling {@link ExecutionConfigurationBuilder#name(String)} before executing the task, or a
+	 * 			generic name otherwise.
+	 */
+	String getTaskName();
 
 	/**
 	 * Waits until the task associated with this handle completes or is stopped form some reason (e.g., stopped
@@ -69,13 +83,41 @@ public interface Handle
 	 * Installs a listener that is called when the task completes. That call will be in the thread that executed the
 	 * task. If a listener is installed after the task has completed, then the listener is called immediately in the
 	 * caller's thread.<br/>
+	 * <br/>
+	 * One goal of the {@link ExecutionCoordinator} framework is to get rid of the need to install custom listeners.
+	 * If you need to install a listener nevertheless, you should do it immediately after executing the task inside
+	 * of the coordinator's try-block:<br/>
+	 * <pre>
+	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+	 *         ...
+	 *         Handle handle = coordinator.execute(() -> doSomething());
+	 *         handle.onCompletion(() -> onHandleCompleted(handle));
+	 *         ...
+	 *     }
+	 * </pre>
+	 * Note that if this handle is a {@link ResultHandle}, then you can access its result by calling
+	 * {@link ResultHandle#get()}.
 	 */
 	void onCompletion(Runnable listener);
 
 	/**
-	 * Installs an exception handler that is called if the tasks raises an exception. The call will be in the thread that
-	 * executed the task. If a handler is installed  after the task has raised an exception, then the handler is called
-	 * immediately in the caller's thread.<br/>
+	 * Installs a listener that is called when the task throws an exception. The call will be in the thread that
+	 * executed the task. If a listener is installed  after the task has thrown an exception, then the listener is
+	 * called immediately in the caller's thread.<br/>
+	 * <br/>
+	 * One goal of the {@link ExecutionCoordinator} framework is to get rid of the need to install custom listeners.
+	 * If you need to install a listener nevertheless, you should do it immediately after executing the task inside
+	 * of the coordinator's try-block:<br/>
+	 * <pre>
+	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+	 *         ...
+	 *         Handle handle = coordinator.execute(() -> doSomething());
+	 *         handle.onException(() -> onExceptionCompleted(handle));
+	 *         ...
+	 *     }
+	 * </pre>
+	 * Note that you can access the exception thrown by the task associated with this handle by calling
+	 * {@link #getException()}.
 	 */
-	void onException(Consumer<Throwable> exceptionHandler);
+	void onException(Runnable listener);
 }

@@ -4,19 +4,19 @@ import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
 
+import javax.annotation.Nullable;
+import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
 abstract class AbstractHandle implements Handle
 {
-	private final ExecutionCoordinator coordinator;
-	private final Deque<Runnable> 				completionListeners	= new LinkedList<>();
-	private final Deque<Consumer<Throwable>>	exceptionHandlers	= new LinkedList<>();
-	final HandleState							state;
-	private final boolean						verifyDependencies;
+	private final ExecutionCoordinator	coordinator;
+	private final List<Runnable> 		completionListeners	= new ArrayList<>();
+	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
+	final HandleState					state;
+	private final boolean				verifyDependencies;
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
@@ -53,11 +53,8 @@ abstract class AbstractHandle implements Handle
 				return;
 			}
 			addPendingFlag(StateFlag.COMPLETED);
-			try {
-				completionListeners.forEach(Runnable::run);
-			} finally {
-				setPendingFlags();
-			}
+			notifyListeners(completionListeners, "completion listener");
+			setPendingFlags();
 		}
 	}
 
@@ -70,12 +67,64 @@ abstract class AbstractHandle implements Handle
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
 				return;
 			}
+			state.setException(exception);
+			notifyListeners(exceptionListeners, "exception listener");
+			setPendingFlags();
+		}
+	}
+
+	/**
+	 * This method may only be called under the following condition: If the
+	 * list of listeners contains multiple listeners, then these are in the
+	 * following order:
+	 * <ol>
+	 *     <li>listener registered by {@link ExecutionCoordinator}</li>
+	 *     <li>possibly a listener registered by a subclass of {@code ExecutionCoordinator}</li>
+	 *     <li>listeners registered by the user</li>
+	 * </ol>
+	 *
+	 */
+	private void notifyListeners(List<Runnable> listeners, String listenerDescription) {
+		/*
+	     * We want the listeners to be called in reverse order for two reasons:
+	     *
+	     *   1. The ExecutionCoordinator's completion listener will submit tasks that depend
+	     *      on this handle. There are scenarios where other listeners want to prevent this
+	     *      (cf. short circuit evaluation exploited by AggregationCoordinator). Hence, they
+	     *      must be informed earlier.
+	     *
+	     *   2. If one listener throws an exception, then we do not want to call the ExecutionCoordinator's
+	     *      listener, but inform it about that exception instead. This is because in case of an
+	     *      exception, the ExecutionCoordinator would otherwise temporarily have the task exception
+	     *      set, which is soon overwritten by the listener exception (which is more important).
+	     *      If the coordinator is already closing, then it will see the task exception and throw
+	     *      that one instead of waiting for the listener exception it should throw instead.
+		 */
+		Throwable listenerException = null;
+		Runnable exceptionalListener = null;
+		int numListeners = listeners.size();
+		for (int i = numListeners-1; i >= 0; i--) {
+			Runnable listener = listeners.get(i);
 			try {
-				exceptionHandlers.forEach(handler -> handler.accept(exception));
-			} finally {
-				state.setException(exception);
-				setPendingFlags();
+				if (listenerException == null || i > 0) {
+					// do not run first listener if there has been an exception by another listener
+					listener.run();
+				}
+			} catch (Throwable t) {
+				if (listenerException == null) {
+					listenerException = t;
+					exceptionalListener = listener;
+				}
 			}
+		}
+		if (listenerException != null) {
+			ExecutionCoordinator coordinator = getExecutionCoordinator();
+			String message = MessageFormat.format("{0} in {1} \"{2}\": {3}",
+				listenerException.getClass().getSimpleName(),
+				listenerDescription,
+				exceptionalListener,
+				listenerException.getMessage());
+			coordinator.log(LogLevel.INTERNAL_ERROR, this, message);
 		}
 	}
 
@@ -159,34 +208,35 @@ abstract class AbstractHandle implements Handle
 	}
 
 	@Override
+	public @Nullable Throwable getException() {
+		return state.getException();
+	}
+
+	@Override
+	public String getTaskName() {
+		ExecutionCoordinator coordinator = getExecutionCoordinator();
+		return coordinator.getTaskName(this);
+	}
+
+	@Override
 	public void onCompletion(Runnable listener) {
 		synchronized (coordinator) {
-			/*
-			 * This method will be called by ExecutionCoordinator first, then possibly by derived classes, and
-			 * then possibly by users. We want the listeners to be called in reverse order. Among others for the
-			 * reason, that submitting dependent tasks may be prevented by the other listeners (e.g., due to
-			 * short circuit evaluation exploited by AggregationCoordinator).
-			 */
-			completionListeners.addFirst(listener);
+			completionListeners.add(listener);
 			if (state.isFlagSet(StateFlag.COMPLETED)) {
 				// only run this listener; other listeners have already been notified
-				listener.run();
+				notifyListeners(Collections.singletonList(listener), "completion listener");
 			}
 		}
 	}
 
 	@Override
-	public void onException(Consumer<Throwable> exceptionHandler) {
+	public void onException(Runnable listener) {
 		synchronized (coordinator) {
-			/*
-			 * Maintain collection of exception handlers in reverse call order to be consistent with order
-			 * of completion listeners.
-			 */
-			exceptionHandlers.addFirst(exceptionHandler);
+			exceptionListeners.add(listener);
 			Throwable exception = state.getException();
 			if (exception != null) {
 				// only inform this handler; other handlers have already been notified
-				exceptionHandler.accept(exception);
+				notifyListeners(Collections.singletonList(listener), "exception listener");
 			}
 		}
 	}

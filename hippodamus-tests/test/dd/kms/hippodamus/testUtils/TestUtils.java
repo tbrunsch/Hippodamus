@@ -7,6 +7,9 @@ public class TestUtils
 	public static final boolean[]	BOOLEANS	= { false, true };
 
 	public static void sleep(long timeMs) {
+		if (timeMs == 0) {
+			return;
+		}
 		try {
 			Thread.sleep(timeMs);
 		} catch (InterruptedException e) {

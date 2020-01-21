@@ -57,6 +57,13 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	 */
 	void checkException();
 
+	/**
+	 * @return the name of the task associated with the {@code handle}. This is either the custom name specified
+	 * 			by calling {@link ExecutionConfigurationBuilder#name(String)} before executing the task, or a
+	 * 			generic name otherwise.
+	 */
+	String getTaskName(Handle handle);
+
 	void log(LogLevel logLevel, Handle handle, String message);
 
 	@Override
