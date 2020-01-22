@@ -7,7 +7,7 @@
 	<groupId>dd.kms.hippodamus</groupId>
 	<artifactId>hippodamus-parent</artifactId>
 	<packaging>pom</packaging>
-	<version>0.9-SNAPSHOT</version>
+	<version>0.1-SNAPSHOT</version>
 	<modules>
 		<module>hippodamus</module>
 		<module>hippodamus-tests</module>
