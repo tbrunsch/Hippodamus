@@ -1,12 +1,11 @@
 package dd.kms.hippodamus.aggregation;
 
-import dd.kms.hippodamus.common.NamedInstances;
 import dd.kms.hippodamus.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.TaskType;
 import dd.kms.hippodamus.coordinator.configuration.AggregationCoordinatorBuilder;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,8 +31,8 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 @RunWith(Parameterized.class)
 public class DisjunctionTest
 {
-	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= NamedInstances.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
-	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= NamedInstances.createNamedInstance(Supplier.class, Executors::newWorkStealingPool, "dedicated executor service");
+	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= TestUtils.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
+	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= TestUtils.createNamedInstance(Supplier.class, Executors::newWorkStealingPool, "dedicated executor service");
 
 	@Parameterized.Parameters(name = "computation of {0} || {1} with {2}")
 	public static Object getParameters() {
