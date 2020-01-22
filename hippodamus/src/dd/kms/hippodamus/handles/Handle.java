@@ -22,10 +22,13 @@ public interface Handle
 	boolean hasCompleted();
 
 	/**
-	 * @return {@code true} iff the task has been stopped manually, either manually or because of an exception
-	 *
+	 * @return {@code true} iff the task has been stopped manually, either manually or because of an exception<br/>
+	 * <br/>
 	 * If a task has completed before it had been stopped manually, then {@link #hasCompleted()} and {@link #hasStopped()}
-	 * both return {@code true}.
+	 * both return {@code true}.<br/>
+	 * <br/>
+	 * Note that stopping a task is just a request. A running task does not have to react to that request and may
+	 * decide to keep running. Nevertheless, it is considered stopped.
 	 */
 	boolean hasStopped();
 
