@@ -9,8 +9,6 @@ import org.junit.Test;
 
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
-// TODO: Document problem and solution
-
 /**
  * This test focuses on the behavior of the framework in case of exceptions
  * occurring where the framework has no chance to handle them.

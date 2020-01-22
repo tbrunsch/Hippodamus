@@ -9,7 +9,6 @@ import org.junit.Test;
 
 import java.util.function.Supplier;
 
-// TODO: Document stoppability
 /**
  * By default, the {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator} uses the common
  * {@link java.util.concurrent.ForkJoinPool} to execute tasks. Since this {@link java.util.concurrent.ExecutorService}
