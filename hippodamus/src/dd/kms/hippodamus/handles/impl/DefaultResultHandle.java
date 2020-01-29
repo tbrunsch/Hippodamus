@@ -32,15 +32,12 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	}
 
 	@Override
-	boolean doWaitForFuture() {
+	boolean doWaitForFuture() throws Throwable {
 		if (futureResult == null) {
 			return false;
 		}
-		try {
-			futureResult.get();
-		} catch (Exception ignored) {
-			/* waiting also finishes when an exception occurs */
-		}
+		// TODO: How to handle RejectedExecutionException?
+		futureResult.get();
 		return true;
 	}
 

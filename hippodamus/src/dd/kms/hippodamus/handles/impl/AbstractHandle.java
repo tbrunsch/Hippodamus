@@ -39,7 +39,7 @@ abstract class AbstractHandle implements Handle
 
 	abstract void doSubmit();
 	abstract void doStop();
-	abstract boolean doWaitForFuture();
+	abstract boolean doWaitForFuture() throws Throwable;
 
 	void markAsCompleted() {
 		synchronized (coordinator) {
@@ -170,7 +170,12 @@ abstract class AbstractHandle implements Handle
 			return;
 		}
 		while (true) {
-			if (doWaitForFuture()) {
+			try {
+				if (doWaitForFuture()) {
+					return;
+				}
+			} catch (Throwable t) {
+				setException(t);
 				return;
 			}
 			if (hasCompleted() || isCompleting()) {
