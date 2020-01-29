@@ -55,6 +55,8 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 */
 	private boolean									hasThrownException;
 
+	private boolean									faultyLogger;
+
 	private boolean									closing;
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
@@ -223,14 +225,24 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 		String name = getTaskName(handle);
 		Logger logger = coordinatorConfiguration.getLogger();
-		logger.log(logLevel, name, message);
-		if (logLevel == LogLevel.INTERNAL_ERROR) {
+		Exception exception = null;
+		try {
+			if (!faultyLogger) {
+				logger.log(logLevel, name, message);
+				if (logLevel == LogLevel.INTERNAL_ERROR){
+					exception = new IllegalStateException(message);
+				}
+			}
+		} catch (Throwable t) {
+			faultyLogger = true;
+			exception = new IllegalStateException("Exception in logger: " + t.getMessage(), t);
+		}
+		if (exception != null) {
 			/*
 			 * The internal exception should overwrite a potential task exception because it indicates a fundamental
 			 * problem that must be fixed and must therefore not be hidden.
 			 */
-			onException(new IllegalStateException(message), true);
-			stop();
+			onException(exception, true);
 		}
 	}
 

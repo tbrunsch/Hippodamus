@@ -6,9 +6,7 @@ import dd.kms.hippodamus.logging.LogLevel;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 abstract class AbstractHandle implements Handle
 {
@@ -31,7 +29,7 @@ abstract class AbstractHandle implements Handle
 	 * flag is set.<br/>
 	 * As a consequence, we need this field to maintain the order of the flags that are set.
 	 */
-	private final List<StateFlag>			pendingFlags		= new ArrayList<>();
+	private final Queue<StateFlag>		pendingFlags		= new ArrayDeque<>();
 
 	AbstractHandle(ExecutionCoordinator coordinator, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
@@ -195,11 +193,10 @@ abstract class AbstractHandle implements Handle
 		return state.isFlagSet(StateFlag.COMPLETED);
 	}
 
-	/**
-	 * For internal use only. Ensure that this method is only called with locking the {@code coordinator}.
-	 */
-	boolean isCompleting() {
-		return pendingFlags.contains(StateFlag.COMPLETED);
+	private boolean isCompleting() {
+		synchronized (coordinator) {
+			return pendingFlags.contains(StateFlag.COMPLETED);
+		}
 	}
 
 	@Override
@@ -249,16 +246,22 @@ abstract class AbstractHandle implements Handle
 	/*
 	 * Pending Flags
 	 */
+	/**
+	 * Ensure that this method is only called with locking the {@code coordinator}.
+	 */
 	private void addPendingFlag(StateFlag flag) {
 		coordinator.log(LogLevel.DEBUGGING, this, flag.getTransactionBeginString());
 		pendingFlags.add(flag);
 	}
 
+	/**
+	 * Ensure that this method is only called with locking the {@code coordinator}.
+	 */
 	private void setPendingFlags() {
-		for (StateFlag flag : pendingFlags) {
+		StateFlag flag;
+		while ((flag = pendingFlags.poll()) != null) {
 			state.setFlag(flag);
 			coordinator.log(LogLevel.STATE, this, flag.getTransactionEndString());
 		}
-		pendingFlags.clear();
 	}
 }
