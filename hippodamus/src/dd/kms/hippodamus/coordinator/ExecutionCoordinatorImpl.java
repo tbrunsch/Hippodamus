@@ -16,7 +16,7 @@ import dd.kms.hippodamus.logging.Logger;
 
 import java.util.*;
 
-public class ExecutionCoordinatorImpl implements ExecutionCoordinator
+public class ExecutionCoordinatorImpl implements InternalCoordinator
 {
 	private final CoordinatorConfiguration coordinatorConfiguration;
 

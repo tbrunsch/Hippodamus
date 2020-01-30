@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.handles.impl;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
 
@@ -10,7 +11,7 @@ import java.util.*;
 
 abstract class AbstractHandle implements Handle
 {
-	private final ExecutionCoordinator	coordinator;
+	private final InternalCoordinator	coordinator;
 	private final List<Runnable> 		completionListeners	= new ArrayList<>();
 	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
 	final HandleState					state;
@@ -31,7 +32,7 @@ abstract class AbstractHandle implements Handle
 	 */
 	private final Queue<StateFlag>		pendingFlags		= new ArrayDeque<>();
 
-	AbstractHandle(ExecutionCoordinator coordinator, HandleState state, boolean verifyDependencies) {
+	AbstractHandle(InternalCoordinator coordinator, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.state = new HandleState(state);
 		this.verifyDependencies = verifyDependencies;
@@ -116,7 +117,7 @@ abstract class AbstractHandle implements Handle
 			}
 		}
 		if (listenerException != null) {
-			ExecutionCoordinator coordinator = getExecutionCoordinator();
+			InternalCoordinator coordinator = getExecutionCoordinator();
 			String message = MessageFormat.format("{0} in {1} \"{2}\": {3}",
 				listenerException.getClass().getSimpleName(),
 				listenerDescription,
@@ -165,7 +166,7 @@ abstract class AbstractHandle implements Handle
 			return;
 		}
 		if (verifyDependencies) {
-			ExecutionCoordinator coordinator = getExecutionCoordinator();
+			InternalCoordinator coordinator = getExecutionCoordinator();
 			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
 			return;
 		}
@@ -216,7 +217,7 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public String getTaskName() {
-		ExecutionCoordinator coordinator = getExecutionCoordinator();
+		InternalCoordinator coordinator = getExecutionCoordinator();
 		return coordinator.getTaskName(this);
 	}
 
@@ -244,7 +245,7 @@ abstract class AbstractHandle implements Handle
 	}
 
 	@Override
-	public final ExecutionCoordinator getExecutionCoordinator() {
+	public final InternalCoordinator getExecutionCoordinator() {
 		return coordinator;
 	}
 

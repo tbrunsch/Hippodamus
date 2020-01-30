@@ -3,8 +3,6 @@ package dd.kms.hippodamus.coordinator;
 import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.execution.ExecutionManager;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
-import dd.kms.hippodamus.handles.Handle;
-import dd.kms.hippodamus.logging.LogLevel;
 
 public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 {
@@ -42,11 +40,6 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	void stop();
 
 	/**
-	 * Stops all dependent handles of the specified handle if the handle has been created by this service.
-	 */
-	void stopDependentHandles(Handle handle);
-
-	/**
 	 * Checks if any of the current tasks has already thrown an exception. If so, it throws that exception,
 	 * provided it has not already thrown them in a previous call to {@code checkException()}.<br/>
 	 * <br/>
@@ -56,15 +49,6 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	 * then it makes sense to call that method on a regular basis to react to exceptions faster.
 	 */
 	void checkException();
-
-	/**
-	 * @return the name of the task associated with the {@code handle}. This is either the custom name specified
-	 * 			by calling {@link ExecutionConfigurationBuilder#name(String)} before executing the task, or a
-	 * 			generic name otherwise.
-	 */
-	String getTaskName(Handle handle);
-
-	void log(LogLevel logLevel, Handle handle, String message);
 
 	@Override
 	void close();

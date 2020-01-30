@@ -1,6 +1,6 @@
 package dd.kms.hippodamus.handles.impl;
 
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.handles.ResultHandle;
@@ -15,7 +15,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	private Future<T>									futureResult;
 	private T											result;
 
-	public DefaultResultHandle(ExecutionCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
+	public DefaultResultHandle(InternalCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
 		super(coordinator,  new HandleState(false, false), verifyDependencies);
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
