@@ -80,8 +80,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 				boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable, verifyDependencies);
 				registerHandleName(resultHandle, name);
-				resultHandle.onCompletion(() -> onCompletion(resultHandle));
-				resultHandle.onException(() -> onException(resultHandle));
 				handleDependencyManager.addDependencies(resultHandle, dependencies);
 				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
 				if (allDependenciesCompleted) {
@@ -181,14 +179,16 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	private void onCompletion(Handle handle) {
+	@Override
+	public void onCompletion(Handle handle) {
 		synchronized (this) {
 			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
 			executableHandles.forEach(this::scheduleForSubmission);
 		}
 	}
 
-	private void onException(Handle handle) {
+	@Override
+	public void onException(Handle handle) {
 		onException(handle.getException(), false);
 	}
 

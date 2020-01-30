@@ -8,9 +8,12 @@ import dd.kms.hippodamus.logging.LogLevel;
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.function.Consumer;
 
 abstract class AbstractHandle implements Handle
 {
+	private static final Consumer<Handle>	NO_HANDLE_CONSUMER = handle -> {};
+
 	private final InternalCoordinator	coordinator;
 	private final List<Runnable> 		completionListeners	= new ArrayList<>();
 	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
@@ -52,7 +55,7 @@ abstract class AbstractHandle implements Handle
 				return;
 			}
 			addPendingFlag(StateFlag.COMPLETED);
-			notifyListeners(completionListeners, "completion listener");
+			notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 			setPendingFlags();
 		}
 	}
@@ -67,57 +70,28 @@ abstract class AbstractHandle implements Handle
 				return;
 			}
 			state.setException(exception);
-			notifyListeners(exceptionListeners, "exception listener");
+			notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 			setPendingFlags();
 		}
 	}
 
-	/**
-	 * This method may only be called under the following condition: If the
-	 * list of listeners contains multiple listeners, then these are in the
-	 * following order:
-	 * <ol>
-	 *     <li>listener registered by {@link ExecutionCoordinator}</li>
-	 *     <li>possibly a listener registered by a subclass of {@code ExecutionCoordinator}</li>
-	 *     <li>listeners registered by the user</li>
-	 * </ol>
-	 *
-	 */
-	private void notifyListeners(List<Runnable> listeners, String listenerDescription) {
-		/*
-	     * We want the listeners to be called in reverse order for two reasons:
-	     *
-	     *   1. The ExecutionCoordinator's completion listener will submit tasks that depend
-	     *      on this handle. There are scenarios where other listeners want to prevent this
-	     *      (cf. short circuit evaluation exploited by AggregationCoordinator). Hence, they
-	     *      must be informed earlier.
-	     *
-	     *   2. If one listener throws an exception, then we do not want to call the ExecutionCoordinator's
-	     *      listener, but inform it about that exception instead. This is because in case of an
-	     *      exception, the ExecutionCoordinator would otherwise temporarily have the task exception
-	     *      set, which is soon overwritten by the listener exception (which is more important).
-	     *      If the coordinator is already closing, then it will see the task exception and throw
-	     *      that one instead of waiting for the listener exception it should throw instead.
-		 */
+	private void notifyListeners(List<Runnable> listeners, String listenerDescription, Consumer<Handle> coordinatorListener) {
 		Throwable listenerException = null;
 		Runnable exceptionalListener = null;
-		int numListeners = listeners.size();
-		for (int i = numListeners-1; i >= 0; i--) {
-			Runnable listener = listeners.get(i);
+		for (Runnable listener : listeners) {
 			try {
-				if (listenerException == null || i > 0) {
-					// do not run first listener if there has been an exception by another listener
-					listener.run();
-				}
+				listener.run();
 			} catch (Throwable t) {
 				if (listenerException == null) {
 					listenerException = t;
 					exceptionalListener = listener;
+					break;
 				}
 			}
 		}
-		if (listenerException != null) {
-			InternalCoordinator coordinator = getExecutionCoordinator();
+		if (listenerException == null) {
+			coordinatorListener.accept(this);
+		} else {
 			String message = MessageFormat.format("{0} in {1} \"{2}\": {3}",
 				listenerException.getClass().getSimpleName(),
 				listenerDescription,
@@ -166,7 +140,6 @@ abstract class AbstractHandle implements Handle
 			return;
 		}
 		if (verifyDependencies) {
-			InternalCoordinator coordinator = getExecutionCoordinator();
 			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
 			return;
 		}
@@ -217,7 +190,6 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public String getTaskName() {
-		InternalCoordinator coordinator = getExecutionCoordinator();
 		return coordinator.getTaskName(this);
 	}
 
@@ -227,7 +199,7 @@ abstract class AbstractHandle implements Handle
 			completionListeners.add(listener);
 			if (state.isFlagSet(StateFlag.COMPLETED)) {
 				// only run this listener; other listeners have already been notified
-				notifyListeners(Collections.singletonList(listener), "completion listener");
+				notifyListeners(Collections.singletonList(listener), "completion listener", NO_HANDLE_CONSUMER);
 			}
 		}
 	}
@@ -239,7 +211,7 @@ abstract class AbstractHandle implements Handle
 			Throwable exception = state.getException();
 			if (exception != null) {
 				// only inform this handler; other handlers have already been notified
-				notifyListeners(Collections.singletonList(listener), "exception listener");
+				notifyListeners(Collections.singletonList(listener), "exception listener", NO_HANDLE_CONSUMER);
 			}
 		}
 	}

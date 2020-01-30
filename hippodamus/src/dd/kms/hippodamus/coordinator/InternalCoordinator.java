@@ -18,5 +18,9 @@ public interface InternalCoordinator extends ExecutionCoordinator
 	 */
 	String getTaskName(Handle handle);
 
+	void onCompletion(Handle handle);
+
+	void onException(Handle handle);
+
 	void log(LogLevel logLevel, Handle handle, String message);
 }
