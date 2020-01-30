@@ -1,15 +1,17 @@
 package dd.kms.hippodamus.handles;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.exceptions.CoordinatorException;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 
 import javax.annotation.Nullable;
-import java.util.function.Consumer;
+import java.util.concurrent.ExecutorService;
 
 public interface Handle
 {
 	/**
-	 * Submits the runnable/callable behind the handle to the underlying {@link java.util.concurrent.ExecutorService}.<br/>
+	 * Submits the runnable/callable behind the handle to the underlying {@link ExecutorService}.<br/>
 	 * <br/>
 	 * Users should not call this method directly. It will be called by the framework if all of the handle's dependencies
 	 * have completed.
@@ -55,11 +57,11 @@ public interface Handle
 	 * manually, stopped due to short circuit evaluation, or stopped due to an exception).<br/>
 	 * <br/>
 	 * The behavior of that method depends on whether dependencies are verified or not (cf.
-	 * {@link dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
+	 * {@link ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
 	 * <ul>
 	 *     <li>
-	 *         If dependencies are verified, then the call throws an {@link IllegalStateException} in the
-	 *         {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}'s thread if the handle has not already
+	 *         If dependencies are verified, then the call throws a {@link CoordinatorException} in the
+	 *         {@link ExecutionCoordinator}'s thread if the handle has not already
 	 *         completed. The reason for this is that in this mode it is assumed that tasks are never executed
 	 *         before their dependencies have been resolved. If a task calls {@code #join()} of a handle,
 	 *         then that handle should be listed as dependency of that task. Only if this is not the case,
@@ -70,7 +72,7 @@ public interface Handle
 	 *         If dependencies are not verified, then the call blocks until the task completes or is stopped.
 	 *         In any case, the method <b>does not</b> throw an exception, but simply returns. The reason for
 	 *         this is that handling exceptional behavior due to parallelism is not the tasks' responsibility,
-	 *         but the {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}'s. In these cases, the coordinator
+	 *         but the {@link ExecutionCoordinator}'s. In these cases, the coordinator
 	 *         will send an exception, if adequate, to the coordinator's thread.
 	 *     </li>
 	 * </ul>

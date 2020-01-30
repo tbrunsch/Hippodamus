@@ -12,7 +12,7 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 /**
- * One of the main purposes of {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}s is
+ * One of the main purposes of {@link ExecutionCoordinator}s is
  * handling exceptions and dependencies. If no dependencies are specified, then the framework
  * cannot benefit from additional information, but has a higher overhead than other approaches.
  * However, we want to ensure that the framework overhead is not too large.

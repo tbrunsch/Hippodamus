@@ -2,9 +2,9 @@ package dd.kms.hippodamus.execution.configuration;
 
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.execution.ExecutionManager;
 import dd.kms.hippodamus.coordinator.TaskType;
 import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.execution.ExecutionManager;
 import dd.kms.hippodamus.handles.Handle;
 
 import java.util.Collection;

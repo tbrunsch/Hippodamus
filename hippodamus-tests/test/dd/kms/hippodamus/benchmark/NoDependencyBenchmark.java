@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 /**
- * One of the main purposes of {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}s is
+ * One of the main purposes of {@link ExecutionCoordinator}s is
  * handling exceptions and dependencies. If there are no dependencies, then other approaches
  * with less overhead may be a better alternative. However, we want to ensure that the
  * framework overhead is not too large.

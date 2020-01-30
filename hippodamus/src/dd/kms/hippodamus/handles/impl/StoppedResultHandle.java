@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.handles.impl;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.exceptions.CoordinatorException;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 public class StoppedResultHandle<T> extends AbstractHandle implements ResultHandle<T>
@@ -16,12 +17,12 @@ public class StoppedResultHandle<T> extends AbstractHandle implements ResultHand
 
 	@Override
 	void doSubmit() {
-		throw new IllegalStateException("Internal error: A stopped handle should not be submitted");
+		throw new CoordinatorException("Internal error: A stopped handle should not be submitted");
 	}
 
 	@Override
 	void doStop() {
-		throw new IllegalStateException("Internal error: A stopped handle should not be stopped again");
+		throw new CoordinatorException("Internal error: A stopped handle should not be stopped again");
 	}
 
 	@Override

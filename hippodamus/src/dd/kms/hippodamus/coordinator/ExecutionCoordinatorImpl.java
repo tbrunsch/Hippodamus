@@ -3,10 +3,10 @@ package dd.kms.hippodamus.coordinator;
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.exceptions.*;
+import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilderImpl;
-import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.handles.impl.DefaultResultHandle;
@@ -225,17 +225,17 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 		String name = getTaskName(handle);
 		Logger logger = coordinatorConfiguration.getLogger();
-		Exception exception = null;
+		CoordinatorException exception = null;
 		try {
 			if (!faultyLogger) {
 				logger.log(logLevel, name, message);
 				if (logLevel == LogLevel.INTERNAL_ERROR){
-					exception = new IllegalStateException(message);
+					exception = new CoordinatorException(message);
 				}
 			}
 		} catch (Throwable t) {
 			faultyLogger = true;
-			exception = new IllegalStateException("Exception in logger: " + t.getMessage(), t);
+			exception = new CoordinatorException("Exception in logger: " + t.getMessage(), t);
 		}
 		if (exception != null) {
 			/*
@@ -274,7 +274,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 			}
 		}
 		if (throwable != null) {
-			throw new IllegalStateException("Exception when closing executor services: " + throwable.getMessage(), throwable);
+			throw new CoordinatorException("Exception when closing executor services: " + throwable.getMessage(), throwable);
 		}
 	}
 

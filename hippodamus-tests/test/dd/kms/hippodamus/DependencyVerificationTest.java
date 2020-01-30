@@ -3,6 +3,7 @@ package dd.kms.hippodamus;
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.exceptions.CoordinatorException;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
@@ -12,9 +13,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.util.concurrent.ExecutorService;
+
 /**
- * The {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator} only
- * submits tasks to the {@link java.util.concurrent.ExecutorService}, if
+ * The {@link ExecutionCoordinator} only
+ * submits tasks to the {@link ExecutorService}, if
  * all of its dependencies are resolved. If dependencies are not specified
  * correctly, then tasks might end up actively waiting for other tasks to
  * complete.<br/>
@@ -62,7 +65,7 @@ public class DependencyVerificationTest
 			 * because it is waiting in task 1.
 			 */
 			task3 = coordinator.execute(() -> task2.get());
-		} catch (IllegalStateException e) {
+		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
 		Assert.assertTrue("task3 is null", task3 != null);
@@ -91,7 +94,7 @@ public class DependencyVerificationTest
 			ResultHandle<Integer> addend1 = coordinator.execute(() -> generateNumber(addend1Result, 1000));
 			ResultHandle<Integer> addend2 = coordinator.execute(() -> generateNumber(addend2Result, 500));
 			sum = coordinator.execute(() -> addend1.get() + addend2.get());
-		} catch (IllegalStateException e) {
+		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
 		Assert.assertTrue("sum is null", sum != null);

@@ -2,18 +2,22 @@ package dd.kms.hippodamus;
 
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
 /**
- * By default, the {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator} uses the common
- * {@link java.util.concurrent.ForkJoinPool} to execute tasks. Since this {@link java.util.concurrent.ExecutorService}
+ * By default, the {@link ExecutionCoordinator} uses the common
+ * {@link ForkJoinPool} to execute tasks. Since this {@link ExecutorService}
  * cannot be shut down, submitted tasks cannot be stopped, but run until end. The interfaces
- * {@link dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable} and {@link dd.kms.hippodamus.exceptions.StoppableExceptionalCallable}
+ * {@link StoppableExceptionalRunnable} and {@link StoppableExceptionalCallable}
  * allow implementers of a task to query whether the task should be stopped.<br/>
  * <br/>
  * This test verifies that reacting to a stop request indeed has an effect.

@@ -4,7 +4,6 @@ import dd.kms.hippodamus.aggregation.Aggregator;
 import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.exceptions.ExceptionalSupplier;
-import dd.kms.hippodamus.exceptions.Exceptions;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilder;
 import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilderImpl;

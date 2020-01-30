@@ -3,6 +3,7 @@ package dd.kms.hippodamus;
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.exceptions.CoordinatorException;
 import dd.kms.hippodamus.logging.LogLevel;
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,7 +18,7 @@ public class LoggerExceptionTest
 			.logger(this::log);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			coordinator.execute(() -> {});
-		} catch (IllegalStateException e){
+		} catch (CoordinatorException e){
 			Assert.assertTrue("Missing logger exception text in exception", e.getMessage().contains(EXCEPTION_TEXT));
 			return;
 		}

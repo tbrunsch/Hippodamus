@@ -2,8 +2,8 @@ package dd.kms.hippodamus.coordinator.configuration;
 
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinatorImpl;
-import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.coordinator.TaskType;
+import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
 import dd.kms.hippodamus.logging.Loggers;

@@ -13,9 +13,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
 /**
- * One of the main purposes of {@link dd.kms.hippodamus.coordinator.ExecutionCoordinator}s is
+ * One of the main purposes of {@link ExecutionCoordinator}s is
  * handling exceptions and dependencies. In this test we benchmark the framework against
- * {@link java.util.concurrent.CompletableFuture} in different scenarios, one time with
+ * {@link CompletableFuture} in different scenarios, one time with
  * specified dependencies and one time without.
  */
 public class DependencyBenchmark
