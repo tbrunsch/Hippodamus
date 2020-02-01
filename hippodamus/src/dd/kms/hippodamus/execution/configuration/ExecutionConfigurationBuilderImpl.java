@@ -1,6 +1,5 @@
 package dd.kms.hippodamus.execution.configuration;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.coordinator.TaskType;
@@ -9,6 +8,7 @@ import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
 
 import javax.annotation.Nullable;
+import java.text.MessageFormat;
 import java.util.Collection;
 
 public class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
@@ -42,8 +42,17 @@ public class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImp
 
 	@Override
 	public B dependencies(Collection<Handle> dependencies) {
-		Preconditions.checkArgument(dependencies.stream().allMatch(dependency -> dependency.getExecutionCoordinator() == coordinator),
-			"Only dependencies to tasks of the same execution coordinator are allowed");
+		Handle dependencyWithWrongCoordinator = dependencies.stream()
+			.filter(dependency -> dependency.getExecutionCoordinator() != coordinator)
+			.findFirst()
+			.orElse(null);
+		if (dependencyWithWrongCoordinator != null) {
+			String error = MessageFormat.format("At least one dependency refers to a task ('{0}') that is not managed by this coordinator: {1}",
+				dependencyWithWrongCoordinator.getTaskName(),
+				dependencyWithWrongCoordinator
+			);
+			throw new CoordinatorException(error);
+		}
 		this.dependencies = ImmutableList.copyOf(dependencies);
 		return getBuilder();
 	}
