@@ -8,7 +8,7 @@ class DefaultAggregator<S, T> implements Aggregator<S, T>
 	private final BiFunction<T, S, T>	aggregationFunction;
 	private final Predicate<T>			finalValuePredicate;
 
-	private T							aggregatedValue;
+	private volatile T					aggregatedValue;
 
 	DefaultAggregator(T initValue, BiFunction<T, S, T> aggregationFunction, Predicate<T> finalValuePredicate) {
 		this.aggregatedValue = initValue;

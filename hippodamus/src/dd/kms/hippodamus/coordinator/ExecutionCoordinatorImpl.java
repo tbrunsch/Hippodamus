@@ -18,19 +18,19 @@ import java.util.*;
 
 public class ExecutionCoordinatorImpl implements InternalCoordinator
 {
-	private final CoordinatorConfiguration coordinatorConfiguration;
+	private final CoordinatorConfiguration	coordinatorConfiguration;
 
-	private final HandleDependencyManager			handleDependencyManager;
-	private final Map<Integer, String>				handleNamesByHashCode			= new HashMap<>();
+	private final HandleDependencyManager	handleDependencyManager;
+	private final Map<Integer, String>		handleNamesByHashCode			= new HashMap<>();
 
-	private boolean									permitTaskSubmission			= true;
+	private boolean							permitTaskSubmission			= true;
 
 	/**
 	 * This field contains all handles that can already be submitted, but whose submission is denied
 	 * because {@link #permitTaskSubmission} is {@code false}. These handles will be submitted as
 	 * soon as {@code permitTaskSubmission} is set to {@code true}.
 	 */
-	private final List<Handle>						pendingHandles					= new ArrayList<>();
+	private final List<Handle>				pendingHandles					= new ArrayList<>();
 
 	/**
 	 * The field may be set from a different thread than the one the coordinator is running in.
@@ -40,7 +40,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 *     <li>when the coordinator is closing</li>
 	 * </ul>
 	 */
-	private Throwable								exception;
+	private volatile Throwable				exception;
 
 	/**
 	 * This field is required to ensure that {@link #checkException()} does not throw an exception twice.<br/>
@@ -53,11 +53,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * fails if both exceptions are identical. In that case, we would obtain an {@link IllegalArgumentException}
 	 * "Self-suppression not permitted" instead, which is not what we want.
 	 */
-	private boolean									hasThrownException;
+	private volatile boolean				hasThrownException;
 
-	private boolean									faultyLogger;
+	private volatile boolean				faultyLogger;
 
-	private boolean									closing;
+	private volatile boolean				closing;
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
 		this.coordinatorConfiguration = coordinatorConfiguration;
