@@ -13,7 +13,7 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
  * This test focuses on the behavior of the framework in case of exceptions
  * occurring where the framework has no chance to handle them.
  */
-public class UnexpectedExceptionTest
+public class IntractableExceptionTest
 {
 	private static final int	TASK_DURATION_MS	= 1000;
 	private static final int	PRECISION_MS		= 200;
@@ -26,53 +26,53 @@ public class UnexpectedExceptionTest
 	 * catch-clause is executed.
 	 */
 	@Test
-	public void testUnexpectedException() {
+	public void testIntractableException() {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		StopWatch stopWatch = new StopWatch();
-		boolean caughtUnexpectedException = false;
+		boolean caughtIntractableException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(() -> TestUtils.sleep(TASK_DURATION_MS));
-			throwUnexpectedException(true);
-		} catch (UnexpectedException e) {
-			caughtUnexpectedException = true;
+			throwIntractableException(true);
+		} catch (IntractableException e) {
+			caughtIntractableException = true;
 		}
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
-		Assert.assertTrue(caughtUnexpectedException);
+		Assert.assertTrue(caughtIntractableException);
 
 		Assert.assertTrue("Framework stopped too early", elapsedTimeMs >= TASK_DURATION_MS);
 		Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= TASK_DURATION_MS + PRECISION_MS);
 	}
 
 	/**
-	 * This test demonstrates how to protecting against the time loss due to unexpected exceptions
+	 * This test demonstrates how to protecting against the time loss due to intractable exceptions
 	 * by guarding the code inside the try-block with {@code coordinator.permitTaskSubmission()}.
 	 * The disadvantage is that no task will be executed until the end of the try-block.
 	 */
 	@Test
-	public void testUnexpectedExceptionWithImmediateStop() {
+	public void testIntractableExceptionWithImmediateStop() {
 		for (boolean throwException : BOOLEANS) {
 			TestUtils.waitForEmptyCommonForkJoinPool();
 			StopWatch stopWatch = new StopWatch();
-			boolean caughtUnexpectedException = false;
+			boolean caughtIntractableException = false;
 			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 				coordinator.permitTaskSubmission(false);
 				coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS));
-				throwUnexpectedException(throwException);
+				throwIntractableException(throwException);
 				coordinator.permitTaskSubmission(true);
 			} catch (InterruptedException e) {
 				Assert.fail("Interrupted exception");
-			} catch (Throwable t) {
-				caughtUnexpectedException = true;
+			} catch (IntractableException e) {
+				caughtIntractableException = true;
 			}
 			long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
 			if (throwException) {
-				Assert.assertTrue("No exception has been thrown", caughtUnexpectedException);
+				Assert.assertTrue("No exception has been thrown", caughtIntractableException);
 
 				Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= PRECISION_MS);
 			} else {
-				Assert.assertFalse("An exception has been thrown", caughtUnexpectedException);
+				Assert.assertFalse("An exception has been thrown", caughtIntractableException);
 
 				Assert.assertTrue("Framework stopped too early", elapsedTimeMs >= TASK_DURATION_MS);
 				Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= TASK_DURATION_MS + PRECISION_MS);
@@ -80,11 +80,11 @@ public class UnexpectedExceptionTest
 		}
 	}
 
-	private void throwUnexpectedException(boolean throwException) {
+	private void throwIntractableException(boolean throwException) {
 		if (throwException) {
-			throw new UnexpectedException();
+			throw new IntractableException();
 		}
 	}
 
-	private static class UnexpectedException extends RuntimeException {}
+	private static class IntractableException extends RuntimeException {}
 }

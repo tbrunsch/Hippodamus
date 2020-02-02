@@ -4,6 +4,8 @@ import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.execution.ExecutionManager;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 
+import java.util.concurrent.ExecutorService;
+
 public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 {
 	/**
@@ -12,12 +14,12 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	ExecutionConfigurationBuilder<?> configure();
 
 	/**
-	 * Call this method to permit/deny task submission.<br/>
+	 * Call this method to permit/deny submission of tasks to an {@link ExecutorService}.<br/>
 	 * By default, task submission is permitted. In that case, tasks can already be executed although not
 	 * all tasks have been registered at the coordinator via {@link #execute(ExceptionalRunnable)}
-	 * or related methods. However, the coordinator can only manage exceptions that are raised inside the tasks.
+	 * or related methods. However, the coordinator can only manage exceptions that are thrown inside the tasks.
 	 * It cannot handle exceptions that are directly raised inside the try-block. If such an exception occurs,
-	 * all registered tasks will run to end while the coordinator is closing (because the coordinator does not get
+	 * all executed tasks will run to end while the coordinator is closing (because the coordinator does not get
 	 * informed about this exception). Only then, the exception will be caught by any exception handler. Hence,
 	 * a lot of time may be wasted between throwing and catching the exception.<br/>
 	 * You can avoid wasting that time by guarding the code inside the try-block with calls to this method:<br/>
