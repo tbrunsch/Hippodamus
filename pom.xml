@@ -11,6 +11,7 @@
 	<modules>
 		<module>hippodamus</module>
 		<module>hippodamus-tests</module>
+        <module>hippodamus-samples</module>
 	</modules>
 	<dependencies>
 		<dependency>
