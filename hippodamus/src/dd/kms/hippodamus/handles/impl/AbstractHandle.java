@@ -37,7 +37,7 @@ abstract class AbstractHandle implements Handle
 
 	AbstractHandle(InternalCoordinator coordinator, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
-		this.state = new HandleState(state);
+		this.state = state;
 		this.verifyDependencies = verifyDependencies;
 	}
 
@@ -75,6 +75,9 @@ abstract class AbstractHandle implements Handle
 		}
 	}
 
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	private void notifyListeners(List<Runnable> listeners, String listenerDescription, Consumer<Handle> coordinatorListener) {
 		Throwable listenerException = null;
 		Runnable exceptionalListener = null;
@@ -140,7 +143,9 @@ abstract class AbstractHandle implements Handle
 			return;
 		}
 		if (verifyDependencies) {
-			coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
+			synchronized (coordinator) {
+				coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
+			}
 			return;
 		}
 		while (true) {
@@ -221,11 +226,8 @@ abstract class AbstractHandle implements Handle
 		return coordinator;
 	}
 
-	/*
-	 * Pending Flags
-	 */
 	/**
-	 * Ensure that this method is only called with locking the {@code coordinator}.
+	 * Ensure that this method is only called with locking the coordinator.
 	 */
 	private void addPendingFlag(StateFlag flag) {
 		coordinator.log(LogLevel.DEBUGGING, this, flag.getTransactionBeginString());
@@ -233,7 +235,7 @@ abstract class AbstractHandle implements Handle
 	}
 
 	/**
-	 * Ensure that this method is only called with locking the {@code coordinator}.
+	 * Ensure that this method is only called with locking the coordinator.
 	 */
 	private void setPendingFlags() {
 		StateFlag flag;

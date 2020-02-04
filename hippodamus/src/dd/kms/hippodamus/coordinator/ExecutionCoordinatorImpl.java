@@ -15,14 +15,41 @@ import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 public class ExecutionCoordinatorImpl implements InternalCoordinator
 {
 	private final CoordinatorConfiguration	coordinatorConfiguration;
 
-	private final HandleDependencyManager	handleDependencyManager;
+	/**
+	 * Handles the dependencies between handles.<br/>
+	 * <br/>
+	 * The state of the dependency manager will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
+	 * which is only called in the coordinator's thread. Hence, the cached state of the dependency manager
+	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is required to
+	 * access the dependency manager in methods that are only called in the coordinator's thread.
+	 */
+	private final HandleDependencyManager	handleDependencyManager			= new HandleDependencyManager();
+
+	/**
+	 * Contains human-friendly, by default generic task/handle names.<br/>
+	 * <br/>
+	 * The state of that map will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
+	 * which is only called in the coordinator's thread. Hence, the cached state of the map
+	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
+	 * required to access the map in methods that are only called in the coordinator's thread.
+	 */
 	private final Map<Integer, String>		handleNamesByHashCode			= new HashMap<>();
 
+	/**
+	 * Describes whether tasks that are eligible for execution may be submitted to an {@link ExecutorService}.
+	 * If not, the handles of these tasks will be collected in {@link #pendingHandles}.<br/>
+	 * <br/>
+	 * The flag will only be changed by calls to {@link #permitTaskSubmission(boolean)}, which is only called
+	 * in the coordinator's thread. Hence, the cached value will always be coherent in the coordinator's thread.
+	 * No {@code synchronized}-block is required to access the value in methods that are only called in the
+	 * coordinator's thread.
+	 */
 	private boolean							permitTaskSubmission			= true;
 
 	/**
@@ -51,20 +78,26 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * method would throw the stored exception again, then we had two exceptions to be thrown. Such conflicts
 	 * are resolved by automatically calling {@link Throwable#addSuppressed(Throwable)}. However, this method
 	 * fails if both exceptions are identical. In that case, we would obtain an {@link IllegalArgumentException}
-	 * "Self-suppression not permitted" instead, which is not what we want.
+	 * "Self-suppression not permitted" instead, which is not what we want.<br/>
+	 * <br/>
+	 * Since this flag is only used within method {@code checkException()}, which is only meant to be called
+	 * in the coordinator's thread, cache coherence is guaranteed.
 	 */
-	private volatile boolean				hasThrownException;
+	private boolean							hasThrownException;
 
-	private volatile boolean				faultyLogger;
-
-	private volatile boolean				closing;
+	/**
+	 * This flag is set to true if at any point the logger threw an exception when logging. In that case,
+	 * we do not try to log further messages to avoid further exceptions.<br/>
+	 * <br/>
+	 * Since this flag is only used within the method {@link #log(LogLevel, Handle, String)} and this
+	 * method must be called with logging the coordinator, cache coherence is guaranteed.
+	 */
+	private boolean							loggerFaulty;
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
 		this.coordinatorConfiguration = coordinatorConfiguration;
-		this.handleDependencyManager = new HandleDependencyManager(this);
 	}
 
-	// TODO: Coordinator should reject this if it has already been closed
 	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		String name = getTaskName(configuration);
@@ -120,20 +153,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	@Override
 	public String getTaskName(Handle handle) {
-		if (closing) {
-			// no handles will be added anymore => no synchronization required to obtain handle name
-			return doGetTaskName(handle);
-		} else {
-			synchronized (this) {
-				return doGetTaskName(handle);
-			}
+		synchronized (this) {
+			int hashCode = System.identityHashCode(handle);
+			String name = handleNamesByHashCode.get(hashCode);
+			return name == null ? "Unknown handle " + hashCode : name;
 		}
-	}
-
-	private String doGetTaskName(Handle handle) {
-		int hashCode = System.identityHashCode(handle);
-		String name = handleNamesByHashCode.get(hashCode);
-		return name == null ? "Unknown handle " + hashCode : name;
 	}
 
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
@@ -217,6 +241,9 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	@Override
 	public void log(LogLevel logLevel, Handle handle, String message) {
 		LogLevel minimumLogLevel = coordinatorConfiguration.getMinimumLogLevel();
@@ -227,14 +254,14 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		Logger logger = coordinatorConfiguration.getLogger();
 		CoordinatorException exception = null;
 		try {
-			if (!faultyLogger) {
+			if (!loggerFaulty) {
 				logger.log(logLevel, name, message);
 				if (logLevel == LogLevel.INTERNAL_ERROR){
 					exception = new CoordinatorException(message);
 				}
 			}
 		} catch (Throwable t) {
-			faultyLogger = true;
+			loggerFaulty = true;
 			exception = new CoordinatorException("Exception in logger: " + t.getMessage(), t);
 		}
 		if (exception != null) {
@@ -248,7 +275,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	@Override
 	public void close() {
-		closing = true;
 		Throwable throwable = null;
 		try {
 			if (!permitTaskSubmission) {

@@ -21,7 +21,7 @@ public class AggregationCoordinatorImpl<S, T>
 {
 	private final Aggregator<S, T>		aggregator;
 	private final List<ResultHandle<S>>	aggregatedHandles			= new ArrayList<>();
-	private boolean						aggregationCompletedEarlier;
+	private volatile boolean			aggregationCompletedEarlier;
 
 	public AggregationCoordinatorImpl(Aggregator<S, T> aggregator, CoordinatorConfiguration coordinatorConfiguration) {
 		super(coordinatorConfiguration);
@@ -45,10 +45,6 @@ public class AggregationCoordinatorImpl<S, T>
 		}
 	}
 
-	/*
-	 * Note: This method will either be called in the thread coordinator's thread or in the thread
-	 * that executed the aggregation task.
-	 */
 	private void aggregate(S value) {
 		synchronized (this) {
 			aggregator.aggregate(value);

@@ -22,5 +22,10 @@ public interface InternalCoordinator extends ExecutionCoordinator
 
 	void onException(Handle handle);
 
+	/**
+	 * Logs a message for a certain handle at a certain log message.<br/>
+	 * <br/>
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	void log(LogLevel logLevel, Handle handle, String message);
 }

@@ -12,8 +12,8 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 
-	private Future<T>									futureResult;
-	private T											result;
+	private volatile Future<T>							futureResult;
+	private volatile T									result;
 
 	public DefaultResultHandle(InternalCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
 		super(coordinator,  new HandleState(false, false), verifyDependencies);

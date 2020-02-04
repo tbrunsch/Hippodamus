@@ -15,13 +15,8 @@ class HandleDependencyManager
 	 */
 	private static final int	SET_THRESHOLD	= 5;
 
-	private final ExecutionCoordinator owner;
 	private final Multimap<Handle, Handle>			dependentHandles			= ArrayListMultimap.create();
 	private final Map<Handle, Collection<Handle>>	pendingHandleDependencies	= new HashMap<>();
-
-	HandleDependencyManager(ExecutionCoordinator owner) {
-		this.owner = owner;
-	}
 
 	void addDependencies(Handle handle, Collection<Handle> dependencies) {
 		Collection<Handle> handleDependencies = dependencies.size() >= SET_THRESHOLD ? new HashSet<>() : new LinkedList<>();

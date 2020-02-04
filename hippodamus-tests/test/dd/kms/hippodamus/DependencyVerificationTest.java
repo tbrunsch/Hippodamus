@@ -118,7 +118,7 @@ public class DependencyVerificationTest
 		private boolean encounteredInternalError;
 
 		@Override
-		public synchronized void log(LogLevel logLevel, String taskName, String message) {
+		public void log(LogLevel logLevel, String taskName, String message) {
 			encounteredInternalError |= (logLevel == LogLevel.INTERNAL_ERROR);
 		}
 
