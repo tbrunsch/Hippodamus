@@ -15,8 +15,8 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	private volatile Future<T>							futureResult;
 	private volatile T									result;
 
-	public DefaultResultHandle(InternalCoordinator coordinator, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
-		super(coordinator,  new HandleState(false, false), verifyDependencies);
+	public DefaultResultHandle(InternalCoordinator coordinator, String taskName, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
+		super(coordinator, taskName, new HandleState(false, false), verifyDependencies);
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 	}

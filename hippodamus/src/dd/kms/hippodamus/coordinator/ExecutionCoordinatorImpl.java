@@ -32,14 +32,14 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private final HandleDependencyManager	handleDependencyManager			= new HandleDependencyManager();
 
 	/**
-	 * Contains human-friendly, by default generic task/handle names.<br/>
+	 * Contains human-friendly, by default generic task names.<br/>
 	 * <br/>
-	 * The state of that map will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
-	 * which is only called in the coordinator's thread. Hence, the cached state of the map
+	 * The state of that set will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
+	 * which is only called in the coordinator's thread. Hence, the cached state of the set
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
 	 * required to access the map in methods that are only called in the coordinator's thread.
 	 */
-	private final Map<Integer, String>		handleNamesByHashCode			= new HashMap<>();
+	private final Set<String>				handleNames						= new HashSet<>();
 
 	/**
 	 * Describes whether tasks that are eligible for execution may be submitted to an {@link ExecutorService}.
@@ -100,24 +100,20 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
-		String name = getTaskName(configuration);
+		String taskName = getTaskName(configuration);
 		Collection<Handle> dependencies = configuration.getDependencies();
 		synchronized (this) {
 			checkException();
 			boolean dependencyStopped = dependencies.stream().anyMatch(Handle::hasStopped);
-			final ResultHandle<V> resultHandle;
 			if (dependencyStopped) {
-				resultHandle = createStoppedHandle();
-				registerHandleName(resultHandle, name);
-			} else {
-				boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
-				resultHandle = new DefaultResultHandle<>(this, executorServiceWrapper, callable, verifyDependencies);
-				registerHandleName(resultHandle, name);
-				handleDependencyManager.addDependencies(resultHandle, dependencies);
-				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
-				if (allDependenciesCompleted) {
-					scheduleForSubmission(resultHandle);
-				}
+				return createStoppedHandle(taskName);
+			}
+			boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
+			ResultHandle<V> resultHandle = new DefaultResultHandle<>(this, taskName, executorServiceWrapper, callable, verifyDependencies);
+			handleDependencyManager.addDependencies(resultHandle, dependencies);
+			boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
+			if (allDependenciesCompleted) {
+				scheduleForSubmission(resultHandle);
 			}
 			return resultHandle;
 		}
@@ -126,7 +122,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	/*
 	 * Task names
 	 */
-	private String getTaskName(ExecutionConfiguration configuration) {
+	String getTaskName(ExecutionConfiguration configuration) {
 		Optional<String> taskName = configuration.getName();
 		String nameSuggestion = taskName.orElse(createGenericTaskName());
 		return createUniqueTaskName(nameSuggestion);
@@ -134,30 +130,16 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	private String createUniqueTaskName(String suggestion) {
 		String name = suggestion;
-		Collection<String> existingNames = handleNamesByHashCode.values();
 		int index = 2;
-		while (existingNames.contains(name)) {
+		while (handleNames.contains(name)) {
 			name = suggestion + " (" + index++ + ")";
 		}
+		handleNames.add(name);
 		return name;
 	}
 
 	private String createGenericTaskName() {
 		return "Task " + (handleDependencyManager.getManagedHandles().size() + 1);
-	}
-
-	private void registerHandleName(Handle handle, String name) {
-		int hashCode = System.identityHashCode(handle);
-		handleNamesByHashCode.put(hashCode, name);
-	}
-
-	@Override
-	public String getTaskName(Handle handle) {
-		synchronized (this) {
-			int hashCode = System.identityHashCode(handle);
-			String name = handleNamesByHashCode.get(hashCode);
-			return name == null ? "Unknown handle " + hashCode : name;
-		}
 	}
 
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
@@ -190,9 +172,9 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	<T> ResultHandle<T> createStoppedHandle() {
+	<T> ResultHandle<T> createStoppedHandle(String taskName) {
 		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
-		return new StoppedResultHandle<>(this, verifyDependencies);
+		return new StoppedResultHandle<>(this, taskName, verifyDependencies);
 	}
 
 	@Override
@@ -250,7 +232,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
-		String name = getTaskName(handle);
+		String name = handle.getTaskName();
 		Logger logger = coordinatorConfiguration.getLogger();
 		CoordinatorException exception = null;
 		try {

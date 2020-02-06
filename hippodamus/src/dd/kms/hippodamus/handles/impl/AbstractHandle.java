@@ -15,10 +15,11 @@ abstract class AbstractHandle implements Handle
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER = handle -> {};
 
 	private final InternalCoordinator	coordinator;
-	private final List<Runnable> 		completionListeners	= new ArrayList<>();
-	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
+	private final String				taskName;
 	final HandleState					state;
 	private final boolean				verifyDependencies;
+	private final List<Runnable> 		completionListeners	= new ArrayList<>();
+	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
@@ -35,8 +36,9 @@ abstract class AbstractHandle implements Handle
 	 */
 	private final Queue<StateFlag>		pendingFlags		= new ArrayDeque<>();
 
-	AbstractHandle(InternalCoordinator coordinator, HandleState state, boolean verifyDependencies) {
+	AbstractHandle(InternalCoordinator coordinator, String taskName, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
+		this.taskName = taskName;
 		this.state = state;
 		this.verifyDependencies = verifyDependencies;
 	}
@@ -195,7 +197,7 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public String getTaskName() {
-		return coordinator.getTaskName(this);
+		return taskName;
 	}
 
 	@Override

@@ -11,13 +11,6 @@ public interface InternalCoordinator extends ExecutionCoordinator
 	 */
 	void stopDependentHandles(Handle handle);
 
-	/**
-	 * @return the name of the task associated with the {@code handle}. This is either the custom name specified
-	 * 			by calling {@link ExecutionConfigurationBuilder#name(String)} before executing the task, or a
-	 * 			generic name otherwise.
-	 */
-	String getTaskName(Handle handle);
-
 	void onCompletion(Handle handle);
 
 	void onException(Handle handle);
