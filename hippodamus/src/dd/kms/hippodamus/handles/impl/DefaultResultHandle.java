@@ -32,16 +32,6 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	}
 
 	@Override
-	boolean doWaitForFuture() throws Throwable {
-		if (futureResult == null) {
-			return false;
-		}
-		// TODO: How to handle RejectedExecutionException?
-		futureResult.get();
-		return true;
-	}
-
-	@Override
 	public T get() {
 		join();
 		return result;

@@ -24,9 +24,4 @@ public class StoppedResultHandle<T> extends AbstractHandle implements ResultHand
 	void doStop() {
 		throw new CoordinatorException("Internal error: A stopped handle should not be stopped again");
 	}
-
-	@Override
-	boolean doWaitForFuture() {
-		return false;
-	}
 }

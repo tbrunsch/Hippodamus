@@ -8,6 +8,7 @@ import dd.kms.hippodamus.logging.LogLevel;
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 
 abstract class AbstractHandle implements Handle
@@ -20,6 +21,12 @@ abstract class AbstractHandle implements Handle
 	private final boolean				verifyDependencies;
 	private final List<Runnable> 		completionListeners	= new ArrayList<>();
 	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
+
+	/**
+	 * This lock is released when the task terminates. The {@link #join()}-method
+	 * acquired this lock to ensure that it only returns after termination.
+	 */
+	private final Semaphore				terminationLock		= new Semaphore(1);
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
@@ -41,13 +48,18 @@ abstract class AbstractHandle implements Handle
 		this.taskName = taskName;
 		this.state = state;
 		this.verifyDependencies = verifyDependencies;
+
+		boolean terminated = state.isFlagSet(StateFlag.COMPLETED) || state.isFlagSet(StateFlag.STOPPED) || state.getException() != null;
+		if (!terminated) {
+			acquireTerminationLock(false);
+		}
 	}
 
 	abstract void doSubmit();
 	abstract void doStop();
-	abstract boolean doWaitForFuture() throws Throwable;
 
 	void markAsCompleted() {
+		terminationLock.release();
 		synchronized (coordinator) {
 			if (state.getException() != null) {
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle with an exception cannot have completed");
@@ -63,6 +75,7 @@ abstract class AbstractHandle implements Handle
 	}
 
 	void setException(Throwable exception) {
+		terminationLock.release();
 		synchronized (coordinator) {
 			if (state.getException() != null) {
 				return;
@@ -74,6 +87,18 @@ abstract class AbstractHandle implements Handle
 			state.setException(exception);
 			notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 			setPendingFlags();
+		}
+	}
+
+	private void acquireTerminationLock(boolean releaseAfterwards) {
+		try {
+			terminationLock.acquire();
+		} catch (InterruptedException e) {
+			stop();
+		} finally {
+			if (releaseAfterwards) {
+				terminationLock.release();
+			}
 		}
 	}
 
@@ -123,6 +148,7 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public final void stop() {
+		terminationLock.release();
 		synchronized (coordinator) {
 			if (hasStopped()) {
 				return;
@@ -141,7 +167,7 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public void join() {
-		if (hasCompleted() || isCompleting()) {
+		if (hasCompleted()) {
 			return;
 		}
 		if (verifyDependencies) {
@@ -150,28 +176,10 @@ abstract class AbstractHandle implements Handle
 			}
 			return;
 		}
-		while (true) {
-			try {
-				if (doWaitForFuture()) {
-					return;
-				}
-			} catch (Throwable t) {
-				setException(t);
-				return;
-			}
-			if (hasCompleted() || isCompleting()) {
-				return;
-			}
-			if (hasStopped()) {
-				return;
-			}
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				stop();
-				return;
-			}
+		if (hasStopped() || getException() != null) {
+			return;
 		}
+		acquireTerminationLock(true);
 	}
 
 	@Override
