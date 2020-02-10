@@ -2,9 +2,10 @@ package dd.kms.hippodamus.handles.impl;
 
 enum StateFlag
 {
-	SUBMITTED	(0, "submitting...",	"submitted"),
-	COMPLETED	(1, "completing...",	"completed"),
-	STOPPED		(2, "stopping...",		"stopped");
+	SUBMITTED			(0, "submitting...",			"submitted"),
+	STARTED_EXECUTION	(1,	"starting execution...", 	"started execution"),
+	COMPLETED			(2, "completing...",			"completed"),
+	STOPPED				(3, "stopping...",				"stopped");
 
 	private final int		bitMask;
 	private final String	transactionBeginString;

@@ -91,6 +91,27 @@ abstract class AbstractHandle implements Handle
 	abstract void doSubmit();
 	abstract void doStop();
 
+	/**
+ 	 * @return true if and only if no internal error occurred
+	 */
+	boolean onStartExecution() {
+		synchronized (coordinator) {
+			String error =	!state.isFlagSet(StateFlag.SUBMITTED)	? "A task that has not been submitted cannot be executed" :
+							state.getException() != null			? "A handle that has not yet been executed cannot have an exception" :
+							state.isFlagSet(StateFlag.COMPLETED)	? "A handle that has not yet been executed cannot have completed"
+																	: null;
+			if (error != null) {
+				coordinator.log(LogLevel.INTERNAL_ERROR, this, error);
+				releaseTerminationLock();
+				releaseCoordinatorTerminationLock();
+				return false;
+			}
+			state.setFlag(StateFlag.STARTED_EXECUTION);
+			coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
+			return true;
+		}
+	}
+
 	void markAsCompleted() {
 		synchronized (coordinator) {
 			/*
@@ -177,6 +198,7 @@ abstract class AbstractHandle implements Handle
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
 	private void releaseTerminationLock() {
+		coordinator.log(LogLevel.DEBUGGING, this, "Releasing handle's termination lock");
 		acquiredTerminationLock = !releaseLock(terminationLock, acquiredTerminationLock);
 	}
 
@@ -184,6 +206,7 @@ abstract class AbstractHandle implements Handle
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
 	private void releaseCoordinatorTerminationLock() {
+		coordinator.log(LogLevel.DEBUGGING, this, "Releasing coordinator's termination lock");
 		acquiredCoordinatorTerminationLock = !releaseLock(coordinator.getTerminationLock(), acquiredCoordinatorTerminationLock);
 	}
 

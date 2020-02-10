@@ -48,6 +48,9 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	}
 
 	private T executeCallable() {
+		if (!onStartExecution()) {
+			return null;
+		}
 		try {
 			T result = callable.call(this::hasStopped);
 			setResult(result);
