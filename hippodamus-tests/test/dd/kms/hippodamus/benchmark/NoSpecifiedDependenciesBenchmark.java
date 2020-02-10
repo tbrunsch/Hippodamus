@@ -34,7 +34,7 @@ public class NoSpecifiedDependenciesBenchmark
 		System.out.println(MessageFormat.format("Times (futures/coordinator): {0} ms/{1} ms", futureTimeMs, coordinatorTimeMs));
 
 		long maxAllowedTimeMs = Math.round(TOLERANCE*futureTimeMs + PRECISION_MS);
-		Assert.assertTrue("Coordinator took too much time", coordinatorTimeMs <= maxAllowedTimeMs);
+		TestUtils.assertTimeUpperBound(maxAllowedTimeMs, coordinatorTimeMs);
 	}
 
 	private void runNoSpecifiedDependenciesWithCompletableFutures() {

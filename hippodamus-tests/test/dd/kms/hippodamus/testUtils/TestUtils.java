@@ -1,5 +1,7 @@
 package dd.kms.hippodamus.testUtils;
 
+import org.junit.Assert;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.ForkJoinPool;
@@ -25,6 +27,22 @@ public class TestUtils
 		while (!forkJoinPool.isQuiescent()) {
 			TestUtils.sleep(100);
 		}
+	}
+
+	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {
+		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs, "Coordinator");
+	}
+
+	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs, String description) {
+		Assert.assertTrue(description + " required " + elapsedTimeMs + " ms, but it should have required at least " + expectedLowerBoundMs + " ms", expectedLowerBoundMs <= elapsedTimeMs);
+	}
+
+	public static void assertTimeUpperBound(long expectedUpperBoundMs, long elapsedTimeMs) {
+		assertTimeUpperBound(expectedUpperBoundMs, elapsedTimeMs, "Coordinator");
+	}
+
+	public static void assertTimeUpperBound(long expectedUpperBoundMs, long elapsedTimeMs, String description) {
+		Assert.assertTrue(description + " required " + elapsedTimeMs + " ms, but it should have required at most " + expectedUpperBoundMs + " ms", elapsedTimeMs <= expectedUpperBoundMs);
 	}
 
 	public static <T> T createNamedInstance(Class<T> instanceInterface, T unnamedInstance, String name) {

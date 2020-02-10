@@ -141,7 +141,7 @@ public class ElementwiseComparisonTest
 
 		long lowerBoundMs = numRequiredTasksForComparison * LOAD_TIME_MS + COMPARISON_TIME_MS;
 		long upperBoundMs = lowerBoundMs + PRECISION_MS;
-		Assert.assertTrue("The calculation took " + elapsedTimeMs + " ms, but it should have taken at least " + lowerBoundMs + " ms", lowerBoundMs <= elapsedTimeMs);
-		Assert.assertTrue("The calculation took " + elapsedTimeMs + " ms, but it should have taken less than " + upperBoundMs + " ms", elapsedTimeMs <= upperBoundMs);
+		TestUtils.assertTimeLowerBound(lowerBoundMs, elapsedTimeMs);
+		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
 	}
 }

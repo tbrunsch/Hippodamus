@@ -50,12 +50,12 @@ public class StoppableTest
 		 * whether they should stop, then they will run until end.
 		 */
 		long expectedTimeCoordinatorMs = TIME_UNTIL_EXCEPTION_MS;
-		Assert.assertTrue("Coordinator finished too early", expectedTimeCoordinatorMs <= elapsedTimeCoordinatorMs);
-		Assert.assertTrue("Coordinator finished too late", elapsedTimeCoordinatorMs <= expectedTimeCoordinatorMs + PRECISION_MS);
+		TestUtils.assertTimeLowerBound(expectedTimeCoordinatorMs, elapsedTimeCoordinatorMs);
+		TestUtils.assertTimeUpperBound(expectedTimeCoordinatorMs + PRECISION_MS, elapsedTimeCoordinatorMs);
 
 		long expectedTimePoolMs = TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
-		Assert.assertTrue("Coordinator finished too early", expectedTimePoolMs <= elapsedTimePoolMs);
-		Assert.assertTrue("Coordinator finished too late", elapsedTimePoolMs <= expectedTimePoolMs + PRECISION_MS);
+		TestUtils.assertTimeLowerBound(expectedTimePoolMs, elapsedTimePoolMs);
+		TestUtils.assertTimeUpperBound(expectedTimePoolMs + PRECISION_MS, elapsedTimePoolMs);
 
 		Assert.assertTrue("An exception has been swallowed", caughtException);
 	}
@@ -80,8 +80,8 @@ public class StoppableTest
 		 * and elapsedTimePoolMs should both be approximately TIME_UNTIL_EXCEPTION_MS.
 		 */
 		long expectedTimeMs = TIME_UNTIL_EXCEPTION_MS;
-		Assert.assertTrue("Coordinator finished too early", expectedTimeMs <= elapsedTimeCoordinatorMs);
-		Assert.assertTrue("Coordinator finished too late", elapsedTimePoolMs <= expectedTimeMs + PRECISION_MS);
+		TestUtils.assertTimeLowerBound(expectedTimeMs, elapsedTimeCoordinatorMs);
+		TestUtils.assertTimeUpperBound(expectedTimeMs + PRECISION_MS, elapsedTimePoolMs);
 
 		Assert.assertTrue("An exception has been swallowed", caughtException);
 	}

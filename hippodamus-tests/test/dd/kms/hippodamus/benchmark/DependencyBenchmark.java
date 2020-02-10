@@ -54,10 +54,10 @@ public class DependencyBenchmark
 		System.out.println("coordinator with dependencies:    " + timeCoordinatorWithDependenciesMs);
 
 		long maxAllowedTimeWithoutDependenciesMs = Math.round(TOLERANCE*timeFutureWithoutDependenciesMs + PRECISION_MS);
-		Assert.assertTrue("Coordinator without dependencies took too much time", timeCoordinatorWithoutDependenciesMs <= maxAllowedTimeWithoutDependenciesMs);
+		TestUtils.assertTimeUpperBound(maxAllowedTimeWithoutDependenciesMs, timeCoordinatorWithoutDependenciesMs, "Coordinator without dependencies");
 
 		long maxAllowedTimeWithDependenciesMs = Math.round(TOLERANCE*timeFutureWithDependenciesMs + PRECISION_MS);
-		Assert.assertTrue("Coordinator with dependencies took too much time", timeCoordinatorWithDependenciesMs <= maxAllowedTimeWithDependenciesMs);
+		TestUtils.assertTimeUpperBound(maxAllowedTimeWithDependenciesMs, timeCoordinatorWithDependenciesMs, "Coordinator with dependencies");
 	}
 
 	/**

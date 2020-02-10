@@ -40,8 +40,8 @@ public class IntractableExceptionTest
 
 		Assert.assertTrue(caughtIntractableException);
 
-		Assert.assertTrue("Framework stopped too early", elapsedTimeMs >= TASK_DURATION_MS);
-		Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= TASK_DURATION_MS + PRECISION_MS);
+		TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
+		TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
 	}
 
 	/**
@@ -70,12 +70,12 @@ public class IntractableExceptionTest
 			if (throwException) {
 				Assert.assertTrue("No exception has been thrown", caughtIntractableException);
 
-				Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= PRECISION_MS);
+				TestUtils.assertTimeUpperBound(PRECISION_MS, elapsedTimeMs);
 			} else {
 				Assert.assertFalse("An exception has been thrown", caughtIntractableException);
 
-				Assert.assertTrue("Framework stopped too early", elapsedTimeMs >= TASK_DURATION_MS);
-				Assert.assertTrue("Framework stopped too late", elapsedTimeMs <= TASK_DURATION_MS + PRECISION_MS);
+				TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
+				TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
 			}
 		}
 	}

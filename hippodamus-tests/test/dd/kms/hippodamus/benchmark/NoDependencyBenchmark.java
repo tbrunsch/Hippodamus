@@ -61,7 +61,7 @@ public class NoDependencyBenchmark
 		long minTimeMs = Math.min(threadsTimeMs, futureTimeMs);
 		long maxAllowedTimeMs = Math.round(TOLERANCE*minTimeMs + PRECISION_MS);
 
-		Assert.assertTrue("Coordinator took too much time", coordinatorTimeMs <= maxAllowedTimeMs);
+		TestUtils.assertTimeUpperBound(maxAllowedTimeMs, coordinatorTimeMs);
 	}
 
 	private void runWithDedicatedThreads() {
