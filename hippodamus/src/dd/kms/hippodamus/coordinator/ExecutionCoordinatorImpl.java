@@ -16,9 +16,12 @@ import dd.kms.hippodamus.logging.Logger;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 
 public class ExecutionCoordinatorImpl implements InternalCoordinator
 {
+	private static final int	MAX_NUM_TASKS	= Integer.MAX_VALUE;
+
 	private final CoordinatorConfiguration	coordinatorConfiguration;
 
 	/**
@@ -93,6 +96,13 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * method must be called with logging the coordinator, cache coherence is guaranteed.
 	 */
 	private boolean							loggerFaulty;
+
+	/**
+	 * This lock is hold by all managed tasks. The coordinator will wait in its {@link #close()} method until
+	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally,
+	 * or when being stopped.
+	 */
+	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
 
 	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
 		this.coordinatorConfiguration = coordinatorConfiguration;
@@ -175,6 +185,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	<T> ResultHandle<T> createStoppedHandle(String taskName) {
 		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 		return new StoppedResultHandle<>(this, taskName, verifyDependencies);
+	}
+
+	@Override
+	public Semaphore getTerminationLock() {
+		return terminationLock;
 	}
 
 	@Override
@@ -262,11 +277,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 			if (!permitTaskSubmission) {
 				stop();
 			}
-			Collection<Handle> managedHandles = handleDependencyManager.getManagedHandles();
-			for (Handle handle : managedHandles) {
-				while (!handle.hasCompleted() && !handle.hasStopped()) {
-					checkException();
-				}
+			try {
+				terminationLock.acquire(MAX_NUM_TASKS);
+			} catch (InterruptedException e) {
+				stop();
+				terminationLock.acquireUninterruptibly(MAX_NUM_TASKS);
 			}
 			checkException();
 		} finally {

@@ -1,6 +1,5 @@
 package dd.kms.hippodamus.handles.impl;
 
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
@@ -19,29 +18,63 @@ abstract class AbstractHandle implements Handle
 	private final String				taskName;
 	final HandleState					state;
 	private final boolean				verifyDependencies;
-	private final List<Runnable> 		completionListeners	= new ArrayList<>();
-	private final List<Runnable>		exceptionListeners	= new ArrayList<>();
+	private final List<Runnable> 		completionListeners					= new ArrayList<>();
+	private final List<Runnable>		exceptionListeners					= new ArrayList<>();
 
 	/**
-	 * This lock is released when the task terminates. The {@link #join()}-method
-	 * acquired this lock to ensure that it only returns after termination.
+	 * This lock is released when the task terminates, either successfully or exceptionally, or
+	 * is stopped. The {@link #join()}-method acquires this lock to ensure that it only returns after
+	 * termination.<br/>
+	 * <br/>
+	 * Note that this lock must be released before calling any listener to avoid deadlocks: Listeners,
+	 * in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
+	 * {@link DefaultResultHandle#get()}. This is why we always release the termination lock at the
+	 * beginning of a method (cf. {@link #markAsCompleted()}, {@link #setException(Throwable)}, and
+	 * {@link #stop()})<br/>
+	 * <br/>
+	 * In contrast to that, the coordinator's termination lock, which we obtain by calling
+	 * {@link InternalCoordinator#getTerminationLock()}, must be released after calling any listener
+	 * to ensure that the coordinator does not close before notifying all listeners. This is why we
+	 * always release the coordinator's termination lock at the end of a method.
 	 */
-	private final Semaphore				terminationLock		= new Semaphore(1);
+	private final Semaphore				terminationLock						= new Semaphore(1);
+
+	/**
+	 * This field stores whether we have acquired the handle's {@link #terminationLock}.
+	 * It will be used to prevent releasing the {@code terminationLock} multiple times.<br/>
+	 * <br/>
+	 * This field is only modified in synchronized blocks or in methods that rule out concurrency
+	 * problems.
+	 */
+	private boolean						acquiredTerminationLock				= false;
+
+	/**
+	 * This field stores whether we have acquired the coordinator's termination lock, which we
+	 * obtain by calling {@link InternalCoordinator#getTerminationLock()}. It will be used to
+	 * prevent releasing the coordinator's termination lock multiple times. While releasing the
+	 * handle's {@link #terminationLock} multiple times might be ok in the current implementation,
+	 * releasing the coordinator's termination lock multiple times would be fatal. Since the lock
+	 * is only counting the number of tasks (and not tracking the tasks) that currently hold it,
+	 * releasing the termination lock multiple times is equivalent to a handle releasing the lock
+	 * too early.<br/>
+	 * <br/>
+	 * This field is only modified in synchronized blocks or in methods that rule out concurrency
+	 * problems.
+	 */
+	private boolean						acquiredCoordinatorTerminationLock	= false;
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
-	 * it is not trivial when to update the flags state, before or after calling the listeners.
-	 * Since the {@link ExecutionCoordinator} is polling the "stopped" and "completed" flags, these
-	 * flags must be set after calling the listeners because otherwise the {@code ExecutionCoordinator}
-	 * may close before the listeners have been informed. On the other hand, one listener might
-	 * also change a handle's flag. This will reorder the state changes and can be critical
-	 * for example for short-circuit evaluation: A change to "completed" may trigger a "stop"
-	 * for all handles via a completion listener, making the handle stop before it has set the
-	 * "completed" flag. The {@code ExecutionCoordinator} may now close before the handle's "completed"
-	 * flag is set.<br/>
-	 * As a consequence, we need this field to maintain the order of the flags that are set.
+	 * we want the flags to be updated after notifying listeners. However, there are listeners that
+	 * also change a handle's state. This field ensures that the of the state changes happens in
+	 * the original order.<br/>
+	 * <br/>
+	 * Reordering the state changes can be critical for example for short-circuit evaluation:
+	 * A change to "completed" may trigger a "stop" for all handles via a completion listener,
+	 * making the handle stop before it has set the "completed" flag. The {@code ExecutionCoordinator}
+	 * may now close before the handle's "completed" flag is set.<br/>
 	 */
-	private final Queue<StateFlag>		pendingFlags		= new ArrayDeque<>();
+	private final Queue<StateFlag>		pendingFlags						= new ArrayDeque<>();
 
 	AbstractHandle(InternalCoordinator coordinator, String taskName, HandleState state, boolean verifyDependencies) {
 		this.coordinator = coordinator;
@@ -51,7 +84,7 @@ abstract class AbstractHandle implements Handle
 
 		boolean terminated = state.isFlagSet(StateFlag.COMPLETED) || state.isFlagSet(StateFlag.STOPPED) || state.getException() != null;
 		if (!terminated) {
-			acquireTerminationLock(false);
+			acquireTerminationLocks();
 		}
 	}
 
@@ -59,47 +92,109 @@ abstract class AbstractHandle implements Handle
 	abstract void doStop();
 
 	void markAsCompleted() {
-		terminationLock.release();
 		synchronized (coordinator) {
-			if (state.getException() != null) {
-				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle with an exception cannot have completed");
-				return;
+			/*
+			 * The handle's termination lock must be released before calling the completion listeners
+			 * to avoid a deadlock: Listeners might call join, which waits for the termination lock
+			 * to be released.
+			 */
+			releaseTerminationLock();
+			try {
+				if (state.getException() != null) {
+					coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle with an exception cannot have completed");
+					return;
+				}
+				if (state.isFlagSet(StateFlag.COMPLETED)) {
+					return;
+				}
+				addPendingFlag(StateFlag.COMPLETED);
+				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
+				setPendingFlags();
+			} finally {
+				releaseCoordinatorTerminationLock();
 			}
-			if (state.isFlagSet(StateFlag.COMPLETED)) {
-				return;
-			}
-			addPendingFlag(StateFlag.COMPLETED);
-			notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-			setPendingFlags();
 		}
 	}
 
 	void setException(Throwable exception) {
-		terminationLock.release();
 		synchronized (coordinator) {
-			if (state.getException() != null) {
-				return;
+			// Release handle's termination lock before calling any listener to be consistent with markAsCompleted().
+			releaseTerminationLock();
+			try {
+				if (state.getException() != null) {
+					return;
+				}
+				if (state.isFlagSet(StateFlag.COMPLETED)) {
+					coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
+					return;
+				}
+				state.setException(exception);
+				notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
+				setPendingFlags();
+			} finally {
+				releaseCoordinatorTerminationLock();
 			}
-			if (state.isFlagSet(StateFlag.COMPLETED)) {
-				coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
-				return;
-			}
-			state.setException(exception);
-			notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
-			setPendingFlags();
 		}
 	}
 
-	private void acquireTerminationLock(boolean releaseAfterwards) {
-		try {
-			terminationLock.acquire();
-		} catch (InterruptedException e) {
+	/**
+	 * Ensure that this method is only called with locking the coordinator or at a
+	 * point where concurrency problems regarding field {@code acquiredTerminationLock}
+	 * can be ruled out.
+	 */
+	private void acquireTerminationLocks() {
+		acquiredTerminationLock = acquireLock(terminationLock, false);
+		if (acquiredTerminationLock) {
+			/*
+			 * Only acquire coordinator's termination lock if own termination lock could
+			 * be acquired. Otherwise, the task will be stopped anyway.
+			 */
+			acquiredCoordinatorTerminationLock = acquireLock(coordinator.getTerminationLock(), false);
+		}
+		if (!acquiredTerminationLock || !acquiredCoordinatorTerminationLock) {
+			/*
+			 * Acquiring a lock can only fail if the thread has been interrupted. In that
+			 * case, we stop the task.
+			 */
 			stop();
+		}
+	}
+
+	private boolean acquireLock(Semaphore lock, boolean releaseAfterwards) {
+		try {
+			lock.acquire();
+			return !releaseAfterwards;
+		} catch (InterruptedException e) {
+			return false;
 		} finally {
 			if (releaseAfterwards) {
-				terminationLock.release();
+				lock.release();
 			}
 		}
+	}
+
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	private void releaseTerminationLock() {
+		acquiredTerminationLock = !releaseLock(terminationLock, acquiredTerminationLock);
+	}
+
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	private void releaseCoordinatorTerminationLock() {
+		acquiredCoordinatorTerminationLock = !releaseLock(coordinator.getTerminationLock(), acquiredCoordinatorTerminationLock);
+	}
+
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	private boolean releaseLock(Semaphore lock, boolean acquiredLock) {
+		if (acquiredLock) {
+			lock.release();
+		}
+		return true;
 	}
 
 	/**
@@ -148,19 +243,24 @@ abstract class AbstractHandle implements Handle
 
 	@Override
 	public final void stop() {
-		terminationLock.release();
 		synchronized (coordinator) {
-			if (hasStopped()) {
-				return;
-			}
-			addPendingFlag(StateFlag.STOPPED);
+			// First release handle's termination lock to be consistent with markAsCompleted().
+			releaseTerminationLock();
 			try {
-				coordinator.stopDependentHandles(this);
-				if (state.isFlagSet(StateFlag.SUBMITTED)) {
-					doStop();
+				if (hasStopped()) {
+					return;
+				}
+				addPendingFlag(StateFlag.STOPPED);
+				try {
+					coordinator.stopDependentHandles(this);
+					if (state.isFlagSet(StateFlag.SUBMITTED)) {
+						doStop();
+					}
+				} finally {
+					setPendingFlags();
 				}
 			} finally {
-				setPendingFlags();
+				releaseCoordinatorTerminationLock();
 			}
 		}
 	}
@@ -179,18 +279,12 @@ abstract class AbstractHandle implements Handle
 		if (hasStopped() || getException() != null) {
 			return;
 		}
-		acquireTerminationLock(true);
+		acquireLock(terminationLock, true);
 	}
 
 	@Override
 	public boolean hasCompleted() {
 		return state.isFlagSet(StateFlag.COMPLETED);
-	}
-
-	private boolean isCompleting() {
-		synchronized (coordinator) {
-			return pendingFlags.contains(StateFlag.COMPLETED);
-		}
 	}
 
 	@Override
