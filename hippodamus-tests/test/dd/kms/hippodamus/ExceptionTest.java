@@ -55,14 +55,14 @@ public class ExceptionTest
 	}
 
 	private void run1() throws Exception1 {
-		TestUtils.sleep(1000);
+		TestUtils.sleepUninterruptibly(1000);
 		if (throwExceptionInTask1) {
 			throw new Exception1();
 		}
 	}
 
 	private void run2() throws Exception2 {
-		TestUtils.sleep(500);
+		TestUtils.sleepUninterruptibly(500);
 		if (throwExceptionInTask2) {
 			throw new Exception2();
 		}

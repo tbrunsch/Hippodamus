@@ -87,13 +87,13 @@ public class StoppableTest
 	}
 
 	private void run1() throws ExpectedException {
-		TestUtils.sleep(TIME_UNTIL_EXCEPTION_MS);
+		TestUtils.sleepUninterruptibly(TIME_UNTIL_EXCEPTION_MS);
 		throw new ExpectedException();
 	}
 
 	private void run2WithoutStopReaction() {
 		for (int i = 0; i < TASK_2_SLEEP_REPETITION; i++) {
-			TestUtils.sleep(TASK_2_SLEEP_INTERVAL);
+			TestUtils.sleepUninterruptibly(TASK_2_SLEEP_INTERVAL);
 		}
 	}
 
@@ -102,7 +102,7 @@ public class StoppableTest
 			if (stopFlag.get()) {
 				return;
 			}
-			TestUtils.sleep(TASK_2_SLEEP_INTERVAL);
+			TestUtils.sleepUninterruptibly(TASK_2_SLEEP_INTERVAL);
 		}
 	}
 

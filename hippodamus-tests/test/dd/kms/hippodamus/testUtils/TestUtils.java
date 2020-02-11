@@ -10,22 +10,24 @@ public class TestUtils
 {
 	public static final boolean[]	BOOLEANS	= { false, true };
 
-	public static void sleep(long timeMs) {
+	public static void sleepUninterruptibly(long timeMs) {
 		if (timeMs == 0) {
 			return;
 		}
+		long endTimeMs = System.currentTimeMillis() + timeMs;
 		try {
 			Thread.sleep(timeMs);
 		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Unexpected thread interruption", e);
+			while (System.currentTimeMillis() < endTimeMs) {
+				Thread.yield();
+			}
 		}
 	}
 
 	public static void waitForEmptyCommonForkJoinPool() {
 		ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
 		while (!forkJoinPool.isQuiescent()) {
-			TestUtils.sleep(100);
+			TestUtils.sleepUninterruptibly(100);
 		}
 	}
 

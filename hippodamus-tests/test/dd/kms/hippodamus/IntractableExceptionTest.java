@@ -31,7 +31,7 @@ public class IntractableExceptionTest
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtIntractableException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(() -> TestUtils.sleep(TASK_DURATION_MS));
+			coordinator.execute(() -> TestUtils.sleepUninterruptibly(TASK_DURATION_MS));
 			throwIntractableException(true);
 		} catch (IntractableException e) {
 			caughtIntractableException = true;

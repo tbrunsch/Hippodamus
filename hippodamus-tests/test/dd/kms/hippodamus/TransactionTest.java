@@ -136,7 +136,7 @@ public class TransactionTest
 			triedToPerform = true;
 			fileSystem.createFile(fileName);
 			performed = true;
-			TestUtils.sleep(requiredTimeMs);
+			TestUtils.sleepUninterruptibly(requiredTimeMs);
 			fileSystem.accessFileSystem();
 		}
 

@@ -108,18 +108,18 @@ public class ElementwiseComparisonTest
 	}
 
 	private int simulateLoadElement(int index) {
-		TestUtils.sleep(LOAD_TIME_MS);
+		TestUtils.sleepUninterruptibly(LOAD_TIME_MS);
 		return getElementFor(index);
 	}
 
 	private int simulateGenerateElement(int index, boolean sameAsLoadedElement) {
-		TestUtils.sleep(GENERATION_TIME_MS);
+		TestUtils.sleepUninterruptibly(GENERATION_TIME_MS);
 		int element = getElementFor(index);
 		return sameAsLoadedElement ? element : element + 1;
 	}
 
 	private boolean compareElements(int loadedElement, int generatedElement) {
-		TestUtils.sleep(COMPARISON_TIME_MS);
+		TestUtils.sleepUninterruptibly(COMPARISON_TIME_MS);
 		return loadedElement == generatedElement;
 	}
 

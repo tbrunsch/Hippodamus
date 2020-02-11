@@ -19,7 +19,7 @@ public class CheckExceptionTest
 		boolean caughtException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(() -> {
-				TestUtils.sleep(500);
+				TestUtils.sleepUninterruptibly(500);
 				throw new TestException(EXCEPTION_MESSAGE);
 			});
 			while (true) {
