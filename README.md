@@ -429,6 +429,21 @@ In the transaction's `close()` method it is checked whether `commit()` has been 
 - In the transaction setting it is essential to write that additional line. In our setting, in most cases it "only" costs some extra time if we do not write these additional lines. This is why we did not want to force the user to write an additional line at all.
 - In our setting, the code in the try-block that is immediately executed will usually only contain coordination logic. Exceptions thrown by the tasks are thrown in threads of an `ExecutorService` and will be handled by the `ExecutionCoordinator`. They are not intractable. Hence, we will often be able to guarantee that that code inside the try-block does not throw exceptions at all. We can implement these cases without any additional lines and without time penalties.  
 
+# Performance Overhead
+
+Hippodamus is an abstraction layer built on top of standard Java concepts for parallelization. Consequently, there is some performance overhead compared to the lower-level mechanisms. We have added a few benchmark tests as unit tests (package `dd.kms.hippodamus.benchmark`) to ensure that this overhead is not dramatic. In these benchmark tests we compare the performance of Hippodamus, among others, to equivalent code based on the `CompletableFuture`-API.
+
+Since Hippodamus manages dependencies between tasks to prevent tasks from actively waiting for other tasks, we identified two scenarios in which Hippodamus will compare particularly unfavourably to lower-level mechanisms:
+
+1. If tasks do not depend on each other at all (`NoDependencyBenchmark.java`).
+1. If tasks depend on each other, but these dependencies are not specified (`NoSpecifiedDependenciesBenchmark.java`).
+
+In our tests it turned out that there is no significant difference between Hippodamus and equivalent `CompletableFuture` code with respect to performance.
+
+Furthermore, we have added a benchmark test (`DependencyBenchmark`) where tasks depend on each other and specifying these dependencies should be beneficial. The results of this test confirm this expectation.
+
+Note that these few benchmarks are just an indication that the performance overhead of Hippodamus is not significant. We do not provide a reliable statistics for that claim. We tried to write fair comparison code, but we cannot exclude the possibility that the code could be written to perform better.
+
 # Open Source License Acknowledgement
 
 Hippodamus utilizes [Guava: Google Core Libraries for Java](https://github.com/google/guava). This library is licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
