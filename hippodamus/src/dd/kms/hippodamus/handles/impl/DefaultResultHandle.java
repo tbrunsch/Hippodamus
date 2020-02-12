@@ -31,6 +31,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 		futureResult.cancel(true);
 	}
 
+	// TODO: Throw an exception if state.getException() != null?
 	@Override
 	public T get() {
 		join();
@@ -48,6 +49,7 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 	}
 
 	private T executeCallable() {
+		// TODO: Abort execution if handle stopped?
 		if (!onStartExecution()) {
 			return null;
 		}

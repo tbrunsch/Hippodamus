@@ -62,5 +62,23 @@ public interface ExecutionCoordinatorBuilder<B extends ExecutionCoordinatorBuild
 	 */
 	B verifyDependencies(boolean verifyDependencies);
 
+	/**
+	 * Specifies the {@link ExecutionCoordinator}'s waiting behavior. Two modes are supported:
+	 * <ul>
+	 *     <li>
+	 *         {@link WaitMode#UNTIL_TERMINATION_REQUESTED} (default): The coordinator's {@code close()} method will
+	 *         block until all tasks managed by the coordinator <b>have been requested to terminate</b>, have terminated,
+	 *         or have been stopped before being submitted. Some tasks might still be running when the coordinator terminates,
+	 *         but they are not relevant for the result.
+	 *     </li>
+	 *     <li>
+	 *         {@link WaitMode#UNTIL_TERMINATION} (default): The coordinator's {@code close()} method will block until
+	 *         all tasks managed by the coordinator have terminated or have been stopped before being submitted. No task will
+	 *         be running when the coordinator terminates.
+	 *     </li>
+	 * </ul>
+	 */
+	B waitMode(WaitMode waitMode);
+
 	ExecutionCoordinator build();
 }

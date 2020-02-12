@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.coordinator;
 
+import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
@@ -31,4 +32,6 @@ public interface InternalCoordinator extends ExecutionCoordinator
 	 * Handles must release it when terminating, either successfully or exceptionally, or when being stopped.
 	 */
 	Semaphore getTerminationLock();
+
+	WaitMode getWaitMode();
 }

@@ -18,6 +18,7 @@ public class ExecutionCoordinatorBuilderImpl<B extends ExecutionCoordinatorBuild
 	private Logger										logger								= Loggers.NO_LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
+	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION_REQUESTED;
 
 	public ExecutionCoordinatorBuilderImpl() {
 		executorServiceWrappersByTaskType = new HashMap<>();
@@ -49,6 +50,11 @@ public class ExecutionCoordinatorBuilderImpl<B extends ExecutionCoordinatorBuild
 		this.verifyDependencies = verifyDependencies;
 		return getBuilder();
 	}
+	@Override
+	public B waitMode(WaitMode waitMode) {
+		this.waitMode = waitMode;
+		return getBuilder();
+	}
 
 	@Override
 	public ExecutionCoordinator build() {
@@ -57,7 +63,7 @@ public class ExecutionCoordinatorBuilderImpl<B extends ExecutionCoordinatorBuild
 	}
 
 	CoordinatorConfiguration createConfiguration() {
-		return new CoordinatorConfiguration(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies);
+		return new CoordinatorConfiguration(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
 	}
 
 	private B getBuilder() {

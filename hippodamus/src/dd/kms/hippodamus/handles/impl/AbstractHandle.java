@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.handles.impl;
 
 import dd.kms.hippodamus.coordinator.InternalCoordinator;
+import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.logging.LogLevel;
 
@@ -223,6 +224,20 @@ abstract class AbstractHandle implements Handle
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
+	private boolean isReleaseTerminationLockOnStop() {
+		/*
+		 * Do not release the termination lock on stop if
+		 *     (1) the coordinator should wait until all tasks have terminated (not only requested to terminate) and
+		 *     (2) the task's execution has started.
+		 * If both conditions are met, then the lock will be released on termination, either
+		 * successfully in markAsCompleted() or exceptionally in setException().
+		 */
+		return !(coordinator.getWaitMode() == WaitMode.UNTIL_TERMINATION && state.isFlagSet(StateFlag.STARTED_EXECUTION));
+	}
+
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	private void notifyListeners(List<Runnable> listeners, String listenerDescription, Consumer<Handle> coordinatorListener) {
 		Throwable listenerException = null;
 		Runnable exceptionalListener = null;
@@ -268,7 +283,9 @@ abstract class AbstractHandle implements Handle
 	public final void stop() {
 		synchronized (coordinator) {
 			// First release handle's termination lock to be consistent with markAsCompleted().
-			releaseTerminationLock();
+			if (isReleaseTerminationLockOnStop()) {
+				releaseTerminationLock();
+			}
 			try {
 				if (hasStopped()) {
 					return;
@@ -283,7 +300,9 @@ abstract class AbstractHandle implements Handle
 					setPendingFlags();
 				}
 			} finally {
-				releaseCoordinatorTerminationLock();
+				if (isReleaseTerminationLockOnStop()) {
+					releaseCoordinatorTerminationLock();
+				}
 			}
 		}
 	}

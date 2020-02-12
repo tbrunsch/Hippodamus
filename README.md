@@ -82,6 +82,7 @@ This returns a builder that allows you to configure:
 - Which `ExecutorService` to use for which *task type* and whether to shutdown the service when the coordinator is closed. See Section [Task Types](#task-types) for more details about task types.
 - The minimum log level and which logger to use.
 - Whether to verify task dependencies (see sections [Task Dependencies](#task-dependencies) and [Dependency Verification](#dependency-verification)).
+- When the coordinator should terminate (see Sections [Stopping Tasks](#stopping-tasks))
 
 **LoggingSample.java:**
 
@@ -287,7 +288,7 @@ You can stop a task by calling `Handle.stop()` on its handle. Although it seems 
 
 1. If a task is stopped, then all of its dependencies will be stopped as well. This is even the case for dependent tasks that have not been executed (submitted to the coordinator) at the point of stopping the task. In particular, this means that stopping a completed task still has an effect on tasks that depend on that task.  
 
-The first point is especially important because the coordinator will wait until all of its handles have completed or stopped. As explained above, this does not necessarily mean that all of the coordinator's tasks have terminated. Hence, the coordinator is **not a strict nursery**.  
+The first point is especially important because, by default, the coordinator will wait until all of its handles have completed or stopped. This behavior is described by the enum value `WaitMode.UNTIL_TERMINATION_REQUESTED`. As explained above, this does not necessarily mean that all of the coordinator's tasks have terminated. Hence, the coordinator is not a strict nursery by default. However, you can set the wait mode to `WaitMode.UNTIL_TERMINATION` when configuring the coordinator (see Section [Configuring Coordinators](#configuring-coordinators)). In that case, the coordinator will not terminate as long as some of its tasks are still being executed.  
 
 Hippodamus offers a way for tasks to query whether they have been stopped or not giving them a chance to react to a stop request. For this, the tasks have to implement one of the functional interfaces `dd.kms.hippodamus.exceptions.StoppableExceptionalCallable` or `dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable`. The method of both interfaces gets the stop flag as a `Supplier<Boolean>`. This flag can be polled by the task. 
 

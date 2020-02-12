@@ -2,6 +2,7 @@ package dd.kms.hippodamus.coordinator;
 
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
+import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.exceptions.*;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
@@ -190,6 +191,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	@Override
 	public Semaphore getTerminationLock() {
 		return terminationLock;
+	}
+
+	@Override
+	public WaitMode getWaitMode() {
+		return coordinatorConfiguration.getWaitMode();
 	}
 
 	@Override

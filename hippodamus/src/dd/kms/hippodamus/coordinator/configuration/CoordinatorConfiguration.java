@@ -13,12 +13,14 @@ public class CoordinatorConfiguration
 	private final Logger								logger;
 	private final LogLevel								minimumLogLevel;
 	private final boolean								verifyDependencies;
+	private final WaitMode								waitMode;
 
-	CoordinatorConfiguration(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies) {
+	CoordinatorConfiguration(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
 		this.executorServiceWrappersByTaskType = ImmutableMap.copyOf(executorServiceWrappersByTaskType);
 		this.logger = logger;
 		this.minimumLogLevel = minimumLogLevel;
 		this.verifyDependencies = verifyDependencies;
+		this.waitMode = waitMode;
 	}
 
 	public Map<Integer, ExecutorServiceWrapper> getExecutorServiceWrappersByTaskType() {
@@ -35,5 +37,9 @@ public class CoordinatorConfiguration
 
 	public boolean isVerifyDependencies() {
 		return verifyDependencies;
+	}
+
+	public WaitMode getWaitMode() {
+		return waitMode;
 	}
 }
