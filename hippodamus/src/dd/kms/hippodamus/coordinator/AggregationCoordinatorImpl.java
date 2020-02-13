@@ -29,17 +29,12 @@ public class AggregationCoordinatorImpl<S, T>
 	}
 
 	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, ExecutionConfiguration configuration) throws E {
-		return register(() -> super.execute(callable, configuration), configuration);
-	}
-
-	private <E extends Exception> ResultHandle<S> register(ExceptionalSupplier<ResultHandle<S>, E> handleSupplier, ExecutionConfiguration configuration) throws E {
 		synchronized (this) {
-			if (aggregator.hasAggregationCompleted()) {
-				String taskName = getTaskName(configuration);
-				return super.createStoppedHandle(taskName);
+			boolean initiallyStopped = aggregator.hasAggregationCompleted();
+			ResultHandle<S> handle = execute(callable, configuration, initiallyStopped);
+			if (!initiallyStopped) {
+				handle.onCompletion(() -> aggregate(handle.get()));
 			}
-			ResultHandle<S> handle = handleSupplier.get();
-			handle.onCompletion(() -> aggregate(handle.get()));
 			aggregatedHandles.add(handle);
 			return handle;
 		}
