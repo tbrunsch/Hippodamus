@@ -1,12 +1,10 @@
-package dd.kms.hippodamus.handles.impl;
+package dd.kms.hippodamus.handles;
 
 import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.execution.InternalTaskHandle;
-import dd.kms.hippodamus.handles.Handle;
-import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 
 import javax.annotation.Nullable;
@@ -15,7 +13,7 @@ import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 
-public class ResultHandleImpl<T> implements ResultHandle<T>
+class ResultHandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -87,7 +85,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	private volatile InternalTaskHandle					taskHandle;
 	private volatile T									result;
 
-	public ResultHandleImpl(InternalCoordinator coordinator, String taskName, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	ResultHandleImpl(InternalCoordinator coordinator, String taskName, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.executorServiceWrapper = executorServiceWrapper;
@@ -180,7 +178,6 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				if (listenerException == null) {
 					listenerException = t;
 					exceptionalListener = listener;
-					break;
 				}
 			}
 		}

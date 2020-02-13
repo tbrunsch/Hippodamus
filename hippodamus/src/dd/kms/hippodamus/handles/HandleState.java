@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.handles.impl;
+package dd.kms.hippodamus.handles;
 
 class HandleState
 {

@@ -9,8 +9,8 @@ import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.handles.Handles;
 import dd.kms.hippodamus.handles.ResultHandle;
-import dd.kms.hippodamus.handles.impl.ResultHandleImpl;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
 
@@ -120,7 +120,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		synchronized (this) {
 			checkException();
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
-			ResultHandle<V> resultHandle = new ResultHandleImpl<>(this, taskName, executorServiceWrapper, callable, verifyDependencies, stopped);
+			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, executorServiceWrapper, callable, verifyDependencies, stopped);
 			handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!stopped) {
 				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
