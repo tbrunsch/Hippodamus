@@ -22,9 +22,9 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		this.shutdownRequired = shutdownRequired;
 	}
 
-	public <V> Future<V> submit(Callable<V> callable) {
+	public InternalTaskHandle submit(Callable<?> callable) {
 		// TODO: How to handle RejectedExecutionException?
-		return executorService.submit(callable);
+		return new InternalTaskHandleImpl(executorService.submit(callable));
 	}
 
 	@Override

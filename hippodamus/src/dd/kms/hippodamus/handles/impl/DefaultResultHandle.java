@@ -3,16 +3,15 @@ package dd.kms.hippodamus.handles.impl;
 import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.execution.InternalTaskHandle;
 import dd.kms.hippodamus.handles.ResultHandle;
-
-import java.util.concurrent.Future;
 
 public class DefaultResultHandle<T> extends AbstractHandle implements ResultHandle<T>
 {
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 
-	private volatile Future<T>							futureResult;
+	private volatile InternalTaskHandle					taskHandle;
 	private volatile T									result;
 
 	public DefaultResultHandle(InternalCoordinator coordinator, String taskName, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
@@ -23,12 +22,12 @@ public class DefaultResultHandle<T> extends AbstractHandle implements ResultHand
 
 	@Override
 	void doSubmit() {
-		futureResult = executorServiceWrapper.submit(this::executeCallable);
+		taskHandle = executorServiceWrapper.submit(this::executeCallable);
 	}
 
 	@Override
 	void doStop() {
-		futureResult.cancel(true);
+		taskHandle.stop();
 	}
 
 	// TODO: Throw an exception if state.getException() != null?
