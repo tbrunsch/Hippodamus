@@ -31,6 +31,10 @@ public class TestUtils
 		}
 	}
 
+	public static int getPotentialParallelism() {
+		return Runtime.getRuntime().availableProcessors();
+	}
+
 	public static int getDefaultParallelism() {
 		return ForkJoinPool.commonPool().getParallelism();
 	}

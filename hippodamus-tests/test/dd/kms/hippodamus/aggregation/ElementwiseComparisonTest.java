@@ -59,7 +59,7 @@ public class ElementwiseComparisonTest
 	private static final long	COMPARISON_TIME_MS	= 1000;
 	private static final long	PRECISION_MS		= 500;
 
-	@Parameterized.Parameters(name = "comparison results = {0}, {1}, {2}")
+	@Parameterized.Parameters(name = "comparison results: {0}, {1}, {2}")
 	public static Object getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
 		for (boolean cmp1 : BOOLEANS) {
@@ -102,7 +102,12 @@ public class ElementwiseComparisonTest
 					.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()));
 			}
 		}
-		checkTimeConstraints(stopWatch.getElapsedTimeMs());
+		if (TestUtils.getPotentialParallelism() < 2) {
+			// We do not require time constraints to be met with only 1 processor
+			System.out.println("Skipped checking time constraints");
+		} else {
+			checkTimeConstraints(stopWatch.getElapsedTimeMs());
+		}
 
 		Assert.assertTrue(conjunctionAggregator.getAggregatedValue() == expectedResult);
 	}
