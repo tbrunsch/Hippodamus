@@ -57,11 +57,9 @@ public class IntractableExceptionTest
 			boolean caughtIntractableException = false;
 			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 				coordinator.permitTaskSubmission(false);
-				coordinator.execute(() -> Thread.sleep(TASK_DURATION_MS));
+				coordinator.execute(() -> TestUtils.sleepUninterruptibly(TASK_DURATION_MS));
 				throwIntractableException(throwException);
 				coordinator.permitTaskSubmission(true);
-			} catch (InterruptedException e) {
-				Assert.fail("Interrupted exception");
 			} catch (IntractableException e) {
 				caughtIntractableException = true;
 			}

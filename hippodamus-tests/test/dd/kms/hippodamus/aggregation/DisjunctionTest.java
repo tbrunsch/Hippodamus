@@ -69,11 +69,7 @@ public class DisjunctionTest
 		try (AggregationCoordinator<Boolean, Boolean> coordinator = coordinatorBuilder.build()) {
 			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
 			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));
-		} catch (InterruptedException e) {
-			Assert.fail("Interrupted exception");
-			return;
 		}
-
 		boolean expectedResult = operand1 || operand2;
 
 		/*
@@ -112,10 +108,10 @@ public class DisjunctionTest
 	/*
 	 * Stand-in for an arbitrarily complex Boolean callable
 	 */
-	private boolean simulateBooleanCallable(boolean result) throws InterruptedException {
+	private boolean simulateBooleanCallable(boolean result) {
 		if (!result) {
 			// give other task chance to return true
-			Thread.sleep(500);
+			TestUtils.sleepUninterruptibly(500);
 		}
 		return result;
 	}
