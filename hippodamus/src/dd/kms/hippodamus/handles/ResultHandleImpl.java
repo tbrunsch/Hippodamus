@@ -212,9 +212,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	public final void stop() {
 		synchronized (coordinator) {
 			// First release handle's termination lock to be consistent with markAsCompleted().
-			if (isReleaseTerminationLockOnStop()) {
-				releaseTerminationLock();
-			}
+			releaseTerminationLock();
 			try {
 				if (hasStopped()) {
 					return;
