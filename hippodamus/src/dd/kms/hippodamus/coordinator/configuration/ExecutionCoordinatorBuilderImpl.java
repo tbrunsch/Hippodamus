@@ -3,6 +3,7 @@ package dd.kms.hippodamus.coordinator.configuration;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.coordinator.TaskType;
+import dd.kms.hippodamus.exceptions.CoordinatorException;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
@@ -22,13 +23,29 @@ public class ExecutionCoordinatorBuilderImpl<B extends ExecutionCoordinatorBuild
 
 	public ExecutionCoordinatorBuilderImpl() {
 		executorServiceWrappersByTaskType = new HashMap<>();
-		executorServiceWrappersByTaskType.put(TaskType.REGULAR,	ExecutorServiceWrapper.COMMON_FORK_JOIN_POOL_WRAPPER);
-		executorServiceWrappersByTaskType.put(TaskType.IO,		ExecutorServiceWrapper.create(1));
+		executorServiceWrappersByTaskType.put(TaskType.REGULAR,	ExecutorServiceWrapper.commonForkJoinPoolWrapper(Integer.MAX_VALUE));
+		executorServiceWrappersByTaskType.put(TaskType.IO,		ExecutorServiceWrapper.create(1, Integer.MAX_VALUE));
 	}
 
 	@Override
 	public B executorService(int taskType, ExecutorService executorService, boolean shutdownRequired) {
-		ExecutorServiceWrapper executorServiceWrapper = ExecutorServiceWrapper.create(executorService, shutdownRequired);
+		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
+		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
+			? ExecutorServiceWrapper.create(executorService, shutdownRequired, Integer.MAX_VALUE)
+			: oldExecutorServiceWrapper.derive(executorService, shutdownRequired);
+		executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
+		return getBuilder();
+	}
+
+	@Override
+	public B maximumParallelism(int taskType, int maxParallelism) {
+		if (maxParallelism <= 0) {
+			throw new CoordinatorException("The maximum parallelism must be positive");
+		}
+		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
+		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
+			? ExecutorServiceWrapper.commonForkJoinPoolWrapper(maxParallelism)
+			: oldExecutorServiceWrapper.derive(maxParallelism);
 		executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
 		return getBuilder();
 	}

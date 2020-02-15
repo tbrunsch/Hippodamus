@@ -1,17 +1,28 @@
 package dd.kms.hippodamus.execution;
 
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 class InternalTaskHandleImpl implements InternalTaskHandle
 {
-	private final Future<?>	future;
+	private final Supplier<Future<?>>	submitter;
+	private Future<?>					future;
 
-	InternalTaskHandleImpl(Future<?> future) {
-		this.future = future;
+	InternalTaskHandleImpl(Supplier<Future<?>> submitter) {
+		this.submitter = submitter;
+	}
+
+	@Override
+	public void submit() {
+		if (future == null) {
+			future = submitter.get();
+		}
 	}
 
 	@Override
 	public void stop() {
-		future.cancel(true);
+		if (future != null) {
+			future.cancel(true);
+		}
 	}
 }

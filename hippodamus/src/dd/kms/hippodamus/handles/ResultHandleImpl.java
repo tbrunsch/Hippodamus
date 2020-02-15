@@ -136,6 +136,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				addPendingFlag(StateFlag.COMPLETED);
+				executorServiceWrapper.onTaskCompleted();
 				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 				setPendingFlags();
 			} finally {

@@ -31,6 +31,10 @@ public class TestUtils
 		}
 	}
 
+	public static int getDefaultParallelism() {
+		return ForkJoinPool.commonPool().getParallelism();
+	}
+
 	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {
 		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs, "Coordinator");
 	}
