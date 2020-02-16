@@ -89,10 +89,10 @@ public class WaitModeTest
 	private void run(TaskCounter counter) throws TestException {
 		int id = counter.getAndIncrement();
 		if (id == NUM_TASKS_UNTIL_EXCEPTION) {
-			TestUtils.sleepUninterruptibly(HALF_TASK_TIME_MS);
+			TestUtils.simulateWork(HALF_TASK_TIME_MS);
 			throw new TestException();
 		}
-		TestUtils.sleepUninterruptibly(TASK_TIME_MS);
+		TestUtils.simulateWork(TASK_TIME_MS);
 	}
 
 	private class TaskCounter

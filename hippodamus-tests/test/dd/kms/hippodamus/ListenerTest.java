@@ -40,7 +40,7 @@ public class ListenerTest
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 0, false));
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 			// task should already have completed when completion listener is added
 			result.onCompletion(() -> {
 				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
@@ -69,7 +69,7 @@ public class ListenerTest
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 			// task should already have thrown an exception when exception listener is added
 			handle.onException(() -> orderVerifier.register(ID_TASK));
 		} catch (TestException e) {
@@ -84,7 +84,7 @@ public class ListenerTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 1000, false));
 			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 			/*
 			 * - exception should already be thrown => will be thrown in close, before task finishes
 			 * - task should still be running when completion listener is added
@@ -105,7 +105,7 @@ public class ListenerTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 500, false));
 			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
-			TestUtils.sleepUninterruptibly(1000);
+			TestUtils.simulateWork(1000);
 			/*
 			 * - exception should already be thrown => will be thrown in close
 			 * - should already have completed when completion listener is added => listener will be called before close
@@ -121,7 +121,7 @@ public class ListenerTest
 	}
 
 	private int getValue(int result, long waitTimeMs, boolean throwException) {
-		TestUtils.sleepUninterruptibly(waitTimeMs);
+		TestUtils.simulateWork(waitTimeMs);
 		if (throwException) {
 			throw new TestException();
 		}

@@ -108,6 +108,6 @@ public class NoDependencyBenchmark
 	}
 
 	private void runTask() {
-		TestUtils.sleepUninterruptibly(taskTimeMs);
+		TestUtils.simulateWork(taskTimeMs);
 	}
 }

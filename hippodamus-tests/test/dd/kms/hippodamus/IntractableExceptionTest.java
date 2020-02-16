@@ -31,7 +31,7 @@ public class IntractableExceptionTest
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtIntractableException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(() -> TestUtils.sleepUninterruptibly(TASK_DURATION_MS));
+			coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
 			throwIntractableException(true);
 		} catch (IntractableException e) {
 			caughtIntractableException = true;
@@ -57,7 +57,7 @@ public class IntractableExceptionTest
 			boolean caughtIntractableException = false;
 			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 				coordinator.permitTaskSubmission(false);
-				coordinator.execute(() -> TestUtils.sleepUninterruptibly(TASK_DURATION_MS));
+				coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
 				throwIntractableException(throwException);
 				coordinator.permitTaskSubmission(true);
 			} catch (IntractableException e) {

@@ -111,7 +111,7 @@ public class DisjunctionTest
 	private boolean simulateBooleanCallable(boolean result) {
 		if (!result) {
 			// give other task chance to return true
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 		}
 		return result;
 	}

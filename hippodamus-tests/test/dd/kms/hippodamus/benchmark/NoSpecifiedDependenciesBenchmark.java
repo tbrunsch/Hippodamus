@@ -60,7 +60,7 @@ public class NoSpecifiedDependenciesBenchmark
 	}
 
 	private int plusOne(int value) {
-		TestUtils.sleepUninterruptibly(TASK_TIME_MS);
+		TestUtils.simulateWork(TASK_TIME_MS);
 		return value + 1;
 	}
 

@@ -51,7 +51,7 @@ public class MaximumParallelismTest
 			numRunningTasks++;
 			maxNumRunningTasks = Math.max(maxNumRunningTasks, numRunningTasks);
 		}
-		TestUtils.sleepUninterruptibly(TASK_TIME_MS);
+		TestUtils.simulateWork(TASK_TIME_MS);
 		synchronized (this) {
 			numRunningTasks--;
 		}
