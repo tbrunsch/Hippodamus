@@ -72,7 +72,6 @@ public class ExecutorServiceWrapper implements AutoCloseable
 
 	private Future<?> submitNow(Callable<?> callable) {
 		numPendingSubmittedTasks++;
-		// TODO: How to handle RejectedExecutionException?
 		return executorService.submit(callable);
 	}
 
