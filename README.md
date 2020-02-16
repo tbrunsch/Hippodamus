@@ -80,9 +80,10 @@ To configure a coordinator before using it, you must call either of the two meth
 This returns a builder that allows you to configure:
 
 - Which `ExecutorService` to use for which *task type* and whether to shutdown the service when the coordinator is closed. See Section [Task Types](#task-types) for more details about task types.
+- The maximum number of tasks of a certain type that may be processed in parallel (see Section [Controlling Parallelism](#controlling-parallelism))
 - The minimum log level and which logger to use.
 - Whether to verify task dependencies (see sections [Task Dependencies](#task-dependencies) and [Dependency Verification](#dependency-verification)).
-- When the coordinator should terminate (see Sections [Stopping Tasks](#stopping-tasks))
+- When the coordinator should terminate (see Section [Stopping Tasks](#stopping-tasks))
 
 **LoggingSample.java:**
 
@@ -231,6 +232,61 @@ int returnWithDelay(int value) throws InterruptedException {
     return value;
 }
 ```
+
+## Controlling Parallelism
+
+Sometimes it is useful to specify a limit for the number of tasks of a certain type that may be executed in parallel. A typical use case is when the tasks consume scarce resources or have heavy resource consumptions.
+
+One possibility is to specify a dedicated `ExecutorService` for theses tasks (see Section [Configuring Coordinators](#configuring-coordinators)) whose parallelism is limited to the desired number. However, specifying dedicated `ExecutorService`s does not scale as well as using a shared `ExecutorService`.
+
+Alternatively, you can specify the maximum parallelism for a certain task type. This is the maximum number of tasks of that type processed by their `ExecutorService` at any time. Surplus tasks will be queued until one of the tasks currently be processed by the `ExecutorService` terminates.
+
+Be aware that there is a certain risk to run into a deadlock when limiting the parallelism and not specifying all task dependencies correctly. See Section [Maximum Parallelism And Deadlocks](#maximum-parallelism-and-deadlocks)
+
+### Maximum Parallelism And Deadlocks
+
+When limiting the parallelism, one may run into a deadlock **if not all task dependencies are specified correctly**.
+
+**MaximumParallelismDeadlockSample.java:**
+
+```
+    ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+        .maximumParallelism(TaskType.REGULAR, 2)
+        .logger(((logLevel, taskName, message) -> System.out.println(taskName + ": " + message)));
+    try (ExecutionCoordinator coordinator = builder.build()) {
+        ResultHandle<Integer> task1 = coordinator.execute(() -> returnWithDelay(1));
+        ResultHandle<Integer> task2 = coordinator.configure().dependencies(task1).execute(() -> returnWithDelay(task1.get() + 1));
+        ResultHandle<Integer> task3 = coordinator.execute(() -> returnWithDelay(task2.get() + 1));
+        ResultHandle<Integer> task4 = coordinator.execute(() -> returnWithDelay(task3.get() + 1));
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+```
+
+The implementation of `returnWithDelay()` is:
+
+```
+int returnWithDelay(int value) throws InterruptedException {
+    Thread.sleep(500);
+    return value;
+}
+```
+
+In this example, the maximum parallelism is 2. Task 4 depends on task 3, which depends on task 2, which depends on task 1. However, the dependencies of task 3 and task 4 are not specified. The program flow will be as follows:
+
+1. The coordinator submits task 1 because it has no dependencies.
+1. The coordinator **does not submit** task 2 because it specifies to depend on task 1 and task 1 has not yet finished.
+1. The coordinator submits task 3 because it does not specify any dependency.
+1. The coordinator tries to submit task 4 because it does not specify any dependency. Since the `ExecutorService` is already processing 2 tasks (task 1 and task 3), task 4 is queued for later submission.
+1. Task 1 terminates, which causes the queued task 4 to be submitted and task 2 to be queued for later submission.
+1. Task 3 keeps waiting for task 2 to terminate, while task 4 keeps waiting for task 3 to terminate. However, task 2 will never be submitted because of the maximum parallelism.
+
+In this simple example the coordinator could avoid the deadlock by submitting task 2 instead of task 4 after task 1 has terminated. It might be possible to avoid deadlocks in general by a more educated strategy for selecting which task to submit. Alternatively, it is possible to detect if all submitted tasks are waiting for other tasks to terminate. In such cases we could ignore the maximum parallelism and submit further tasks.
+
+We decided to not implement a deadlock prevention strategy for several reasons:
+
+1. We expect the performance in other use cases to suffer from such a deadlock prevention.
+1. We prefer the user to prevent deadlocks by specifying task dependencies correctly: Deadlocks that could be resolved by the coordinator only occur in scenarios where tasks are actively waiting for other tasks to terminate. This is an unnecessary waste of time.      
 
 ## Aggregation
 
