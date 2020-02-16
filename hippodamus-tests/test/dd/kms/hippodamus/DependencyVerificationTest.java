@@ -109,7 +109,7 @@ public class DependencyVerificationTest
 	}
 
 	private int generateNumber(int number, long simulatedTimeMs) {
-		TestUtils.sleepUninterruptibly(simulatedTimeMs);
+		TestUtils.simulateWork(simulatedTimeMs);
 		return number;
 	}
 

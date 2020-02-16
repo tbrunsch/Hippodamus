@@ -8,6 +8,7 @@ import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -46,7 +47,7 @@ public class WaitModeTest
 
 	private static final long	PRECISION_MS				= 300;
 
-	@Parameterized.Parameters(name = "wait mode = {0}")
+	@Parameterized.Parameters(name = "wait mode: {0}")
 	public static Object getParameters() {
 		return WaitMode.values();
 	}
@@ -59,6 +60,8 @@ public class WaitModeTest
 
 	@Test
 	public void testWaitMode() {
+		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getPotentialParallelism() >= NUM_THREADS);
+
 		TaskCounter counter = new TaskCounter();
 		ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
 		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
@@ -86,10 +89,10 @@ public class WaitModeTest
 	private void run(TaskCounter counter) throws TestException {
 		int id = counter.getAndIncrement();
 		if (id == NUM_TASKS_UNTIL_EXCEPTION) {
-			TestUtils.sleepUninterruptibly(HALF_TASK_TIME_MS);
+			TestUtils.simulateWork(HALF_TASK_TIME_MS);
 			throw new TestException();
 		}
-		TestUtils.sleepUninterruptibly(TASK_TIME_MS);
+		TestUtils.simulateWork(TASK_TIME_MS);
 	}
 
 	private class TaskCounter

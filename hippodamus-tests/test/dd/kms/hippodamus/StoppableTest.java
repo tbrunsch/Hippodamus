@@ -44,6 +44,14 @@ public class StoppableTest
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long elapsedTimePoolMs = stopWatch.getElapsedTimeMs();
 
+		Assert.assertTrue("An exception has been swallowed", caughtException);
+
+		if (TestUtils.getPotentialParallelism() < 2) {
+			// We do not require time constraints to be met with only 1 processor
+			System.out.println("Skipped checking time constraints");
+			return;
+		}
+
 		/*
 		 * The coordinator requests tasks to stop if it encounters an exception, but
 		 * it does not wait for them to stop. If submitted tasks themselves to not check
@@ -56,8 +64,6 @@ public class StoppableTest
 		long expectedTimePoolMs = TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
 		TestUtils.assertTimeLowerBound(expectedTimePoolMs, elapsedTimePoolMs);
 		TestUtils.assertTimeUpperBound(expectedTimePoolMs + PRECISION_MS, elapsedTimePoolMs);
-
-		Assert.assertTrue("An exception has been swallowed", caughtException);
 	}
 
 	@Test
@@ -75,6 +81,14 @@ public class StoppableTest
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long elapsedTimePoolMs = stopWatch.getElapsedTimeMs();
 
+		Assert.assertTrue("An exception has been swallowed", caughtException);
+
+		if (TestUtils.getPotentialParallelism() < 2) {
+			// We do not require time constraints to be met with only 1 processor
+			System.out.println("Skipped checking time constraints");
+			return;
+		}
+
 		/*
 		 * Since the task listens to whether it should stop or not, both, elapsedTimeCoordinatorMs
 		 * and elapsedTimePoolMs should both be approximately TIME_UNTIL_EXCEPTION_MS.
@@ -82,18 +96,16 @@ public class StoppableTest
 		long expectedTimeMs = TIME_UNTIL_EXCEPTION_MS;
 		TestUtils.assertTimeLowerBound(expectedTimeMs, elapsedTimeCoordinatorMs);
 		TestUtils.assertTimeUpperBound(expectedTimeMs + PRECISION_MS, elapsedTimePoolMs);
-
-		Assert.assertTrue("An exception has been swallowed", caughtException);
 	}
 
 	private void run1() throws ExpectedException {
-		TestUtils.sleepUninterruptibly(TIME_UNTIL_EXCEPTION_MS);
+		TestUtils.simulateWork(TIME_UNTIL_EXCEPTION_MS);
 		throw new ExpectedException();
 	}
 
 	private void run2WithoutStopReaction() {
 		for (int i = 0; i < TASK_2_SLEEP_REPETITION; i++) {
-			TestUtils.sleepUninterruptibly(TASK_2_SLEEP_INTERVAL);
+			TestUtils.simulateWork(TASK_2_SLEEP_INTERVAL);
 		}
 	}
 
@@ -102,7 +114,7 @@ public class StoppableTest
 			if (stopFlag.get()) {
 				return;
 			}
-			TestUtils.sleepUninterruptibly(TASK_2_SLEEP_INTERVAL);
+			TestUtils.simulateWork(TASK_2_SLEEP_INTERVAL);
 		}
 	}
 

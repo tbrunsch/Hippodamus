@@ -9,9 +9,8 @@ import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.handles.Handles;
 import dd.kms.hippodamus.handles.ResultHandle;
-import dd.kms.hippodamus.handles.impl.DefaultResultHandle;
-import dd.kms.hippodamus.handles.impl.StoppedResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
 
@@ -110,21 +109,24 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	}
 
 	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
+		return execute(callable, configuration, false);
+	}
+
+	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration, boolean initiallyStopped) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		String taskName = getTaskName(configuration);
+		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 		Collection<Handle> dependencies = configuration.getDependencies();
 		synchronized (this) {
 			checkException();
-			boolean dependencyStopped = dependencies.stream().anyMatch(Handle::hasStopped);
-			if (dependencyStopped) {
-				return createStoppedHandle(taskName);
-			}
-			boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
-			ResultHandle<V> resultHandle = new DefaultResultHandle<>(this, taskName, executorServiceWrapper, callable, verifyDependencies);
+			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
+			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, executorServiceWrapper, callable, verifyDependencies, stopped);
 			handleDependencyManager.addDependencies(resultHandle, dependencies);
-			boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
-			if (allDependenciesCompleted) {
-				scheduleForSubmission(resultHandle);
+			if (!stopped) {
+				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
+				if (allDependenciesCompleted) {
+					scheduleForSubmission(resultHandle);
+				}
 			}
 			return resultHandle;
 		}
@@ -181,11 +183,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		} else {
 			pendingHandles.add(handle);
 		}
-	}
-
-	<T> ResultHandle<T> createStoppedHandle(String taskName) {
-		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
-		return new StoppedResultHandle<>(this, taskName, verifyDependencies);
 	}
 
 	@Override

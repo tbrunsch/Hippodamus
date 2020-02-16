@@ -10,25 +10,27 @@ public class TestUtils
 {
 	public static final boolean[]	BOOLEANS	= { false, true };
 
-	public static void sleepUninterruptibly(long timeMs) {
+	public static void simulateWork(long timeMs) {
 		if (timeMs == 0) {
 			return;
 		}
 		long endTimeMs = System.currentTimeMillis() + timeMs;
-		try {
-			Thread.sleep(timeMs);
-		} catch (InterruptedException e) {
-			while (System.currentTimeMillis() < endTimeMs) {
-				Thread.yield();
-			}
-		}
+		while (System.currentTimeMillis() < endTimeMs);
 	}
 
 	public static void waitForEmptyCommonForkJoinPool() {
 		ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
 		while (!forkJoinPool.isQuiescent()) {
-			TestUtils.sleepUninterruptibly(100);
+			Thread.yield();
 		}
+	}
+
+	public static int getPotentialParallelism() {
+		return Runtime.getRuntime().availableProcessors();
+	}
+
+	public static int getDefaultParallelism() {
+		return ForkJoinPool.commonPool().getParallelism();
 	}
 
 	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {

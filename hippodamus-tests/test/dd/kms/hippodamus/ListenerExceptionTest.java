@@ -15,7 +15,7 @@ public class ListenerExceptionTest
 	@Test
 	public void testCompletionListenerStillRunning() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> TestUtils.sleepUninterruptibly(500));
+			Handle handle = coordinator.execute(() -> TestUtils.simulateWork(500));
 			// task should still be running when completion listener is added
 			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
 		} catch (Throwable t) {
@@ -30,7 +30,7 @@ public class ListenerExceptionTest
 	public void testCompletionListenerAlreadyFinished() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> {});
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 			// task should already have completed when completion listener is added
 			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
 		} catch (Throwable t) {
@@ -60,7 +60,7 @@ public class ListenerExceptionTest
 	public void testExceptionListenerAlreadyFinished() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> runWithException(0, TASK_EXCEPTION_MESSAGE));
-			TestUtils.sleepUninterruptibly(500);
+			TestUtils.simulateWork(500);
 			// task should already have thrown an exception when exception listener is added
 			handle.onException(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
 		} catch (Throwable t) {
@@ -73,7 +73,7 @@ public class ListenerExceptionTest
 	}
 
 	private void runWithException(long waitTimeMs, String errorMessage) {
-		TestUtils.sleepUninterruptibly(waitTimeMs);
+		TestUtils.simulateWork(waitTimeMs);
 		throw new TestException(errorMessage);
 	}
 

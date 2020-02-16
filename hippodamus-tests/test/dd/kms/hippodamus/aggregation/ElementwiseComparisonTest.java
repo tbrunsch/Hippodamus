@@ -59,7 +59,7 @@ public class ElementwiseComparisonTest
 	private static final long	COMPARISON_TIME_MS	= 1000;
 	private static final long	PRECISION_MS		= 500;
 
-	@Parameterized.Parameters(name = "comparison results = {0}, {1}, {2}")
+	@Parameterized.Parameters(name = "comparison results: {0}, {1}, {2}")
 	public static Object getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
 		for (boolean cmp1 : BOOLEANS) {
@@ -102,24 +102,29 @@ public class ElementwiseComparisonTest
 					.aggregate(() -> compareElements(loadElementHandle.get(), generateElementHandle.get()));
 			}
 		}
-		checkTimeConstraints(stopWatch.getElapsedTimeMs());
+		if (TestUtils.getPotentialParallelism() < 2) {
+			// We do not require time constraints to be met with only 1 processor
+			System.out.println("Skipped checking time constraints");
+		} else {
+			checkTimeConstraints(stopWatch.getElapsedTimeMs());
+		}
 
 		Assert.assertTrue(conjunctionAggregator.getAggregatedValue() == expectedResult);
 	}
 
 	private int simulateLoadElement(int index) {
-		TestUtils.sleepUninterruptibly(LOAD_TIME_MS);
+		TestUtils.simulateWork(LOAD_TIME_MS);
 		return getElementFor(index);
 	}
 
 	private int simulateGenerateElement(int index, boolean sameAsLoadedElement) {
-		TestUtils.sleepUninterruptibly(GENERATION_TIME_MS);
+		TestUtils.simulateWork(GENERATION_TIME_MS);
 		int element = getElementFor(index);
 		return sameAsLoadedElement ? element : element + 1;
 	}
 
 	private boolean compareElements(int loadedElement, int generatedElement) {
-		TestUtils.sleepUninterruptibly(COMPARISON_TIME_MS);
+		TestUtils.simulateWork(COMPARISON_TIME_MS);
 		return loadedElement == generatedElement;
 	}
 

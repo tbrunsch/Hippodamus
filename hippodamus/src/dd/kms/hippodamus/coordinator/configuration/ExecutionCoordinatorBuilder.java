@@ -34,6 +34,35 @@ public interface ExecutionCoordinatorBuilder<B extends ExecutionCoordinatorBuild
 	B executorService(int taskType, ExecutorService executorService, boolean shutdownRequired);
 
 	/**
+	 * Specify the maximum number of tasks of a certain type that are processed by their dedicated
+	 * {@link ExecutorService} at any point in time.<br/>
+	 * <br/>
+	 * <b>Remarks</b>:
+	 * <ul>
+	 *     <li>
+	 *         It is not guaranteed that the {@code ExecutorService} can also execute so many tasks
+	 * 	       in parallel.
+	 *     </li>
+	 *     <li>
+	 *         Limiting the maximum parallelism can result in a <b>deadlock if not all task dependencies
+	 *         are specified correctly</b> because tasks might be submitted to their {@code ExecutorService}
+	 *         although tasks they depend on have not yet been submitted. Due to the maximum parallelism
+	 *         it is possible that these dependencies never get submitted because the submitted tasks
+	 *         do not terminate.
+	 *     </li>
+	 * </ul>
+	 *
+	 * @param taskType          The type of a task. This may either be {@link TaskType#REGULAR} for regular
+	 * 	                        tasks, {@link TaskType#IO} for IO tasks or any non-negative integer for
+	 * 	                        a custom type of task (cf. {@link ExecutionCoordinator#configure()} and
+	 * 	                        {@link ExecutionConfigurationBuilder#taskType(int)}.
+	 * @param maxParallelism    The maximum number of tasks processed by the dedicated {@code ExecutorService}.
+	 *
+	 * @throws CoordinatorException if {@code maxParallelism} is not positive.
+	 */
+	B maximumParallelism(int taskType, int maxParallelism);
+
+	/**
 	 * Specifies the logger that is used to log received messages. If not specified, then the {@link Loggers#NO_LOGGER}
 	 * will be used.
 	 */
