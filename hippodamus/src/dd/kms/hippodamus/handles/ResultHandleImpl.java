@@ -19,6 +19,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private final InternalCoordinator					coordinator;
 	private final String								taskName;
+	private final int									id;
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 	private final boolean								verifyDependencies;
@@ -85,9 +86,10 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	private volatile InternalTaskHandle					taskHandle;
 	private volatile T									result;
 
-	ResultHandleImpl(InternalCoordinator coordinator, String taskName, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
+		this.id = id;
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 		this.verifyDependencies = verifyDependencies;
@@ -136,8 +138,8 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				addPendingFlag(StateFlag.COMPLETED);
-				executorServiceWrapper.onTaskCompleted();
 				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
+				executorServiceWrapper.onTaskCompleted();
 				setPendingFlags();
 			} finally {
 				releaseCoordinatorTerminationLock();
@@ -202,7 +204,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 			}
 			addPendingFlag(StateFlag.SUBMITTED);
 			try {
-				taskHandle = executorServiceWrapper.submit(this::executeCallable);
+				taskHandle = executorServiceWrapper.submit(id, this::executeCallable);
 			} finally {
 				setPendingFlags();
 			}

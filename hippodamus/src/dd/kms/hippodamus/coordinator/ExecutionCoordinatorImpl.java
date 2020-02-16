@@ -120,7 +120,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		synchronized (this) {
 			checkException();
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
-			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, executorServiceWrapper, callable, verifyDependencies, stopped);
+			int id = handleDependencyManager.getNumberOfManagedHandles();
+			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, id, executorServiceWrapper, callable, verifyDependencies, stopped);
 			handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!stopped) {
 				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);

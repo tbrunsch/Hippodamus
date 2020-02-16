@@ -34,6 +34,10 @@ class HandleDependencyManager
 		return pendingHandleDependencies.keySet();
 	}
 
+	int getNumberOfManagedHandles() {
+		return getManagedHandles().size();
+	}
+
 	List<Handle> getDependentHandles(Handle handle) {
 		return (List<Handle>) dependentHandles.get(handle);
 	}

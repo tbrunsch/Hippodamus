@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.execution;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class ExecutorServiceWrapper implements AutoCloseable
@@ -22,7 +21,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	private final boolean					shutdownRequired;
 	private final int						maxParallelism;
 
-	private final Deque<InternalTaskHandle> unsubmittedTasks = new ArrayDeque<>();
+	private final Queue<InternalTaskHandle> unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandle::getId));
 
 	private int 							numPendingSubmittedTasks;
 
@@ -43,8 +42,8 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public InternalTaskHandle submit(Callable<?> callable) {
-		InternalTaskHandleImpl taskHandle = new InternalTaskHandleImpl(() -> submitNow(callable));
+	public InternalTaskHandle submit(int id, Callable<?> callable) {
+		InternalTaskHandle taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(callable));
 		if (canSubmitTask()) {
 			taskHandle.submit();
 		} else {

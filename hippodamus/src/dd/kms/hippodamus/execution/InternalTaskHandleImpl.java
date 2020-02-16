@@ -5,11 +5,18 @@ import java.util.function.Supplier;
 
 class InternalTaskHandleImpl implements InternalTaskHandle
 {
+	private final int					id;
 	private final Supplier<Future<?>>	submitter;
 	private Future<?>					future;
 
-	InternalTaskHandleImpl(Supplier<Future<?>> submitter) {
+	InternalTaskHandleImpl(int id, Supplier<Future<?>> submitter) {
+		this.id = id;
 		this.submitter = submitter;
+	}
+
+	@Override
+	public int getId() {
+		return id;
 	}
 
 	@Override

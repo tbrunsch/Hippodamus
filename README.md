@@ -241,13 +241,11 @@ One possibility is to specify a dedicated `ExecutorService` for theses tasks (se
 
 Alternatively, you can specify the maximum parallelism for a certain task type. This is the maximum number of tasks of that type processed by their `ExecutorService` at any time. Surplus tasks will be queued until one of the tasks currently be processed by the `ExecutorService` terminates.
 
-Be aware that there is a certain risk to run into a deadlock when limiting the parallelism and not specifying all task dependencies correctly. See Section [Maximum Parallelism And Deadlocks](#maximum-parallelism-and-deadlocks)
+For the sake of completeness we discuss in Section [Maximum Parallelism And Deadlocks](#maximum-parallelism-and-deadlocks) why we internally use a priority queue instead of a simple FIFO queue. These are just technical details and not relevant for users of Hippodamus. 
 
 ### Maximum Parallelism And Deadlocks
 
-When limiting the parallelism, one may run into a deadlock **if not all task dependencies are specified correctly**.
-
-**MaximumParallelismDeadlockSample.java:**
+In this section we discuss why we use a priority queue rather than a FIFO queue for queuing surplus tasks that cannot immediately be submitted to the `ExecutorService` due to the specified maximum parallelism. The reason is that one may run into a deadlock when using a FIFO queue if not all task dependencies are specified correctly. For this to see, consider the following example:
 
 ```
     ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
@@ -276,17 +274,28 @@ In this example, the maximum parallelism is 2. Task 4 depends on task 3, which d
 
 1. The coordinator submits task 1 because it has no dependencies.
 1. The coordinator **does not submit** task 2 because it specifies to depend on task 1 and task 1 has not yet finished.
-1. The coordinator submits task 3 because it does not specify any dependency.
-1. The coordinator tries to submit task 4 because it does not specify any dependency. Since the `ExecutorService` is already processing 2 tasks (task 1 and task 3), task 4 is queued for later submission.
-1. Task 1 terminates, which causes the queued task 4 to be submitted and task 2 to be queued for later submission.
+1. The coordinator submits task 3 because it **does not specify** any dependency.
+1. The coordinator tries to submit task 4 because it **does not specify** any dependency. Since the `ExecutorService` is already processing 2 tasks (task 1 and task 3), task 4 is queued for later submission.
+1. Task 1 terminates, which causes task 2 to be queue for later submission.
+1. We can now submit a further task. If we use the FIFO rule, then the queued task 4 is selected for submission because it was queued before task 2. 
 1. Task 3 keeps waiting for task 2 to terminate, while task 4 keeps waiting for task 3 to terminate. However, task 2 will never be submitted because of the maximum parallelism.
 
-In this simple example the coordinator could avoid the deadlock by submitting task 2 instead of task 4 after task 1 has terminated. It might be possible to avoid deadlocks in general by a more educated strategy for selecting which task to submit. Alternatively, it is possible to detect if all submitted tasks are waiting for other tasks to terminate. In such cases we could ignore the maximum parallelism and submit further tasks.
+Note that in this example the coordinator could have avoided the deadlock by submitting task 2 instead of task 4 after task 1 has terminated. This is what a priority queue would have done.
 
-We decided to not implement a deadlock prevention strategy for several reasons:
+Let us now discuss why we do not run into such problems with a priority queue (aka a *min heap*) with the task IDs as priorities, i.e., where task i has priority i, independent of how wrong the task dependencies are specified (missing dependencies, additional incorrect dependencies). For this to see, we first observe that
 
-1. We expect the performance in other use cases to suffer from such a deadlock prevention.
-1. We prefer the user to prevent deadlocks by specifying task dependencies correctly: Deadlocks that could be resolved by the coordinator only occur in scenarios where tasks are actively waiting for other tasks to terminate. This is an unnecessary waste of time.      
+1. a task i can only depend on tasks j < i (by accessing `ResultHandle.get()`) and
+1. a task i can only be declared to depend on tasks k < i (see Section [Task Dependencies](#task-dependencies)).
+
+This is due to the fact that when executing a task by calling `ExecutionCoordinator.execute()`, the specified dependencies and the task's code (if we do not apply some hacks) can only refer to handles that have already been created. These handles (and their tasks) have a lower ID than the task at hand.
+
+Now let us assume that our maximum parallelism is M and that we are in a deadlock with the tasks i_1 < ... < i_M being submitted to the `ExecutorService`. In particular, task i_1 must depend on a task j < i_1 (real dependency) that has not yet been executed. We will now argue that it is impossible to encounter this situation with a priority queue.
+
+For this, consider all direct and indirect specified (!) dependencies of task j that have not yet been executed plus task j and consider among these tasks the one with the smallest ID k. By construction, all specified dependencies of task k (which must have IDs lower than k) must already have been executed, which makes task k eligible for submission.
+
+Now consider the point in time when the last task completes, i.e., before reaching the deadlock. At that time, only M-1 of the tasks i_1, ..., i_M have already been submitted to the `ExecutorService`. The deadlock is created by submitting the remaining one of these tasks. However, this cannot happen with a priority queue because k ≤ j < i_1: There was at least one other task (task k) at that time (or earlier) that would have been selected instead. This contradicts the assumption that we ran into a deadlock with the tasks i_1, ..., i_M.
+
+We have shown that priority queues, in contrast to FIFO queues, prevent certain deadlocks if not all dependencies are specified correctly. However, we still can encounter situations in which all but one submitted task are waiting for other tasks to complete. This is why we encourage users to specify all dependencies of their tasks. After all, one main objective of Hippodamus is to exploit dependency information for improving the performance.  
 
 ## Aggregation
 
@@ -360,7 +369,7 @@ Currently there are three ways to stop a coordinator:
 
 Hippodamus was designed to enable writing code that looks as much sequential as possible. Hence, one intention was to eliminate the need for registering listeners. However, since we did not want to unnecessarily limit its applicability, Hippodamus provides a basic listener concept for `Handle`s: You can register listeners for the case that a task finishes regularly or exceptionally. For registering a listener, you call on of the methods
 
-- `Handle.onCompletion(Runnable)`or
+- `Handle.onCompletion(Runnable)` or
 - `Handle.onException(Runnable)`,
 
 respectively. Note that, unlike in the `CompletableFuture` API, the listeners are pure `Runnable`s instead of consumers of the result value or an exception. This makes it a bit more flexible because the runnable could also be a lambda that captures the handle. We propose the following procedure for registering listeners:
