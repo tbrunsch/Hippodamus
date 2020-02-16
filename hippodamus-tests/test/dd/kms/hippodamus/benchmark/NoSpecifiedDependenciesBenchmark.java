@@ -19,8 +19,8 @@ import java.util.function.Supplier;
  */
 public class NoSpecifiedDependenciesBenchmark
 {
-	private static final int	NUM_TASKS		= 1000;
-	private static final long	TASK_TIME_MS	= 10;
+	private static final int	NUM_TASKS		= 100;
+	private static final long	TASK_TIME_MS	= 100;
 	private static final long	PRECISION_MS	= 200;
 	private static final double	TOLERANCE		= 1.05;
 
