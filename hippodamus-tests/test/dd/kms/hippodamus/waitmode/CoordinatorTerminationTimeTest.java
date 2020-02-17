@@ -1,4 +1,4 @@
-package dd.kms.hippodamus;
+package dd.kms.hippodamus.waitmode;
 
 import dd.kms.hippodamus.coordinator.Coordinators;
 import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
@@ -36,7 +36,7 @@ import java.util.concurrent.Executors;
  * </ul>
  */
 @RunWith(Parameterized.class)
-public class WaitModeTest
+public class CoordinatorTerminationTimeTest
 {
 	private static final int	NUM_THREADS					= 3;
 	private static final long	TASK_TIME_MS				= 1000;
@@ -54,12 +54,12 @@ public class WaitModeTest
 
 	private final WaitMode	waitMode;
 
-	public WaitModeTest(WaitMode waitMode) {
+	public CoordinatorTerminationTimeTest(WaitMode waitMode) {
 		this.waitMode = waitMode;
 	}
 
 	@Test
-	public void testWaitMode() {
+	public void testCoordinatorTerminationTime() {
 		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getPotentialParallelism() >= NUM_THREADS);
 
 		TaskCounter counter = new TaskCounter();
