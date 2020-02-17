@@ -7,6 +7,7 @@ import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
@@ -28,6 +29,7 @@ public class StoppableTest
 	private static final long	TASK_2_SLEEP_INTERVAL	= 100;
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
 	private static final long	PRECISION_MS			= 500;
+	private static final long	TIME_UNTIL_STOP_MS		= 1000;
 
 	@Test
 	public void testStopWithoutStopReaction() {
@@ -46,7 +48,7 @@ public class StoppableTest
 
 		Assert.assertTrue("An exception has been swallowed", caughtException);
 
-		if (TestUtils.getPotentialParallelism() < 2) {
+		if (TestUtils.getDefaultParallelism() < 2) {
 			// We do not require time constraints to be met with only 1 processor
 			System.out.println("Skipped checking time constraints");
 			return;
@@ -83,7 +85,7 @@ public class StoppableTest
 
 		Assert.assertTrue("An exception has been swallowed", caughtException);
 
-		if (TestUtils.getPotentialParallelism() < 2) {
+		if (TestUtils.getDefaultParallelism() < 2) {
 			// We do not require time constraints to be met with only 1 processor
 			System.out.println("Skipped checking time constraints");
 			return;
@@ -96,6 +98,27 @@ public class StoppableTest
 		long expectedTimeMs = TIME_UNTIL_EXCEPTION_MS;
 		TestUtils.assertTimeLowerBound(expectedTimeMs, elapsedTimeCoordinatorMs);
 		TestUtils.assertTimeUpperBound(expectedTimeMs + PRECISION_MS, elapsedTimePoolMs);
+	}
+
+	@Test
+	public void testManualStop() {
+		Assume.assumeTrue("This test requires at least two tasks to be processed in parallel", TestUtils.getDefaultParallelism() > 1);
+
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		StopWatch stopWatch = new StopWatch();
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+			coordinator.execute(this::run2WithStopReaction);
+			coordinator.execute(() -> {
+				TestUtils.simulateWork(TIME_UNTIL_STOP_MS);
+				coordinator.stop();
+			});
+		}
+		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
+
+		long lowerBoundMs = TIME_UNTIL_STOP_MS;
+		long upperBoundMs = lowerBoundMs + TASK_2_SLEEP_INTERVAL + PRECISION_MS;
+		TestUtils.assertTimeLowerBound(lowerBoundMs, elapsedTimeMs);
+		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
 	}
 
 	private void run1() throws ExpectedException {

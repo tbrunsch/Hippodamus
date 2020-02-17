@@ -21,7 +21,7 @@ public class MaximumParallelismTest
 	private static final long	TASK_TIME_MS		= 10;
 
 	private static final long	LONG_TASK_TIME_MS	= 500;
-	private static final long	PRECISION			= 200;
+	private static final long	PRECISION_MS		= 200;
 
 	@Parameterized.Parameters(name = "max parallelism: {0}")
 	public static Object getParameters() {
@@ -88,7 +88,7 @@ public class MaximumParallelismTest
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 		stoppingThread.interrupt();
 
-		TestUtils.assertTimeUpperBound(4*LONG_TASK_TIME_MS + PRECISION, elapsedTimeMs);
+		TestUtils.assertTimeUpperBound(4*LONG_TASK_TIME_MS + PRECISION_MS, elapsedTimeMs);
 	}
 
 	private int returnWithDelay(int value) {
