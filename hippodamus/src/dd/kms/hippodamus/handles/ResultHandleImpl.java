@@ -319,18 +319,16 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		}
 	}
 
-	private T executeCallable() {
+	private void executeCallable() {
 		// TODO: Abort execution if handle stopped?
 		if (!onStartExecution()) {
-			return null;
+			return;
 		}
 		try {
 			T result = callable.call(this::hasStopped);
 			setResult(result);
-			return result;
 		} catch (Throwable throwable) {
 			setException(throwable);
-			return null;
 		}
 	}
 

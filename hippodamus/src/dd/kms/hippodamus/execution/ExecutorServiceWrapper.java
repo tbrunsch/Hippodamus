@@ -1,7 +1,12 @@
 package dd.kms.hippodamus.execution;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Comparator;
+import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 
 public class ExecutorServiceWrapper implements AutoCloseable
 {
@@ -42,8 +47,8 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public InternalTaskHandle submit(int id, Callable<?> callable) {
-		InternalTaskHandle taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(callable));
+	public InternalTaskHandle submit(int id, Runnable runnable) {
+		InternalTaskHandle taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(runnable));
 		if (canSubmitTask()) {
 			taskHandle.submit();
 		} else {
@@ -69,9 +74,9 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return numPendingSubmittedTasks < maxParallelism;
 	}
 
-	private Future<?> submitNow(Callable<?> callable) {
+	private Future<?> submitNow(Runnable runnable) {
 		numPendingSubmittedTasks++;
-		return executorService.submit(callable);
+		return executorService.submit(runnable);
 	}
 
 	@Override
