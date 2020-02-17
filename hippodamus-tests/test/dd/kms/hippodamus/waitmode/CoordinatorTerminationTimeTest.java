@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 /**
  * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br/>
  * <br/>
- * The test executes equally sized tasks on {@link #NUM_THREADS} threads. In each round, {@code NUM_THREADS} tasks
+ * The test executes equally sized tasks on {@link #PARALLELISM} threads. In each round, {@code NUM_THREADS} tasks
  * are executed in parallel. After {@link #NUM_ROUNDS_UNTIL_EXCEPTION} rounds, there will be a task that throws
  * an exception after {@link #HALF_TASK_TIME_MS} milliseconds causing the coordinator to stop all tasks. The
  * behavior now depends on the {@code WaitMode}:
@@ -38,12 +38,12 @@ import java.util.concurrent.Executors;
 @RunWith(Parameterized.class)
 public class CoordinatorTerminationTimeTest
 {
-	private static final int	NUM_THREADS					= 3;
+	private static final int	PARALLELISM					= 3;
 	private static final long	TASK_TIME_MS				= 1000;
 	private static final long	HALF_TASK_TIME_MS			= TASK_TIME_MS/2;
 	private static final int	NUM_ROUNDS_UNTIL_EXCEPTION	= 2;
-	private static final int	NUM_TASKS_UNTIL_EXCEPTION	= NUM_ROUNDS_UNTIL_EXCEPTION*NUM_THREADS;
-	private static final int	NUM_TASKS					= NUM_TASKS_UNTIL_EXCEPTION	+ 2*NUM_THREADS;
+	private static final int	NUM_TASKS_UNTIL_EXCEPTION	= NUM_ROUNDS_UNTIL_EXCEPTION*PARALLELISM;
+	private static final int	NUM_TASKS					= NUM_TASKS_UNTIL_EXCEPTION	+ 2*PARALLELISM;
 
 	private static final long	PRECISION_MS				= 300;
 
@@ -60,13 +60,12 @@ public class CoordinatorTerminationTimeTest
 
 	@Test
 	public void testCoordinatorTerminationTime() {
-		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getPotentialParallelism() >= NUM_THREADS);
+		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getDefaultParallelism() >= PARALLELISM);
 
 		TaskCounter counter = new TaskCounter();
-		ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
 		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
-			.executorService(TaskType.REGULAR, executorService, true)
-			.waitMode(waitMode);
+			.waitMode(waitMode)
+			.maximumParallelism(TaskType.REGULAR, PARALLELISM);
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtException = false;
 		try (ExecutionCoordinator coordinator = builder.build()) {
@@ -76,14 +75,21 @@ public class CoordinatorTerminationTimeTest
 		} catch (TestException e) {
 			caughtException = true;
 		}
-		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
+		long coordinatorTimeMs = stopWatch.getElapsedTimeMs();
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		long poolTimeMs = stopWatch.getElapsedTimeMs();
+
 		Assert.assertTrue("An exception has been swallowed", caughtException);
 
-		long expectedTimeMs = waitMode == WaitMode.UNTIL_TERMINATION
+		long expectedCoordinatorTimeMs = waitMode == WaitMode.UNTIL_TERMINATION
 								? (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS
 								: NUM_ROUNDS_UNTIL_EXCEPTION*TASK_TIME_MS + HALF_TASK_TIME_MS;
-		TestUtils.assertTimeLowerBound(expectedTimeMs, elapsedTimeMs);
-		TestUtils.assertTimeUpperBound(expectedTimeMs + PRECISION_MS, elapsedTimeMs);
+		TestUtils.assertTimeLowerBound(expectedCoordinatorTimeMs, coordinatorTimeMs);
+		TestUtils.assertTimeUpperBound(expectedCoordinatorTimeMs + PRECISION_MS, coordinatorTimeMs);
+
+		long expectedPoolTimeMs = (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS;
+		TestUtils.assertTimeLowerBound(expectedPoolTimeMs, poolTimeMs);
+		TestUtils.assertTimeUpperBound(expectedPoolTimeMs + PRECISION_MS, poolTimeMs);
 	}
 
 	private void run(TaskCounter counter) throws TestException {

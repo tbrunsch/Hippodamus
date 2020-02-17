@@ -101,23 +101,28 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	}
 
 	/**
-	 * @return true if and only if no internal error occurred
+	 * @return true if task should be executed. If the method returns false, then
+	 * both, the handle's and the coordinator's termination lock are released
+	 * because that task will not be executed at all.
 	 */
 	private boolean onStartExecution() {
 		synchronized (coordinator) {
 			String error =	!state.isFlagSet(StateFlag.SUBMITTED)	? "A task that has not been submitted cannot be executed" :
-				state.getException() != null			? "A handle that has not yet been executed cannot have an exception" :
-					state.isFlagSet(StateFlag.COMPLETED)	? "A handle that has not yet been executed cannot have completed"
+							state.getException() != null			? "A handle that has not yet been executed cannot have an exception" :
+							state.isFlagSet(StateFlag.COMPLETED)	? "A handle that has not yet been executed cannot have completed"
 						: null;
 			if (error != null) {
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, error);
+			}
+			boolean execute = error == null && !state.isFlagSet(StateFlag.STOPPED);
+			if (execute) {
+				state.setFlag(StateFlag.STARTED_EXECUTION);
+				coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
+			} else {
 				releaseTerminationLock();
 				releaseCoordinatorTerminationLock();
-				return false;
 			}
-			state.setFlag(StateFlag.STARTED_EXECUTION);
-			coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
-			return true;
+			return execute;
 		}
 	}
 
@@ -320,7 +325,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	}
 
 	private void executeCallable() {
-		// TODO: Abort execution if handle stopped?
 		if (!onStartExecution()) {
 			return;
 		}
