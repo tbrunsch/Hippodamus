@@ -35,9 +35,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	 * <br/>
 	 * Note that this lock must be released before calling any listener to avoid deadlocks: Listeners,
 	 * in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
-	 * {@link ResultHandleImpl#get()}. This is why we always release the termination lock at the
-	 * beginning of a method (cf. {@link #markAsCompleted()}, {@link #setException(Throwable)}, and
-	 * {@link #stop()})<br/>
+	 * {@link ResultHandleImpl#get()}.<br/>
 	 * <br/>
 	 * In contrast to that, the coordinator's termination lock, which we obtain by calling
 	 * {@link InternalCoordinator#getTerminationLock()}, must be released after calling any listener
@@ -86,6 +84,12 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	private volatile InternalTaskHandle					taskHandle;
 	private volatile T									result;
 
+	/**
+	 * This field is required to distinguish the case {@code result == null} because it has not yet
+	 * been set from the case {@code result == null} because that was the actual result.
+	 */
+	private volatile boolean							resultIsSet;
+
 	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
@@ -113,27 +117,24 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 						: null;
 			if (error != null) {
 				coordinator.log(LogLevel.INTERNAL_ERROR, this, error);
+				assert state.isFlagSet(StateFlag.STOPPED);
 			}
-			boolean execute = error == null && !state.isFlagSet(StateFlag.STOPPED);
-			if (execute) {
-				state.setFlag(StateFlag.STARTED_EXECUTION);
-				coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
-			} else {
-				releaseTerminationLock();
-				releaseCoordinatorTerminationLock();
+			if (state.isFlagSet(StateFlag.STOPPED)) {
+				/*
+				 * Since the task has not yet been executed and it is stopped, neither
+				 * the handle's not the coordinator's termination lock should be hold
+				 * by this task.
+				 */
+				return false;
 			}
-			return execute;
+			state.setFlag(StateFlag.STARTED_EXECUTION);
+			coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
+			return true;
 		}
 	}
 
 	private void markAsCompleted() {
 		synchronized (coordinator) {
-			/*
-			 * The handle's termination lock must be released before calling the completion listeners
-			 * to avoid a deadlock: Listeners might call join, which waits for the termination lock
-			 * to be released.
-			 */
-			releaseTerminationLock();
 			try {
 				if (state.getException() != null) {
 					coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle with an exception cannot have completed");
@@ -143,6 +144,14 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				addPendingFlag(StateFlag.COMPLETED);
+
+				/*
+				 * The handle's termination lock must be released before calling the completion listeners
+				 * to avoid a deadlock: Listeners might call join, which waits for the termination lock
+				 * to be released.
+				 */
+				releaseTerminationLock();
+
 				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 				executorServiceWrapper.onTaskCompleted();
 				setPendingFlags();
@@ -154,8 +163,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private void setException(Throwable exception) {
 		synchronized (coordinator) {
-			// Release handle's termination lock before calling any listener to be consistent with markAsCompleted().
-			releaseTerminationLock();
 			try {
 				if (state.getException() != null) {
 					return;
@@ -165,6 +172,10 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				state.setException(exception);
+
+				// Release handle's termination lock before calling any listener to be consistent with markAsCompleted().
+				releaseTerminationLock();
+
 				notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 				setPendingFlags();
 			} finally {
@@ -219,13 +230,12 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public final void stop() {
 		synchronized (coordinator) {
-			// First release handle's termination lock to be consistent with markAsCompleted().
-			releaseTerminationLock();
 			try {
 				if (hasStopped()) {
 					return;
 				}
 				addPendingFlag(StateFlag.STOPPED);
+				releaseTerminationLock();
 				try {
 					coordinator.stopDependentHandles(this);
 					if (state.isFlagSet(StateFlag.SUBMITTED)) {
@@ -253,10 +263,20 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 			}
 			return;
 		}
-		if (hasStopped() || getException() != null) {
+		if (resultIsSet) {
 			return;
 		}
+		checkStoppedHandle();
 		acquireLock(terminationLock, true);
+		if (!resultIsSet) {
+			throw new TaskStoppedException(taskName);
+		}
+	}
+
+	private void checkStoppedHandle() {
+		if (getException() != null || hasStopped()) {
+			throw new TaskStoppedException(taskName);
+		}
 	}
 
 	@Override
@@ -307,7 +327,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		return coordinator;
 	}
 
-	// TODO: Throw an exception if state.getException() != null?
 	@Override
 	public T get() {
 		join();
@@ -320,6 +339,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				return;
 			}
 			result = value;
+			resultIsSet = true;
 			markAsCompleted();
 		}
 	}
@@ -331,6 +351,10 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		try {
 			T result = callable.call(this::hasStopped);
 			setResult(result);
+		} catch (TaskStoppedException e) {
+			releaseTerminationLock();
+			releaseCoordinatorTerminationLock();
+			stop();
 		} catch (Throwable throwable) {
 			setException(throwable);
 		}

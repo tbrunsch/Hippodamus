@@ -76,6 +76,8 @@ public interface Handle
 	 *         will send an exception, if adequate, to the coordinator's thread.
 	 *     </li>
 	 * </ul>
+	 *
+	 * @throws TaskStoppedException if the handle has been stopped
 	 */
 	void join();
 
