@@ -29,44 +29,23 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
 
 	/**
-	 * This lock is released when the task terminates, either successfully or exceptionally, or
-	 * is stopped. The {@link #join()}-method acquires this lock to ensure that it only returns after
-	 * termination.<br/>
+	 * This value is set to true when the task terminates, either successfully or exceptionally, or
+	 * is stopped. It is meant to be waited for in the {@link #join()}-method.<br/>
 	 * <br/>
-	 * Note that this lock must be released before calling any listener to avoid deadlocks: Listeners,
-	 * in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
-	 * {@link ResultHandleImpl#get()}.<br/>
-	 * <br/>
-	 * In contrast to that, the coordinator's termination lock, which we obtain by calling
-	 * {@link InternalCoordinator#getTerminationLock()}, must be released after calling any listener
-	 * to ensure that the coordinator does not close before notifying all listeners. This is why we
-	 * always release the coordinator's termination lock at the end of a method.
+	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
+	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
+	 * {@link ResultHandleImpl#get()}.
 	 */
-	private final Semaphore 							terminationLock						= new Semaphore(1);
+	private final AwaitableBoolean						terminatedFlagForJoin;
 
 	/**
-	 * This field stores whether we have acquired the handle's {@link #terminationLock}.
-	 * It will be used to prevent releasing the {@code terminationLock} multiple times.<br/>
-	 * <br/>
-	 * This field is only modified in synchronized blocks or in methods that rule out concurrency
-	 * problems.
+	 * This value is set to true when the task terminates, either successfully or exceptionally, or
+	 * is stopped. It operates on the coordinator's termination lock we obtain by calling
+	 * {@link InternalCoordinator#getTerminationLock()}.<br/>
+	 * Note that the value must be set to true <b>after</b> calling any listener to ensure that the
+	 * coordinator does not close before notifying all listeners.
 	 */
-	private boolean										acquiredTerminationLock				= false;
-
-	/**
-	 * This field stores whether we have acquired the coordinator's termination lock, which we
-	 * obtain by calling {@link InternalCoordinator#getTerminationLock()}. It will be used to
-	 * prevent releasing the coordinator's termination lock multiple times. While releasing the
-	 * handle's {@link #terminationLock} multiple times might be ok in the current implementation,
-	 * releasing the coordinator's termination lock multiple times would be fatal. Since the lock
-	 * is only counting the number of tasks (and not tracking the tasks) that currently hold it,
-	 * releasing the termination lock multiple times is equivalent to a handle releasing the lock
-	 * too early.<br/>
-	 * <br/>
-	 * This field is only modified in synchronized blocks or in methods that rule out concurrency
-	 * problems.
-	 */
-	private boolean										acquiredCoordinatorTerminationLock	= false;
+	private final AwaitableBoolean						terminatedFlagForCoordinator;
 
 	/**
 	 * Collects flags that will be set to finish a state change. The reason for this is that
@@ -99,15 +78,23 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		this.verifyDependencies = verifyDependencies;
 		this.state = new HandleState(false, stopped);
 
+		terminatedFlagForJoin = new AwaitableBoolean(new Semaphore(1));
+		terminatedFlagForCoordinator = new AwaitableBoolean(coordinator.getTerminationLock());
+
 		if (!stopped) {
-			acquireTerminationLocks();
+			try {
+				terminatedFlagForJoin.setFalse();
+				terminatedFlagForCoordinator.setFalse();
+			} catch (InterruptedException e) {
+				stop();
+				terminatedFlagForJoin.setTrue();
+				terminatedFlagForCoordinator.setTrue();
+			}
 		}
 	}
 
 	/**
-	 * @return true if task should be executed. If the method returns false, then
-	 * both, the handle's and the coordinator's termination lock are released
-	 * because that task will not be executed at all.
+	 * @return true if task should be executed
 	 */
 	private boolean onStartExecution() {
 		synchronized (coordinator) {
@@ -120,11 +107,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				assert state.isFlagSet(StateFlag.STOPPED);
 			}
 			if (state.isFlagSet(StateFlag.STOPPED)) {
-				/*
-				 * Since the task has not yet been executed and it is stopped, neither
-				 * the handle's not the coordinator's termination lock should be hold
-				 * by this task.
-				 */
 				return false;
 			}
 			state.setFlag(StateFlag.STARTED_EXECUTION);
@@ -146,17 +128,17 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				addPendingFlag(StateFlag.COMPLETED);
 
 				/*
-				 * The handle's termination lock must be released before calling the completion listeners
-				 * to avoid a deadlock: Listeners might call join, which waits for the termination lock
-				 * to be released.
+				 * The terminated flag awaited in the join-method must be set to true before calling the
+				 * completion listeners to avoid a deadlock: Listeners might call join(), which waits
+				 * for the flag to be set.
 				 */
-				releaseTerminationLock();
+				setTerminatedFlagForJoin();
 
 				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 				executorServiceWrapper.onTaskCompleted();
 				setPendingFlags();
 			} finally {
-				releaseCoordinatorTerminationLock();
+				setTerminatedFlagForCoordinator();
 			}
 		}
 	}
@@ -172,14 +154,11 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				state.setException(exception);
-
-				// Release handle's termination lock before calling any listener to be consistent with markAsCompleted().
-				releaseTerminationLock();
-
+				setTerminatedFlagForJoin();
 				notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 				setPendingFlags();
 			} finally {
-				releaseCoordinatorTerminationLock();
+				setTerminatedFlagForCoordinator();
 			}
 		}
 	}
@@ -235,7 +214,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				addPendingFlag(StateFlag.STOPPED);
-				releaseTerminationLock();
+				setTerminatedFlagForJoin();
 				try {
 					coordinator.stopDependentHandles(this);
 					if (state.isFlagSet(StateFlag.SUBMITTED)) {
@@ -245,8 +224,9 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					setPendingFlags();
 				}
 			} finally {
-				if (isReleaseTerminationLockOnStop()) {
-					releaseCoordinatorTerminationLock();
+				boolean coordinatorMustWaitForThisHandle = coordinator.getWaitMode() == WaitMode.UNTIL_TERMINATION && state.isFlagSet(StateFlag.STARTED_EXECUTION);
+				if (!coordinatorMustWaitForThisHandle) {
+					setTerminatedFlagForCoordinator();
 				}
 			}
 		}
@@ -267,7 +247,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 			return;
 		}
 		checkStoppedHandle();
-		acquireLock(terminationLock, true);
+		terminatedFlagForJoin.waitUntilTrue();
 		if (!resultIsSet) {
 			throw new TaskStoppedException(taskName);
 		}
@@ -352,8 +332,8 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 			T result = callable.call(this::hasStopped);
 			setResult(result);
 		} catch (TaskStoppedException e) {
-			releaseTerminationLock();
-			releaseCoordinatorTerminationLock();
+			setTerminatedFlagForJoin();
+			setTerminatedFlagForCoordinator();
 			stop();
 		} catch (Throwable throwable) {
 			setException(throwable);
@@ -361,83 +341,16 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	}
 
 	/*
-	 * Termination Locks
+	 * Terminated Flags
 	 */
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator or at a
-	 * point where concurrency problems regarding field {@code acquiredTerminationLock}
-	 * can be ruled out.
-	 */
-	private void acquireTerminationLocks() {
-		acquiredTerminationLock = acquireLock(terminationLock, false);
-		if (acquiredTerminationLock) {
-			/*
-			 * Only acquire coordinator's termination lock if own termination lock could
-			 * be acquired. Otherwise, the task will be stopped anyway.
-			 */
-			acquiredCoordinatorTerminationLock = acquireLock(coordinator.getTerminationLock(), false);
-		}
-		if (!acquiredTerminationLock || !acquiredCoordinatorTerminationLock) {
-			/*
-			 * Acquiring a lock can only fail if the thread has been interrupted. In that
-			 * case, we stop the task.
-			 */
-			stop();
-		}
+	private void setTerminatedFlagForJoin() {
+		coordinator.log(LogLevel.DEBUGGING, this, "Notifying waiting threads about termination...");
+		terminatedFlagForJoin.setTrue();
 	}
 
-	private boolean acquireLock(Semaphore lock, boolean releaseAfterwards) {
-		try {
-			lock.acquire();
-			return !releaseAfterwards;
-		} catch (InterruptedException e) {
-			return false;
-		} finally {
-			if (releaseAfterwards) {
-				lock.release();
-			}
-		}
-	}
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private void releaseTerminationLock() {
-		coordinator.log(LogLevel.DEBUGGING, this, "Releasing handle's termination lock");
-		acquiredTerminationLock = !releaseLock(terminationLock, acquiredTerminationLock);
-	}
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private void releaseCoordinatorTerminationLock() {
-		coordinator.log(LogLevel.DEBUGGING, this, "Releasing coordinator's termination lock");
-		acquiredCoordinatorTerminationLock = !releaseLock(coordinator.getTerminationLock(), acquiredCoordinatorTerminationLock);
-	}
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private boolean releaseLock(Semaphore lock, boolean acquiredLock) {
-		if (acquiredLock) {
-			lock.release();
-		}
-		return true;
-	}
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private boolean isReleaseTerminationLockOnStop() {
-		/*
-		 * Do not release the termination lock on stop if
-		 *     (1) the coordinator should wait until all tasks have terminated (not only requested to terminate) and
-		 *     (2) the task's execution has started.
-		 * If both conditions are met, then the lock will be released on termination, either
-		 * successfully in markAsCompleted() or exceptionally in setException().
-		 */
-		return !(coordinator.getWaitMode() == WaitMode.UNTIL_TERMINATION && state.isFlagSet(StateFlag.STARTED_EXECUTION));
+	private void setTerminatedFlagForCoordinator() {
+		coordinator.log(LogLevel.DEBUGGING, this, "Notifying coordinator about termination...");
+		terminatedFlagForCoordinator.setTrue();
 	}
 
 	/*
