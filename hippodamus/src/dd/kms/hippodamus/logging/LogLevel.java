@@ -23,10 +23,5 @@ public enum LogLevel
 	/**
 	 * Messages on this level describe state changes of {@link Handle}s.
 	 */
-	STATE,
-
-	/**
-	 * Messages on this level are meant for debugging.
-	 */
-	DEBUGGING
+	STATE
 }
