@@ -23,7 +23,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 	private final boolean								verifyDependencies;
-	private final HandleState							state;
 
 	private final List<Runnable>						completionListeners					= new ArrayList<>();
 	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
@@ -47,27 +46,11 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private final AwaitableBoolean						terminatedFlagForCoordinator;
 
-	/**
-	 * Collects flags that will be set to finish a state change. The reason for this is that
-	 * we want the flags to be updated after notifying listeners. However, there are listeners that
-	 * also change a handle's state. This field ensures that the of the state changes happens in
-	 * the original order.<br/>
-	 * <br/>
-	 * Reordering the state changes can be critical for example for short-circuit evaluation:
-	 * A change to "completed" may trigger a "stop" for all handles via a completion listener,
-	 * making the handle stop before it has set the "completed" flag. The {@code ExecutionCoordinator}
-	 * may now close before the handle's "completed" flag is set.<br/>
-	 */
-	private final Queue<StateFlag> 						pendingFlags						= new ArrayDeque<>();
+	private final ResultDescription<T>					resultDescription					= new ResultDescription<>();
+	private volatile HandleStage						handleStage							= HandleStage.INITIAL;
+	private volatile boolean							stopped								= false;
 
 	private volatile InternalTaskHandle					taskHandle;
-	private volatile T									result;
-
-	/**
-	 * This field is required to distinguish the case {@code result == null} because it has not yet
-	 * been set from the case {@code result == null} because that was the actual result.
-	 */
-	private volatile boolean							resultIsSet;
 
 	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
@@ -76,7 +59,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 		this.verifyDependencies = verifyDependencies;
-		this.state = new HandleState(false, stopped);
+		this.stopped = stopped;
 
 		terminatedFlagForJoin = new AwaitableBoolean(new Semaphore(1));
 		terminatedFlagForCoordinator = new AwaitableBoolean(coordinator.getTerminationLock());
@@ -87,8 +70,22 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				terminatedFlagForCoordinator.setFalse();
 			} catch (InterruptedException e) {
 				stop();
-				terminatedFlagForJoin.setTrue();
-				terminatedFlagForCoordinator.setTrue();
+			}
+		}
+	}
+
+	/*****************
+	 * Stage Changes *
+	 ****************/
+	@Override
+	public void submit() {
+		synchronized (coordinator) {
+			boolean success = checkState()
+							&& !stopped
+							&& transitionToStage(HandleStage.SUBMITTED)
+							&& checkState();
+			if (success) {
+				taskHandle = executorServiceWrapper.submit(id, this::executeCallable);
 			}
 		}
 	}
@@ -96,75 +93,184 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	/**
 	 * @return true if task should be executed
 	 */
-	private boolean onStartExecution() {
+	private boolean startExecution() {
 		synchronized (coordinator) {
-			String error =	!state.isFlagSet(StateFlag.SUBMITTED)	? "A task that has not been submitted cannot be executed" :
-							state.getException() != null			? "A handle that has not yet been executed cannot have an exception" :
-							state.isFlagSet(StateFlag.COMPLETED)	? "A handle that has not yet been executed cannot have completed"
-						: null;
-			if (error != null) {
-				coordinator.log(LogLevel.INTERNAL_ERROR, this, error);
-				assert state.isFlagSet(StateFlag.STOPPED);
-			}
-			if (state.isFlagSet(StateFlag.STOPPED)) {
-				return false;
-			}
-			state.setFlag(StateFlag.STARTED_EXECUTION);
-			coordinator.log(LogLevel.STATE, this, StateFlag.STARTED_EXECUTION.getTransactionEndString());
-			return true;
+			return checkState()
+				&& !stopped
+				&& transitionToStage(HandleStage.EXECUTING)
+				&& checkState();
 		}
 	}
 
-	private void markAsCompleted() {
+	private void complete(T result) {
 		synchronized (coordinator) {
 			try {
-				if (state.getException() != null) {
-					coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle with an exception cannot have completed");
-					return;
+				boolean success = checkState()
+								&& checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
+								&& log(LogLevel.STATE, "result = " + result)
+								&& transitionToStage(HandleStage.TERMINATING)
+								&& checkState();
+				if (success) {
+					notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
+					executorServiceWrapper.onTaskCompleted();
 				}
-				if (state.isFlagSet(StateFlag.COMPLETED)) {
-					return;
-				}
-				addPendingFlag(StateFlag.COMPLETED);
-
-				/*
-				 * The terminated flag awaited in the join-method must be set to true before calling the
-				 * completion listeners to avoid a deadlock: Listeners might call join(), which waits
-				 * for the flag to be set.
-				 */
-				setTerminatedFlagForJoin();
-
-				notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-				executorServiceWrapper.onTaskCompleted();
-				setPendingFlags();
 			} finally {
-				setTerminatedFlagForCoordinator();
+				transitionToStage(HandleStage.TERMINATED);
 			}
 		}
 	}
 
-	private void setException(Throwable exception) {
+	private void terminateExceptionally(Throwable exception) {
 		synchronized (coordinator) {
 			try {
-				if (state.getException() != null) {
-					return;
+				boolean success = checkState()
+								&& checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
+								&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
+								&& transitionToStage(HandleStage.TERMINATING);
+				if (success) {
+					notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 				}
-				if (state.isFlagSet(StateFlag.COMPLETED)) {
-					coordinator.log(LogLevel.INTERNAL_ERROR, this, "A handle of a completed task cannot have an exception");
-					return;
-				}
-				state.setException(exception);
-				setTerminatedFlagForJoin();
-				notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
-				setPendingFlags();
 			} finally {
-				setTerminatedFlagForCoordinator();
+				transitionToStage(HandleStage.TERMINATED);
+			}
+		}
+	}
+
+	@Override
+	public final void stop() {
+		synchronized (coordinator) {
+			HandleStage oldHandleStage = this.handleStage;
+			try {
+				if (!checkState() || stopped) {
+					return;
+				}
+				stopped = true;
+				log(LogLevel.STATE, "stopped");
+				if (oldHandleStage == HandleStage.EXECUTING) {
+					/*
+					 * Since the task is still executing and we cannot simply stop it,
+					 * we cannot change to HandleStage.TERMINATED. Nevertheless, we
+					 * set the terminated flag that blocks calls to join() to true
+					 * because further waiting is useless.
+					 */
+					terminatedFlagForJoin.setTrue();
+				} else {
+					transitionToStage(HandleStage.TERMINATED);
+				}
+				coordinator.stopDependentHandles(this);
+				if (taskHandle != null) {
+					taskHandle.stop();
+				}
+			} finally {
+				if (oldHandleStage == HandleStage.EXECUTING) {
+					if (coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
+						/*
+						 * Since the task is still executing and we cannot simply stop it,
+						 * we cannot change to HandleStage.TERMINATED. Nevertheless, we
+						 * set the terminated flag that blocks the coordinator if it does
+						 * not want to wait until the task terminates.
+						 */
+						terminatedFlagForCoordinator.setTrue();
+					}
+				}
+			}
+		}
+	}
+
+	@Override
+	public void join() {
+		if (resultDescription.getResultType() == ResultType.COMPLETED) {
+			return;
+		}
+		if (verifyDependencies) {
+			synchronized (coordinator) {
+				log(LogLevel.INTERNAL_ERROR, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
+				throw new TaskStoppedException(taskName);
+			}
+		}
+		if (stopped || resultDescription.getResultType() == ResultType.EXCEPTION) {
+			throw new TaskStoppedException(taskName);
+		}
+		terminatedFlagForJoin.waitUntilTrue();
+		if (resultDescription.getResultType() != ResultType.COMPLETED) {
+			throw new TaskStoppedException(taskName);
+		}
+	}
+
+	@Override
+	public boolean hasCompleted() {
+		return resultDescription.getResultType() == ResultType.COMPLETED;
+	}
+
+	@Override
+	public final boolean hasStopped() {
+		return stopped;
+	}
+
+	@Override
+	public @Nullable Throwable getException() {
+		return resultDescription.getException();
+	}
+
+	@Override
+	public String getTaskName() {
+		return taskName;
+	}
+
+	@Override
+	public final InternalCoordinator getExecutionCoordinator() {
+		return coordinator;
+	}
+
+	@Override
+	public T get() {
+		join();
+		checkCondition(resultDescription.getResultType() == ResultType.COMPLETED, "join() returned regularly although there is no result available");
+		return resultDescription.getResult();
+	}
+
+	private void executeCallable() {
+		if (!startExecution()) {
+			return;
+		}
+		try {
+			T result = callable.call(this::hasStopped);
+			complete(result);
+		} catch (TaskStoppedException e) {
+			transitionToStage(HandleStage.TERMINATED);
+			stop();
+		} catch (Throwable throwable) {
+			terminateExceptionally(throwable);
+		}
+	}
+
+	/***********************
+	 * Listener Management *
+	 **********************/
+	@Override
+	public void onCompletion(Runnable listener) {
+		synchronized (coordinator) {
+			completionListeners.add(listener);
+			if (resultDescription.getResultType() == ResultType.COMPLETED) {
+				// only run this listener; other listeners have already been notified
+				notifyListeners(Collections.singletonList(listener), "completion listener", NO_HANDLE_CONSUMER);
+			}
+		}
+	}
+
+	@Override
+	public void onException(Runnable listener) {
+		synchronized (coordinator) {
+			exceptionListeners.add(listener);
+			if (resultDescription.getResultType() == ResultType.EXCEPTION) {
+				// only inform this handler; other handlers have already been notified
+				notifyListeners(Collections.singletonList(listener), "exception listener", NO_HANDLE_CONSUMER);
 			}
 		}
 	}
 
 	/**
-	 * Ensure that this method is only called with locking the coordinator.
+	 * Ensure that this method is only called when the coordinator is locked.
 	 */
 	private void notifyListeners(List<Runnable> listeners, String listenerDescription, Consumer<Handle> coordinatorListener) {
 		Throwable listenerException = null;
@@ -187,192 +293,61 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				listenerDescription,
 				exceptionalListener,
 				listenerException.getMessage());
+			log(LogLevel.INTERNAL_ERROR, message);
+		}
+	}
+
+	/**
+	 * Ensure that this method is only called when the coordinator is locked.<br/>
+	 * <br/>
+	 * The return value is always {@code true} such that this method can be used
+	 * within Boolean expressions.
+	 */
+	private boolean log(LogLevel logLevel, String message) {
+		coordinator.log(logLevel, this, message);
+		return true;
+	}
+
+	private boolean transitionToStage(HandleStage newStage) {
+		if (handleStage.compareTo(HandleStage.TERMINATING) < 0 && HandleStage.TERMINATING.compareTo(newStage) <= 0) {
+			terminatedFlagForJoin.setTrue();
+		}
+		if (newStage == HandleStage.TERMINATED) {
+			if (handleStage != HandleStage.TERMINATED) {
+				terminatedFlagForCoordinator.setTrue();
+			}
+		} else {
+			if (!checkCondition(newStage.ordinal() == handleStage.ordinal() + 1, "Trying to transition state from '" + handleStage + "' to '" + newStage + "'")) {
+				return false;
+			}
+		}
+		handleStage = newStage;
+		coordinator.log(LogLevel.STATE, this, handleStage.toString());
+		return true;
+	}
+
+	/***************************************************************
+	 * Consistency Checks                                          *
+	 *                                                             *
+	 * Ensure that they are called before any concurrency problems *
+	 * may occur or with locking the coordinator.                  *
+	 **************************************************************/
+	private boolean checkState() {
+		boolean success = true;
+		if (handleStage == HandleStage.INITIAL || handleStage == HandleStage.SUBMITTED || handleStage == HandleStage.EXECUTING) {
+			success = success && checkCondition(resultDescription.getResultType() == ResultType.NONE,	"The result should still be undefined");
+		}
+		ResultType resultType = resultDescription.getResultType();
+		if (resultType != ResultType.NONE) {
+			success = success && checkCondition(handleStage == HandleStage.TERMINATING || handleStage == HandleStage.TERMINATED,	"The task should have terminated");
+		}
+		return success;
+	}
+
+	private boolean checkCondition(boolean condition, String message) {
+		if (!condition) {
 			coordinator.log(LogLevel.INTERNAL_ERROR, this, message);
 		}
-	}
-
-	@Override
-	public void submit() {
-		synchronized (coordinator) {
-			if (state.isFlagSet(StateFlag.STOPPED) || state.isFlagSet(StateFlag.SUBMITTED)) {
-				return;
-			}
-			addPendingFlag(StateFlag.SUBMITTED);
-			try {
-				taskHandle = executorServiceWrapper.submit(id, this::executeCallable);
-			} finally {
-				setPendingFlags();
-			}
-		}
-	}
-
-	@Override
-	public final void stop() {
-		synchronized (coordinator) {
-			try {
-				if (hasStopped()) {
-					return;
-				}
-				addPendingFlag(StateFlag.STOPPED);
-				setTerminatedFlagForJoin();
-				try {
-					coordinator.stopDependentHandles(this);
-					if (state.isFlagSet(StateFlag.SUBMITTED)) {
-						taskHandle.stop();
-					}
-				} finally {
-					setPendingFlags();
-				}
-			} finally {
-				boolean coordinatorMustWaitForThisHandle = coordinator.getWaitMode() == WaitMode.UNTIL_TERMINATION && state.isFlagSet(StateFlag.STARTED_EXECUTION);
-				if (!coordinatorMustWaitForThisHandle) {
-					setTerminatedFlagForCoordinator();
-				}
-			}
-		}
-	}
-
-	@Override
-	public void join() {
-		if (hasCompleted()) {
-			return;
-		}
-		if (verifyDependencies) {
-			synchronized (coordinator) {
-				coordinator.log(LogLevel.INTERNAL_ERROR, this, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
-			}
-			return;
-		}
-		if (resultIsSet) {
-			return;
-		}
-		checkStoppedHandle();
-		terminatedFlagForJoin.waitUntilTrue();
-		if (!resultIsSet) {
-			throw new TaskStoppedException(taskName);
-		}
-	}
-
-	private void checkStoppedHandle() {
-		if (getException() != null || hasStopped()) {
-			throw new TaskStoppedException(taskName);
-		}
-	}
-
-	@Override
-	public boolean hasCompleted() {
-		return state.isFlagSet(StateFlag.COMPLETED);
-	}
-
-	@Override
-	public final boolean hasStopped() {
-		return state.isFlagSet(StateFlag.STOPPED);
-	}
-
-	@Override
-	public @Nullable Throwable getException() {
-		return state.getException();
-	}
-
-	@Override
-	public String getTaskName() {
-		return taskName;
-	}
-
-	@Override
-	public void onCompletion(Runnable listener) {
-		synchronized (coordinator) {
-			completionListeners.add(listener);
-			if (state.isFlagSet(StateFlag.COMPLETED)) {
-				// only run this listener; other listeners have already been notified
-				notifyListeners(Collections.singletonList(listener), "completion listener", NO_HANDLE_CONSUMER);
-			}
-		}
-	}
-
-	@Override
-	public void onException(Runnable listener) {
-		synchronized (coordinator) {
-			exceptionListeners.add(listener);
-			Throwable exception = state.getException();
-			if (exception != null) {
-				// only inform this handler; other handlers have already been notified
-				notifyListeners(Collections.singletonList(listener), "exception listener", NO_HANDLE_CONSUMER);
-			}
-		}
-	}
-
-	@Override
-	public final InternalCoordinator getExecutionCoordinator() {
-		return coordinator;
-	}
-
-	@Override
-	public T get() {
-		join();
-		return result;
-	}
-
-	private void setResult(T value) {
-		synchronized (state) {
-			if (state.isFlagSet(StateFlag.COMPLETED) || state.getException() != null) {
-				return;
-			}
-			result = value;
-			resultIsSet = true;
-			markAsCompleted();
-		}
-	}
-
-	private void executeCallable() {
-		if (!onStartExecution()) {
-			return;
-		}
-		try {
-			T result = callable.call(this::hasStopped);
-			setResult(result);
-		} catch (TaskStoppedException e) {
-			setTerminatedFlagForJoin();
-			setTerminatedFlagForCoordinator();
-			stop();
-		} catch (Throwable throwable) {
-			setException(throwable);
-		}
-	}
-
-	/*
-	 * Terminated Flags
-	 */
-	private void setTerminatedFlagForJoin() {
-		coordinator.log(LogLevel.DEBUGGING, this, "Notifying waiting threads about termination...");
-		terminatedFlagForJoin.setTrue();
-	}
-
-	private void setTerminatedFlagForCoordinator() {
-		coordinator.log(LogLevel.DEBUGGING, this, "Notifying coordinator about termination...");
-		terminatedFlagForCoordinator.setTrue();
-	}
-
-	/*
-	 * Pending Flags
-	 */
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private void addPendingFlag(StateFlag flag) {
-		coordinator.log(LogLevel.DEBUGGING, this, flag.getTransactionBeginString());
-		pendingFlags.add(flag);
-	}
-
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private void setPendingFlags() {
-		StateFlag flag;
-		while ((flag = pendingFlags.poll()) != null) {
-			state.setFlag(flag);
-			coordinator.log(LogLevel.STATE, this, flag.getTransactionEndString());
-		}
+		return condition;
 	}
 }
