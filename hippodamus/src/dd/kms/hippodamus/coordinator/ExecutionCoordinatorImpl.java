@@ -1,6 +1,5 @@
 package dd.kms.hippodamus.coordinator;
 
-import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.exceptions.*;
@@ -100,7 +99,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	/**
 	 * This lock is hold by all managed tasks. The coordinator will wait in its {@link #close()} method until
 	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally,
-	 * or when being stopped.
+	 * or when being stopped if the coordinator is configured with {@link WaitMode#UNTIL_TERMINATION_REQUESTED}.
 	 */
 	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
 
@@ -159,8 +158,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
 		int taskType = configuration.getTaskType();
 		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
-		return Preconditions.checkNotNull(executorServiceWrappersByTaskType.get(taskType),
-			"No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
+		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
+		if (executorServiceWrapper == null) {
+			throw new CoordinatorException("No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
+		}
+		return executorServiceWrapper;
 	}
 
 	@Override
