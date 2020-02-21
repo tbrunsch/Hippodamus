@@ -53,13 +53,15 @@ class HandleState<T>
 	}
 
 	boolean setResult(T result) {
-		return checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
+		return !stopped
+			&& checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
 			&& log(LogLevel.STATE, "result = " + result)
 			&& transitionTo(HandleStage.TERMINATING);
 	}
 
 	boolean setException(Throwable exception) {
-		return checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
+		return !stopped
+			&& checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
 			&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
 			&& transitionTo(HandleStage.TERMINATING);
 	}

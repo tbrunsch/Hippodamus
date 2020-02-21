@@ -107,8 +107,9 @@ public class ListenerTest
 			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
 			TestUtils.simulateWork(1000);
 			/*
-			 * - exception should already be thrown => will be thrown in close
-			 * - should already have completed when completion listener is added => listener will be called before close
+			 * exception is throw before task can complete
+			 * => task is stopped and, although it finishes without exception, its result is not considered anymore
+			 * => completion listener will not be notified
 			 */
 			result.onCompletion(() -> {
 				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
@@ -117,7 +118,7 @@ public class ListenerTest
 		} catch (TestException e) {
 			orderVerifier.register(ID_COORDINATOR);
 		}
-		orderVerifier.checkIdOrder(Arrays.asList(ID_TASK, ID_COORDINATOR));
+		orderVerifier.checkIdOrder(Arrays.asList(ID_COORDINATOR));
 	}
 
 	private int getValue(int result, long waitTimeMs, boolean throwException) {

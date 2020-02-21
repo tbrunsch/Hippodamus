@@ -97,7 +97,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 					return;
 				}
 				if (oldHandleStage == HandleStage.EXECUTING) {
-					// TODO: Ensure that completion and exceptions are ignored after stop()
 					// since we stop the task, the current result type won't change anymore
 					state.onResultTypeDetermined();
 				} else {
