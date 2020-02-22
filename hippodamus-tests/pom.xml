@@ -10,12 +10,19 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>hippodamus-tests</artifactId>
+	<name>Hippodamus Unit Tests</name>
 
 	<build>
 		<testSourceDirectory>test</testSourceDirectory>
 	</build>
 
 	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>dd.kms.hippodamus</groupId>
 			<artifactId>hippodamus</artifactId>

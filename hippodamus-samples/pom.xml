@@ -10,6 +10,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>hippodamus-samples</artifactId>
+	<name>Hippodamus Samples</name>
 
 	<build>
 		<sourceDirectory>src</sourceDirectory>
