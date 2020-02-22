@@ -5,11 +5,11 @@ import java.util.function.Predicate;
 
 public class Aggregators
 {
-	public static <S, T> Aggregator<S, T> createAggregator(T initValue, BiFunction<T, S, T> aggregationFunction) {
+	public static <S, R> Aggregator<S, R> createAggregator(R initValue, BiFunction<R, S, R> aggregationFunction) {
 		return new DefaultAggregator<>(initValue, aggregationFunction, value -> false);
 	}
 
-	public static <S, T> Aggregator<S, T> createAggregator(T initValue, BiFunction<T, S, T> aggregationFunction, Predicate<T> finalValuePredicate) {
+	public static <S, R> Aggregator<S, R> createAggregator(R initValue, BiFunction<R, S, R> aggregationFunction, Predicate<R> finalValuePredicate) {
 		return new DefaultAggregator<>(initValue, aggregationFunction, finalValuePredicate);
 	}
 

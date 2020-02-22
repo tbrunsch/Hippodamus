@@ -11,15 +11,15 @@ import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.Collection;
 
-public class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
+public class ExecutionConfigurationBuilderImpl<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
 {
-	final T						coordinator;
+	final C						coordinator;
 
 	private @Nullable String	name			= null;
 	private int					taskType		= TaskType.REGULAR;
 	private Collection<Handle>	dependencies	= ImmutableList.of();
 
-	public ExecutionConfigurationBuilderImpl(T coordinator) {
+	public ExecutionConfigurationBuilderImpl(C coordinator) {
 		this.coordinator = coordinator;
 	}
 
@@ -58,22 +58,22 @@ public class ExecutionConfigurationBuilderImpl<T extends ExecutionCoordinatorImp
 	}
 
 	@Override
-	public <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable) {
+	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
 		return execute(Exceptions.asStoppable(runnable));
 	}
 
 	@Override
-	public <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable) {
+	public <T extends Throwable> Handle execute(StoppableExceptionalRunnable<T> runnable) {
 		return execute(Exceptions.asCallable(runnable));
 	}
 
 	@Override
-	public <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable) {
+	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) {
 		return execute(Exceptions.asStoppable(callable));
 	}
 
 	@Override
-	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable) {
+	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable) {
 		return coordinator.execute(callable, createConfiguration());
 	}
 

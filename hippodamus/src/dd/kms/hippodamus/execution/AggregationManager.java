@@ -12,9 +12,9 @@ public interface AggregationManager<S>
 	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed. If the
 	 * task completes, then its result will be aggregated.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable) throws E;
+	<T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T;
 
 	/**
 	 * Executes a {@link StoppableExceptionalCallable} and returns a handle to the resulting task.<br/>
@@ -22,7 +22,7 @@ public interface AggregationManager<S>
 	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed. If the
 	 * task completes, then its result will be aggregated.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable) throws E;
+	<T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable) throws T;
 }

@@ -7,25 +7,25 @@ public class Exceptions
 		throw (T) t;
 	}
 
-	public static <E extends Throwable> ExceptionalCallable<Void, E> asCallable(ExceptionalRunnable<E> runnable) {
+	public static <T extends Throwable> ExceptionalCallable<Void, T> asCallable(ExceptionalRunnable<T> runnable) {
 		return () -> {
 			runnable.run();
 			return null;
 		};
 	}
 
-	public static <E extends Throwable> StoppableExceptionalCallable<Void, E> asCallable(StoppableExceptionalRunnable<E> runnable) {
+	public static <T extends Throwable> StoppableExceptionalCallable<Void, T> asCallable(StoppableExceptionalRunnable<T> runnable) {
 		return stopFlag -> {
 			runnable.run(stopFlag);
 			return null;
 		};
 	}
 
-	public static <E extends Throwable> StoppableExceptionalRunnable<E> asStoppable(ExceptionalRunnable<E> runnable) {
+	public static <T extends Throwable> StoppableExceptionalRunnable<T> asStoppable(ExceptionalRunnable<T> runnable) {
 		return stopFlag -> runnable.run();
 	}
 
-	public static <V, E extends Throwable> StoppableExceptionalCallable<V, E> asStoppable(ExceptionalCallable<V, E> callable) {
+	public static <V, T extends Throwable> StoppableExceptionalCallable<V, T> asStoppable(ExceptionalCallable<V, T> callable) {
 		return stopFlag -> callable.call();
 	}
 }

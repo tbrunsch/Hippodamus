@@ -6,21 +6,21 @@ import dd.kms.hippodamus.exceptions.Exceptions;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.handles.ResultHandle;
 
-public class AggregationConfigurationBuilderImpl<S, T>
-	extends ExecutionConfigurationBuilderImpl<AggregationCoordinatorImpl<S, T>, AggregationConfigurationBuilder<S, T>>
-	implements AggregationConfigurationBuilder<S, T>
+public class AggregationConfigurationBuilderImpl<S, R>
+	extends ExecutionConfigurationBuilderImpl<AggregationCoordinatorImpl<S, R>, AggregationConfigurationBuilder<S, R>>
+	implements AggregationConfigurationBuilder<S, R>
 {
-	public AggregationConfigurationBuilderImpl(AggregationCoordinatorImpl<S, T> coordinator) {
+	public AggregationConfigurationBuilderImpl(AggregationCoordinatorImpl<S, R> coordinator) {
 		super(coordinator);
 	}
 
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable) throws E {
+	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T {
 		return aggregate(Exceptions.asStoppable(callable));
 	}
 
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable) throws E {
+	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable) throws T {
 		return coordinator.aggregate(callable, createConfiguration());
 	}
 }

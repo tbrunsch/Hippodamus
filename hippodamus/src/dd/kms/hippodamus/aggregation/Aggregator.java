@@ -1,6 +1,6 @@
 package dd.kms.hippodamus.aggregation;
 
-public interface Aggregator<S, T>
+public interface Aggregator<S, R>
 {
 	/**
 	 * Aggregates the value
@@ -10,7 +10,7 @@ public interface Aggregator<S, T>
 	/**
 	 * @return The accumulated value
 	 */
-	T getAggregatedValue();
+	R getAggregatedValue();
 
 	/**
 	 * <p>This method is used for optimization (cf. short circuit evaluation).</p>

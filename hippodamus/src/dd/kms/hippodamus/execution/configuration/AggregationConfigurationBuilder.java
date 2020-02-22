@@ -2,8 +2,8 @@ package dd.kms.hippodamus.execution.configuration;
 
 import dd.kms.hippodamus.execution.AggregationManager;
 
-public interface AggregationConfigurationBuilder<S, T> extends
+public interface AggregationConfigurationBuilder<S, R> extends
 	AggregationManager<S>,
-	ExecutionConfigurationBuilder<AggregationConfigurationBuilder<S, T>>
+	ExecutionConfigurationBuilder<AggregationConfigurationBuilder<S, R>>
 {
 }

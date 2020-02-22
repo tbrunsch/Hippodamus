@@ -9,18 +9,18 @@ import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilder
 import dd.kms.hippodamus.execution.configuration.ExecutionConfiguration;
 import dd.kms.hippodamus.handles.ResultHandle;
 
-public class AggregationCoordinatorImpl<S, T>
+public class AggregationCoordinatorImpl<S, R>
 	extends ExecutionCoordinatorImpl
-	implements AggregationCoordinator<S, T>
+	implements AggregationCoordinator<S, R>
 {
-	private final Aggregator<S, T>		aggregator;
+	private final Aggregator<S, R>		aggregator;
 
-	public AggregationCoordinatorImpl(Aggregator<S, T> aggregator, CoordinatorConfiguration coordinatorConfiguration) {
+	public AggregationCoordinatorImpl(Aggregator<S, R> aggregator, CoordinatorConfiguration coordinatorConfiguration) {
 		super(coordinatorConfiguration);
 		this.aggregator = aggregator;
 	}
 
-	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable, ExecutionConfiguration configuration) throws E {
+	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable, ExecutionConfiguration configuration) throws T {
 		synchronized (this) {
 			boolean initiallyStopped = aggregator.hasAggregationCompleted();
 			ResultHandle<S> handle = execute(callable, configuration, initiallyStopped);
@@ -45,17 +45,17 @@ public class AggregationCoordinatorImpl<S, T>
 	 * delegate to a real builder.
 	 */
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(ExceptionalCallable<S, E> callable) throws E {
+	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T {
 		return configure().aggregate(callable);
 	}
 
 	@Override
-	public <E extends Exception> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, E> callable) throws E {
+	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable) throws T {
 		return configure().aggregate(callable);
 	}
 
 	@Override
-	public AggregationConfigurationBuilder<S, T> configure() {
+	public AggregationConfigurationBuilder<S, R> configure() {
 		return new AggregationConfigurationBuilderImpl<>(this);
 	}
 }

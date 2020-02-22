@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.exceptions;
 
 @FunctionalInterface
-public interface ExceptionalRunnable<E extends Throwable>
+public interface ExceptionalRunnable<T extends Throwable>
 {
-	void run() throws E;
+	void run() throws T;
 }

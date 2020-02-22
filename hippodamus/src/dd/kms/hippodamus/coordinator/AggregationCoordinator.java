@@ -8,12 +8,12 @@ import dd.kms.hippodamus.execution.configuration.AggregationConfigurationBuilder
  * evaluated in parallel.
  *
  * @param <S> The type of the values that are aggregated
- * @param <T> The type of the result value
+ * @param <R> The type of the result value
  */
-public interface AggregationCoordinator<S, T> extends AggregationManager<S>, ExecutionCoordinator
+public interface AggregationCoordinator<S, R> extends AggregationManager<S>, ExecutionCoordinator
 {
 	/**
 	 * Call this method to configure how a certain task has to be executed.
 	 */
-	AggregationConfigurationBuilder<S, T> configure();
+	AggregationConfigurationBuilder<S, R> configure();
 }

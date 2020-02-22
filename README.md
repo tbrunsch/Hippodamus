@@ -319,7 +319,7 @@ In the previous example, the method `runTask()` returns a boolean value describi
 
 ### Aggregators
 
-The interface `dd.kms.hippodamus.aggregation.Aggregator` describes how values of a type `S` have to be aggregated to a value of type `T`. In many cases `S` and `T` will be identical. You can either directly implement that interface or use the factory class `dd.kms.hippodamus.aggregation.Aggregators` to construct an aggregator. This factory provides methods for creating
+The interface `dd.kms.hippodamus.aggregation.Aggregator` describes how values of a type `S` have to be aggregated to a value of type `R`. In many cases `S` and `R` will be identical. You can either directly implement that interface or use the factory class `dd.kms.hippodamus.aggregation.Aggregators` to construct an aggregator. This factory provides methods for creating
 
 - Disjunction (logical or) and conjunction (logical and) aggregators and
 - Aggregators based on an initial value, an aggregation function, and a predicate that can be used to test whether aggregation can complete prematurely (see Section [Short Circuit Evaluation](#short-circuit-evaluation)).

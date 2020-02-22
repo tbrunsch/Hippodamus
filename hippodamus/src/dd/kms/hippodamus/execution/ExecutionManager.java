@@ -12,28 +12,28 @@ public interface ExecutionManager
 	/**
 	 * Executes an {@link ExceptionalRunnable} and returns a handle to the resulting task.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<E extends Exception> Handle execute(ExceptionalRunnable<E> runnable) throws E;
+	<T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) throws T;
 
 	/**
 	 * Executes a {@link StoppableExceptionalRunnable} and returns a handle to the resulting task.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable) throws E;
+	<T extends Throwable> Handle execute(StoppableExceptionalRunnable<T> runnable) throws T;
 
 	/**
 	 * Executes an {@link ExceptionalCallable} and returns a handle to the resulting task.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable) throws E;
+	<V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) throws T;
 
 	/**
 	 * Executes a {@link StoppableExceptionalCallable} and returns a handle to the resulting task.
 	 *
-	 * @throws E	The exception is not really thrown here, but it forces the caller to handle E.
+	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
-	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable) throws E;
+	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable) throws T;
 }

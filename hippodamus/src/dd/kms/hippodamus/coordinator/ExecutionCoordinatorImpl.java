@@ -107,11 +107,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		this.coordinatorConfiguration = coordinatorConfiguration;
 	}
 
-	public <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration) {
+	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration) {
 		return execute(callable, configuration, false);
 	}
 
-	<V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable, ExecutionConfiguration configuration, boolean initiallyStopped) {
+	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration, boolean initiallyStopped) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		String taskName = getTaskName(configuration);
 		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
@@ -312,22 +312,22 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * delegate to a real builder.
 	 */
 	@Override
-	public final <E extends Exception> Handle execute(ExceptionalRunnable<E> runnable) throws E {
+	public final <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) throws T {
 		return configure().execute(runnable);
 	}
 
 	@Override
-	public final <E extends Exception> Handle execute(StoppableExceptionalRunnable<E> runnable) throws E {
+	public final <T extends Throwable> Handle execute(StoppableExceptionalRunnable<T> runnable) throws T {
 		return configure().execute(runnable);
 	}
 
 	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(ExceptionalCallable<V, E> callable) throws E {
+	public final <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) throws T {
 		return configure().execute(callable);
 	}
 
 	@Override
-	public final <V, E extends Exception> ResultHandle<V> execute(StoppableExceptionalCallable<V, E> callable) throws E {
+	public final <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable) throws T {
 		return configure().execute(callable);
 	}
 

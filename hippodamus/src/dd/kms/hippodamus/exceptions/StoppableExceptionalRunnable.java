@@ -3,7 +3,7 @@ package dd.kms.hippodamus.exceptions;
 import java.util.function.Supplier;
 
 @FunctionalInterface
-public interface StoppableExceptionalRunnable<E extends Throwable>
+public interface StoppableExceptionalRunnable<T extends Throwable>
 {
-	void run(Supplier<Boolean> stopFlag) throws E;
+	void run(Supplier<Boolean> stopFlag) throws T;
 }

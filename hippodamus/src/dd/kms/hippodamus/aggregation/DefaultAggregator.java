@@ -3,14 +3,14 @@ package dd.kms.hippodamus.aggregation;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-class DefaultAggregator<S, T> implements Aggregator<S, T>
+class DefaultAggregator<S, R> implements Aggregator<S, R>
 {
-	private final BiFunction<T, S, T>	aggregationFunction;
-	private final Predicate<T>			finalValuePredicate;
+	private final BiFunction<R, S, R>	aggregationFunction;
+	private final Predicate<R>			finalValuePredicate;
 
-	private volatile T					aggregatedValue;
+	private volatile R					aggregatedValue;
 
-	DefaultAggregator(T initValue, BiFunction<T, S, T> aggregationFunction, Predicate<T> finalValuePredicate) {
+	DefaultAggregator(R initValue, BiFunction<R, S, R> aggregationFunction, Predicate<R> finalValuePredicate) {
 		this.aggregatedValue = initValue;
 		this.aggregationFunction = aggregationFunction;
 		this.finalValuePredicate = finalValuePredicate;
@@ -22,7 +22,7 @@ class DefaultAggregator<S, T> implements Aggregator<S, T>
 	}
 
 	@Override
-	public T getAggregatedValue() {
+	public R getAggregatedValue() {
 		return aggregatedValue;
 	}
 
