@@ -9,7 +9,7 @@ public class LoggingSample
 {
 	public static void main(String[] args) {
 		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
-			.logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
+			.logger((logLevel, context, message) -> System.out.println(context + ": " + message))
 			.minimumLogLevel(LogLevel.STATE);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			coordinator.configure().name("'Hello' task").execute(() -> System.out.println("Hello "));

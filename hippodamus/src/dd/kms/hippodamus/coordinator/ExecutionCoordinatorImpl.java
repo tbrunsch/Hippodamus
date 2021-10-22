@@ -12,6 +12,7 @@ import dd.kms.hippodamus.handles.Handles;
 import dd.kms.hippodamus.handles.ResultHandle;
 import dd.kms.hippodamus.logging.LogLevel;
 import dd.kms.hippodamus.logging.Logger;
+import dd.kms.hippodamus.resources.ResourceShare;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -91,7 +92,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * This flag is set to true if at any point the logger threw an exception when logging. In that case,
 	 * we do not try to log further messages to avoid further exceptions.<br/>
 	 * <br/>
-	 * Since this flag is only used within the method {@link #log(LogLevel, Handle, String)} and this
+	 * Since this flag is only used within the method {@link #log(LogLevel, String, String, Throwable)} and this
 	 * method must be called with logging the coordinator, cache coherence is guaranteed.
 	 */
 	private boolean							loggerFaulty;
@@ -116,11 +117,12 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		String taskName = getTaskName(configuration);
 		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 		Collection<Handle> dependencies = configuration.getDependencies();
+		List<ResourceShare<?>> requiredResourceShares = configuration.getRequiredResourceShares();
 		synchronized (this) {
 			checkException();
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
 			int id = handleDependencyManager.getNumberOfManagedHandles();
-			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, id, executorServiceWrapper, callable, verifyDependencies, stopped);
+			ResultHandle<V> resultHandle = Handles.createResultHandle(this, taskName, id, executorServiceWrapper, callable, verifyDependencies, requiredResourceShares, stopped);
 			handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!stopped) {
 				boolean allDependenciesCompleted = dependencies.stream().allMatch(Handle::hasCompleted);
@@ -248,19 +250,27 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
 	@Override
-	public void log(LogLevel logLevel, Handle handle, String message) {
+	public void log(LogLevel logLevel, String context, String message) {
+		log(logLevel, context, message, null);
+	}
+
+	@Override
+	public void logInternalException(String context, String message, Throwable internalException) {
+		log(LogLevel.INTERNAL_ERROR, context, message, internalException);
+	}
+
+	private void log(LogLevel logLevel, String context, String message, Throwable cause) {
 		LogLevel minimumLogLevel = coordinatorConfiguration.getMinimumLogLevel();
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
-		String name = handle.getTaskName();
 		Logger logger = coordinatorConfiguration.getLogger();
 		CoordinatorException exception = null;
 		try {
 			if (!loggerFaulty) {
-				logger.log(logLevel, name, message);
+				logger.log(logLevel, context, message);
 				if (logLevel == LogLevel.INTERNAL_ERROR){
-					exception = new CoordinatorException(message);
+					exception = cause != null ? new CoordinatorException(message, cause) : new CoordinatorException(message);
 				}
 			}
 		} catch (Throwable t) {

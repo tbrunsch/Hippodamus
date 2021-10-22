@@ -6,6 +6,7 @@ import dd.kms.hippodamus.coordinator.TaskType;
 import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.execution.ExecutionManager;
 import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.resources.Resource;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
@@ -40,4 +41,12 @@ public interface ExecutionConfigurationBuilder<B extends ExecutionConfigurationB
 	 * @see ExecutionConfigurationBuilder#dependencies(Handle...)
 	 */
 	B dependencies(Collection<Handle> dependencies);
+
+	/**
+	 * Specifies a resource and a share of it that is required by the task.<br/>
+	 * <br/>
+	 * The task will not be submitted to the {@link ExecutorService} unless all required resource shares have been
+	 * acquired successfully.
+	 */
+	<S> B requires(Resource<S> resource, S share);
 }

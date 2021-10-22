@@ -110,7 +110,7 @@ class HandleState<T>
 	 * within Boolean expressions.
 	 */
 	private boolean log(LogLevel logLevel, String message) {
-		coordinator.log(logLevel, handle, message);
+		coordinator.log(logLevel, handle.getTaskName(), message);
 		return true;
 	}
 
@@ -191,7 +191,7 @@ class HandleState<T>
 
 	private boolean checkCondition(boolean condition, String message) {
 		if (!condition) {
-			coordinator.log(LogLevel.INTERNAL_ERROR, handle, message);
+			coordinator.log(LogLevel.INTERNAL_ERROR, handle.getTaskName(), message);
 		}
 		return condition;
 	}

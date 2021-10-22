@@ -1,0 +1,17 @@
+TODO
+====
+
+* Resource/ResourceShare: Try to a avoid generic parameter, either by saying that it is always Long and working with long internally or by working with non-generic ResourceShare in the API or offering both.
+* ExecutionServiceWrapper: Should also work across multiple coordinators => do not lock specific coordinator or rely on coordinator's lock; do not sort tasks according to ID, but according to creation time
+* ExecutionServiceWrapper: Case without resources should come without much overhead => avoid locking if task does not require resources
+* ExecutionServiceWrapper: Since the ExecutionServiceWrapper is not bound to one coordinator, Exceptions must be delegated to all coordinators
+* ExecutionServiceWrapper: Handling of tasks, that could not acquire a resource although no task is known that has acquired it:
+** Can happen because a resource might be acquired by a task of another coordinator. => register as listener at resource. Resource will inform it when enough share is available. If it is clear that not enough share will be available, then an exception might be thrown.
+** Resources may be thread-safe, but it does not have to. Thread safety is only required when a resource is used across multiple coordinators. => CountableResource must be configurable to be thread safe or not.
+** A resource must know how much share a resource share requires to determine whether enough share is available.
+* Move classes in API and implementation packages
+
+Unit Tests:
+* ResourceCleanupTest: Resources have to be released when the task terminated, independent of whether it terminates regularly or exceptionally.
+* Test with real memory consumption: The resource should not estimate the free memory, but evaluate it every time.
+* Tests with resources across multiple coordinators: Demonstrate how to make use of resources across multiple parallely used coordinators and how not.

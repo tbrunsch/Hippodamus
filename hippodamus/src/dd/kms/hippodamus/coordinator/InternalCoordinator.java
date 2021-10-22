@@ -19,11 +19,18 @@ public interface InternalCoordinator extends ExecutionCoordinator
 	void onException(Handle handle);
 
 	/**
-	 * Logs a message for a certain handle at a certain log message.<br/>
+	 * Logs a message for a certain context with a certain log level.<br/>
 	 * <br/>
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	void log(LogLevel logLevel, Handle handle, String message);
+	void log(LogLevel logLevel, String context, String message);
+
+	/**
+	 * Logs an internal exception for a certain context.<br/>
+	 * <br/>
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	void logInternalException(String context, String message, Throwable internalException);
 
 	/**
 	 * @return The coordinators termination lock. This lock is hold by all handles managed by the coordinator.

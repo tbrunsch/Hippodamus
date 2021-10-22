@@ -65,7 +65,7 @@ public class LoggingTest
 		private final Set<LogLevel>	encounteredLogLevels	= new HashSet<>();
 
 		@Override
-		public void log(LogLevel logLevel, String taskName, String message) {
+		public void log(LogLevel logLevel, String context, String message) {
 			encounteredLogLevels.add(logLevel);
 		}
 

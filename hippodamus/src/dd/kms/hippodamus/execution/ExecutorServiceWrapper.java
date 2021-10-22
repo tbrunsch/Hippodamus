@@ -1,8 +1,9 @@
 package dd.kms.hippodamus.execution;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import dd.kms.hippodamus.coordinator.InternalCoordinator;
+import dd.kms.hippodamus.resources.ResourceShare;
+
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
@@ -26,7 +27,14 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	private final boolean					shutdownRequired;
 	private final int						maxParallelism;
 
-	private final Queue<InternalTaskHandle> unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandle::getId));
+	/**
+	 * Collection of tasks that could not be submitted yet, but are eligible for submission.
+	 * No resource conflicts are known (although there might be some). The tasks are ordered
+	 * according to their id.
+	 */
+	private final Queue<InternalTaskHandle> unsubmittedTasks 		= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandle::getId));
+
+	private final ResourceManager			resourceManager			= new ResourceManager();
 
 	private int 							numPendingSubmittedTasks;
 
@@ -44,29 +52,42 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return create(this.executorService, this.shutdownRequired, maxParallelism);
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	public InternalTaskHandle submit(int id, Runnable runnable) {
-		InternalTaskHandle taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(runnable));
+	public synchronized InternalTaskHandle submit(int id, Runnable runnable, List<ResourceShare<?>> requiredResourceShares, InternalCoordinator coordinator) {
+		InternalTaskHandle handle = new InternalTaskHandleImpl(id, runnable, requiredResourceShares, coordinator, this::submitNow, this::onTaskCompleted);
 		if (canSubmitTask()) {
-			taskHandle.submit();
+			submitOrWaitForResource(handle);
 		} else {
-			unsubmittedTasks.add(taskHandle);
+			unsubmittedTasks.add(handle);
 		}
-		return taskHandle;
+		return handle;
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	public void onTaskCompleted() {
-		numPendingSubmittedTasks--;
-		if (canSubmitTask()) {
-			InternalTaskHandle taskHandle = unsubmittedTasks.poll();
-			if (taskHandle != null) {
-				taskHandle.submit();
+	private void submitOrWaitForResource(InternalTaskHandle handle) {
+		try {
+			if (resourceManager.acquireResourceShares(handle)) {
+				handle.submit();
 			}
+		} catch (Throwable t) {
+			logInternalError(handle, "Resource manager", t);
+		}
+	}
+
+	private synchronized void onTaskCompleted(InternalTaskHandle handle) {
+		numPendingSubmittedTasks--;
+		List<InternalTaskHandle> blockedHandles = resourceManager.releaseResourceShares(handle);
+		unsubmittedTasks.addAll(blockedHandles);
+		while (!unsubmittedTasks.isEmpty() && canSubmitTask()) {
+			InternalTaskHandle taskHandle = unsubmittedTasks.poll();
+			submitOrWaitForResource(taskHandle);
+		}
+	}
+
+	private void logInternalError(InternalTaskHandle handle, String fallbackContext, Throwable internalError) {
+		StackTraceElement[] stackTrace = internalError.getStackTrace();
+		String context = stackTrace.length == 0 ? fallbackContext : stackTrace[0].getClassName();
+		InternalCoordinator coordinator = handle.getCoordinator();
+		synchronized (coordinator) {
+			coordinator.logInternalException(context, internalError.getMessage(), internalError);
 		}
 	}
 
@@ -74,9 +95,9 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return numPendingSubmittedTasks < maxParallelism;
 	}
 
-	private Future<?> submitNow(Runnable runnable) {
+	private Future<?> submitNow(InternalTaskHandle handle) {
 		numPendingSubmittedTasks++;
-		return executorService.submit(runnable);
+		return executorService.submit(handle);
 	}
 
 	@Override

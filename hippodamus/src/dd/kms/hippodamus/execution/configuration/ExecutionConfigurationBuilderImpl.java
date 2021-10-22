@@ -6,6 +6,8 @@ import dd.kms.hippodamus.coordinator.TaskType;
 import dd.kms.hippodamus.exceptions.*;
 import dd.kms.hippodamus.handles.Handle;
 import dd.kms.hippodamus.handles.ResultHandle;
+import dd.kms.hippodamus.resources.Resource;
+import dd.kms.hippodamus.resources.ResourceShare;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -13,11 +15,12 @@ import java.util.Collection;
 
 public class ExecutionConfigurationBuilderImpl<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder<B>> implements ExecutionConfigurationBuilder<B>
 {
-	final C						coordinator;
+	final C											coordinator;
 
-	private @Nullable String	name			= null;
-	private int					taskType		= TaskType.REGULAR;
-	private Collection<Handle>	dependencies	= ImmutableList.of();
+	private @Nullable String						name					= null;
+	private int										taskType				= TaskType.REGULAR;
+	private Collection<Handle>						dependencies			= ImmutableList.of();
+	private ImmutableList.Builder<ResourceShare<?>>	requiredResourceShares	= ImmutableList.builder();
 
 	public ExecutionConfigurationBuilderImpl(C coordinator) {
 		this.coordinator = coordinator;
@@ -58,6 +61,13 @@ public class ExecutionConfigurationBuilderImpl<C extends ExecutionCoordinatorImp
 	}
 
 	@Override
+	public <S> B requires(Resource<S> resource, S share) {
+		ResourceShare<?> resourceShare = new ResourceShare<>(resource, share);
+		requiredResourceShares.add(resourceShare);
+		return getBuilder();
+	}
+
+	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
 		return execute(Exceptions.asStoppable(runnable));
 	}
@@ -82,6 +92,6 @@ public class ExecutionConfigurationBuilderImpl<C extends ExecutionCoordinatorImp
 	}
 
 	ExecutionConfiguration createConfiguration() {
-		return new ExecutionConfiguration(name, taskType, dependencies);
+		return new ExecutionConfiguration(name, taskType, dependencies, requiredResourceShares.build());
 	}
 }

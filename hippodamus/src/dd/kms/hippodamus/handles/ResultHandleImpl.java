@@ -1,11 +1,13 @@
 package dd.kms.hippodamus.handles;
 
+import com.google.common.collect.ImmutableList;
 import dd.kms.hippodamus.coordinator.InternalCoordinator;
 import dd.kms.hippodamus.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.execution.InternalTaskHandle;
 import dd.kms.hippodamus.logging.LogLevel;
+import dd.kms.hippodamus.resources.ResourceShare;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -14,7 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-class ResultHandleImpl<T> implements ResultHandle<T>
+class ResultHandleImpl<T> implements ResultHandle<T>, Runnable
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -24,6 +26,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	private final ExecutorServiceWrapper				executorServiceWrapper;
 	private final StoppableExceptionalCallable<T, ?>	callable;
 	private final boolean								verifyDependencies;
+	private final List<ResourceShare<?>>				requiredResourceShares;
 
 	private final List<Runnable>						completionListeners					= new ArrayList<>();
 	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
@@ -32,13 +35,14 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private volatile InternalTaskHandle					taskHandle;
 
-	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, List<ResourceShare<?>> requiredResourceShares, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 		this.verifyDependencies = verifyDependencies;
+		this.requiredResourceShares = ImmutableList.copyOf(requiredResourceShares);
 		this.state = new HandleState<>(this, coordinator, stopped);
 	}
 
@@ -49,7 +53,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!state.isStopped() && state.transitionTo(HandleStage.SUBMITTED)) {
-				taskHandle = executorServiceWrapper.submit(id, this::executeCallable);
+				taskHandle = executorServiceWrapper.submit(id, this, requiredResourceShares, coordinator);
 			}
 		}
 	}
@@ -69,7 +73,6 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				if (state.setResult(result)) {
 					notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 				}
-				executorServiceWrapper.onTaskCompleted();
 			} finally {
 				state.transitionTo(HandleStage.TERMINATED);
 			}
@@ -150,7 +153,8 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		return state.getResult(true);
 	}
 
-	private void executeCallable() {
+	@Override
+	public void run() {
 		if (!startExecution()) {
 			return;
 		}
@@ -214,7 +218,12 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 				listenerDescription,
 				exceptionalListener,
 				listenerException.getMessage());
-			coordinator.log(LogLevel.INTERNAL_ERROR, this, message);
+			coordinator.logInternalException(getTaskName(), message, listenerException);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return getTaskName();
 	}
 }

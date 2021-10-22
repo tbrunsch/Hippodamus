@@ -25,7 +25,7 @@ public class LoggerExceptionTest
 		Assert.fail("Swallowed logger exception");
 	}
 
-	private void log(LogLevel logLevel, String taskName, String message) {
+	private void log(LogLevel logLevel, String context, String message) {
 		throw new RuntimeException(EXCEPTION_TEXT);
 	}
 }
