@@ -1,10 +1,10 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.exceptions.CoordinatorException;
-import dd.kms.hippodamus.logging.LogLevel;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.logging.LogLevel;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -14,7 +14,7 @@ public class LoggerExceptionTest
 
 	@Test
 	public void testExceptionInLogger() {
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.logger(this::log);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			coordinator.execute(() -> {});

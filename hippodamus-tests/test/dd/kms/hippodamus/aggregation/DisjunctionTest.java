@@ -1,10 +1,12 @@
 package dd.kms.hippodamus.aggregation;
 
-import dd.kms.hippodamus.coordinator.AggregationCoordinator;
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.AggregationCoordinatorBuilder;
-import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.api.aggregation.Aggregator;
+import dd.kms.hippodamus.api.aggregation.Aggregators;
+import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
+import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;

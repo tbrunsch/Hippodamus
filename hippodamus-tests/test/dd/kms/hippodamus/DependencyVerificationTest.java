@@ -1,12 +1,12 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.exceptions.CoordinatorException;
-import dd.kms.hippodamus.handles.ResultHandle;
-import dd.kms.hippodamus.logging.LogLevel;
-import dd.kms.hippodamus.logging.Logger;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,7 +47,7 @@ public class DependencyVerificationTest
 	@Test
 	public void testNonSubmittedTaskDependency() {
 		TestLogger logger = new TestLogger();
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
 			.verifyDependencies(verifyDependencies);
 		ResultHandle<Integer> task3 = null;
@@ -82,7 +82,7 @@ public class DependencyVerificationTest
 	@Test
 	public void testRunningTaskDependency() {
 		TestLogger logger = new TestLogger();
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
 			.verifyDependencies(verifyDependencies);
 		boolean caughtException = false;

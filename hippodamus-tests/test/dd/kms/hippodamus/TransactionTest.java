@@ -1,10 +1,10 @@
 package dd.kms.hippodamus;
 
 import com.google.common.collect.ImmutableList;
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -64,7 +64,7 @@ public class TransactionTest
 		 * => Trying to create a file afterwards will result in an IOException.
 		 */
 		FileSystem fileSystem = new FileSystem(System.currentTimeMillis() + fileSystemAvailabilityTimeMs);
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.executorService(TaskType.IO, Executors.newFixedThreadPool(2), true);
 		boolean caughtException = false;
 		List<CreateFileAction> actions = TRANSACTION.getActions();

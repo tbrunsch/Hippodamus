@@ -1,15 +1,15 @@
 package dd.kms.hippodamus.samples;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.exceptions.CoordinatorException;
-import dd.kms.hippodamus.handles.ResultHandle;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 
 public class DependencyVerificationSample
 {
 	public static void main(String[] args) {
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.verifyDependencies(true);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			ResultHandle<Integer> value = coordinator.execute(() -> returnWithDelay(7));

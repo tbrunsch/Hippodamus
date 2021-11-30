@@ -1,8 +1,10 @@
 package dd.kms.hippodamus.aggregation;
 
-import dd.kms.hippodamus.coordinator.AggregationCoordinator;
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.handles.ResultHandle;
+import dd.kms.hippodamus.api.aggregation.Aggregator;
+import dd.kms.hippodamus.api.aggregation.Aggregators;
+import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -13,7 +15,7 @@ import org.junit.runners.Parameterized;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dd.kms.hippodamus.coordinator.TaskType.IO;
+import static dd.kms.hippodamus.api.coordinator.TaskType.IO;
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
 /**

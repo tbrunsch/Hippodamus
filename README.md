@@ -61,7 +61,7 @@ try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator(
 }
 ```
 
-As can be seen in the example, the entry point to the framework is the class `dd.kms.hippodamus.coordinator.Coordinators`. This is a factory class for two types of coordinators:
+As can be seen in the example, the entry point to the framework is the class `dd.kms.hippodamus.api.coordinator.Coordinators`. This is a factory class for two types of coordinators:
 
 1. `ExecutionCoordinator`s and
 1. `AggregationCoordinator`s.
@@ -88,7 +88,7 @@ This returns a builder that allows you to configure:
 **LoggingSample.java:**
 
 ```
-ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
     .logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
     .minimumLogLevel(LogLevel.STATE);
 try (ExecutionCoordinator coordinator = builder.build()) {
@@ -127,7 +127,7 @@ Hippodamus abstracts from this concept by separating
 1. What kind a task is (task type) and
 1. How a certain task type should be handled.
 
-There are two predefined types of tasks defined in `dd.kms.hippodamus.coordinator.TaskType`: regular tasks (`TaskType.REGULAR`) and IO tasks (`TaskType.IO`). For extensibility, these are not values of an enum, but plain `int`s. Hence, you can introduce arbitrary non-negative `int`constants as additional custom task types. By default, a task is assumed to be a regular task.
+There are two predefined types of tasks defined in `dd.kms.hippodamus.api.coordinator.TaskType`: regular tasks (`TaskType.REGULAR`) and IO tasks (`TaskType.IO`). For extensibility, these are not values of an enum, but plain `int`s. Hence, you can introduce arbitrary non-negative `int`constants as additional custom task types. By default, a task is assumed to be a regular task.
 
 When configuring the coordinator (see Section [Configuring Coordinators](#configuring-coordinators)), you can specify which `ExecutorService` to use for which task type. When configuring a task, you can specify which type it is. Hence, you indirectly specify which `ExecutorService` it will be submitted to.
 
@@ -210,7 +210,7 @@ To activate the dependency verification mechanism, you have to configure the `Ex
 **DependencyVerificationSample.java:**
 
 ```
-ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
     .verifyDependencies(true);
 try (ExecutionCoordinator coordinator = builder.build()) {
     ResultHandle<Integer> value = coordinator.execute(() -> returnWithDelay(7));
@@ -248,7 +248,7 @@ For the sake of completeness we discuss in Section [Maximum Parallelism And Dead
 In this section we discuss why we use a priority queue rather than a FIFO queue for queuing surplus tasks that cannot immediately be submitted to the `ExecutorService` due to the specified maximum parallelism. The reason is that one may run into a deadlock when using a FIFO queue if not all task dependencies are specified correctly. For this to see, consider the following example:
 
 ```
-    ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+    ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
         .maximumParallelism(TaskType.REGULAR, 2)
         .logger(((logLevel, taskName, message) -> System.out.println(taskName + ": " + message)));
     try (ExecutionCoordinator coordinator = builder.build()) {
@@ -319,7 +319,7 @@ In the previous example, the method `runTask()` returns a boolean value describi
 
 ### Aggregators
 
-The interface `dd.kms.hippodamus.aggregation.Aggregator` describes how values of a type `S` have to be aggregated to a value of type `R`. In many cases `S` and `R` will be identical. You can either directly implement that interface or use the factory class `dd.kms.hippodamus.aggregation.Aggregators` to construct an aggregator. This factory provides methods for creating
+The interface `dd.kms.hippodamus.api.aggregation.Aggregator` describes how values of a type `S` have to be aggregated to a value of type `R`. In many cases `S` and `R` will be identical. You can either directly implement that interface or use the factory class `dd.kms.hippodamus.api.aggregation.Aggregators` to construct an aggregator. This factory provides methods for creating
 
 - Disjunction (logical or) and conjunction (logical and) aggregators and
 - Aggregators based on an initial value, an aggregation function, and a predicate that can be used to test whether aggregation can complete prematurely (see Section [Short Circuit Evaluation](#short-circuit-evaluation)).
@@ -355,7 +355,7 @@ You can stop a task by calling `Handle.stop()` on its handle. Although it seems 
 
 The first point is especially important because, by default, the coordinator will wait until all of its handles have completed or stopped. This behavior is described by the enum value `WaitMode.UNTIL_TERMINATION_REQUESTED`. As explained above, this does not necessarily mean that all of the coordinator's tasks have terminated. Hence, the coordinator is not a strict nursery by default. However, you can set the wait mode to `WaitMode.UNTIL_TERMINATION` when configuring the coordinator (see Section [Configuring Coordinators](#configuring-coordinators)). In that case, the coordinator will not terminate as long as some of its tasks are still being executed.  
 
-Hippodamus offers a way for tasks to query whether they have been stopped or not giving them a chance to react to a stop request. For this, the tasks have to implement one of the functional interfaces `dd.kms.hippodamus.exceptions.StoppableExceptionalCallable` or `dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable`. The method of both interfaces gets the stop flag as a `Supplier<Boolean>`. This flag can be polled by the task. 
+Hippodamus offers a way for tasks to query whether they have been stopped or not giving them a chance to react to a stop request. For this, the tasks have to implement one of the functional interfaces `dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable` or `dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable`. The method of both interfaces gets the stop flag as a `Supplier<Boolean>`. This flag can be polled by the task. 
 
 ## Stopping Coordinators
 
@@ -396,7 +396,7 @@ Let us discuss these points in more detail:
 
 1. Since the `execute()` methods of the `ExecutionCoordinator` do not immediately execute the specified task, they do not really throw the task's exceptions. These exceptions will be thrown later. However, since the `execute()` methods are the only place where we know at compile time which exceptions may be thrown, these methods pretend to throw them to force the user to handle them. Without this trick, the user had to handle generic `Throwable`s instead of concrete exception classes.
 1. The second point is simple: `Handle`s catch the exceptions of their tasks and inform the coordinator via a setter about these exceptions. The coordinator stores this information in a field and stops all tasks. The coordinator **does not throw** exceptions at that time because they would be thrown in the task's instead of the coordinator's thread.
-1. The `ExecutionCoordinator` has a method `checkException()` that checks whether its exception field is set. If so, it throws this exception. Note that this method **might throw checked exceptions** although it does not declare to do so. This is a well-known trick based on type erasure (see `dd.kms.hippodamus.exceptions.Exceptions.throwUnchecked(Throwable)`). With this trick we bypass Java's exception handling mechanism locally. However, by the first point we ensure that the user handles these type of exceptions nevertheless. (After all, we want to provide an exception handling mechanism.)
+1. The `ExecutionCoordinator` has a method `checkException()` that checks whether its exception field is set. If so, it throws this exception. Note that this method **might throw checked exceptions** although it does not declare to do so. This is a well-known trick based on type erasure (see `dd.kms.hippodamus.impl.exceptions.Exceptions.throwUnchecked(Throwable)`). With this trick we bypass Java's exception handling mechanism locally. However, by the first point we ensure that the user handles these type of exceptions nevertheless. (After all, we want to provide an exception handling mechanism.)
 The method `checkException()` **must only be called in the coordinator's thread** such that the exception is caught by the correct handler. The coordinator calls this method in its `execute()` methods and in its `close()` method.
 
 ## When Exceptions Are Thrown
@@ -433,7 +433,7 @@ When calling `ExecutionCoordinator.execute()`, Hippodamus utilizes type inferenc
 
 ## Internal Errors
 
-Hippodamus throws `dd.kms.hippodamus.exceptions.CoordinatorException`s when an internal error occurs. Internal errors are errors in the framework or in the usage of the framework. Errors in the usage of the framework include the following scenarios:
+Hippodamus throws `dd.kms.hippodamus.api.exceptions.CoordinatorException`s when an internal error occurs. Internal errors are errors in the framework or in the usage of the framework. Errors in the usage of the framework include the following scenarios:
 
 - A dependency specified for a task is assigned a different coordinator.
 - Dependency verification is enabled and there is an attempt to access the value of a task that has not yet completed (cf. Section [Dependency Verification](#dependency-verification)).

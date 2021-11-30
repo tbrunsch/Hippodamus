@@ -1,12 +1,12 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.exceptions.CoordinatorException;
-import dd.kms.hippodamus.handles.Handle;
-import dd.kms.hippodamus.handles.ResultHandle;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -34,7 +34,7 @@ public class JoinTest
 
 	@Test
 	public void testTaskAccessingValueOfExceptionalTask() {
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.waitMode(WaitMode.UNTIL_TERMINATION);
 		StopWatch stopWatch = new StopWatch();
 		try (ExecutionCoordinator coordinator = builder.build()) {
@@ -63,7 +63,7 @@ public class JoinTest
 
 	@Test
 	public void testTaskWaitingForStoppedTask() {
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.waitMode(WaitMode.UNTIL_TERMINATION);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			ResultHandle<String> task1 = coordinator.execute(this::run);

@@ -1,9 +1,9 @@
 package dd.kms.hippodamus.parallelism;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,7 +37,7 @@ public class MaximumParallelismTest
 	@Test
 	public void testMaximumParallelism() {
 		maxNumRunningTasks = 0;
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.maximumParallelism(TaskType.REGULAR, maxParallelism);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			for (int i = 0; i < NUM_TASKS; i++) {

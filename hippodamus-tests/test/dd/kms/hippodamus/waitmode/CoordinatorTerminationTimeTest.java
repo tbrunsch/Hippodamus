@@ -1,10 +1,10 @@
 package dd.kms.hippodamus.waitmode;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.coordinator.configuration.WaitMode;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -12,9 +12,6 @@ import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br/>
@@ -63,7 +60,7 @@ public class CoordinatorTerminationTimeTest
 		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getDefaultParallelism() >= PARALLELISM);
 
 		TaskCounter counter = new TaskCounter();
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.waitMode(waitMode)
 			.maximumParallelism(TaskType.REGULAR, PARALLELISM);
 		StopWatch stopWatch = new StopWatch();

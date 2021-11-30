@@ -1,10 +1,10 @@
 package dd.kms.hippodamus.parallelism;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.handles.ResultHandle;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Test;
@@ -35,7 +35,7 @@ public class NoDeadlockTest
 	@Test
 	public void testNoDeadlock() {
 		Thread stoppingThread;	// used to stop coordinator in case of a dead lock
-		ExecutionCoordinatorBuilder<?> builder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.maximumParallelism(TaskType.REGULAR, maxParallelism);
 		StopWatch stopWatch = new StopWatch();
 		try (ExecutionCoordinator coordinator = builder.build()) {

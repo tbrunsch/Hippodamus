@@ -1,9 +1,9 @@
 package dd.kms.hippodamus.samples;
 
-import dd.kms.hippodamus.aggregation.Aggregator;
-import dd.kms.hippodamus.aggregation.Aggregators;
-import dd.kms.hippodamus.coordinator.AggregationCoordinator;
-import dd.kms.hippodamus.coordinator.Coordinators;
+import dd.kms.hippodamus.api.aggregation.Aggregator;
+import dd.kms.hippodamus.api.aggregation.Aggregators;
+import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
 
 public class BooleanAggregationSample
 {
