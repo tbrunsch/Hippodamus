@@ -7,7 +7,7 @@
 	<groupId>dd.kms.hippodamus</groupId>
 	<artifactId>hippodamus-parent</artifactId>
 	<packaging>pom</packaging>
-	<version>0.1-SNAPSHOT</version>
+	<version>0.2-SNAPSHOT</version>
 	<name>Hippodamus Maven Parent</name>
 	<modules>
 		<module>hippodamus</module>
