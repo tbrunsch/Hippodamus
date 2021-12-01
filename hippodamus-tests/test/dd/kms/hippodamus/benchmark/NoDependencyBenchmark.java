@@ -50,36 +50,15 @@ public class NoDependencyBenchmark
 	@Test
 	public void benchmarkNoDependencies() {
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		long threadsTimeMs = BenchmarkUtils.measureTime(this::runWithDedicatedThreads);
-		TestUtils.waitForEmptyCommonForkJoinPool();
 		long futureTimeMs = BenchmarkUtils.measureTime(this::runWithCompletableFutures);
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long coordinatorTimeMs = BenchmarkUtils.measureTime(this::runWithCoordinator);
 
-		System.out.println(MessageFormat.format("Times (threads/futures/coordinator): {0} ms/{1} ms/{2} ms", threadsTimeMs, futureTimeMs, coordinatorTimeMs));
+		System.out.println(MessageFormat.format("Times (futures/coordinator): {0} ms/{1} ms", futureTimeMs, coordinatorTimeMs));
 
-		long minTimeMs = Math.min(threadsTimeMs, futureTimeMs);
-		long maxAllowedTimeMs = Math.round(TOLERANCE*minTimeMs + PRECISION_MS);
+		long maxAllowedTimeMs = Math.round(TOLERANCE*futureTimeMs + PRECISION_MS);
 
 		TestUtils.assertTimeUpperBound(maxAllowedTimeMs, coordinatorTimeMs);
-	}
-
-	private void runWithDedicatedThreads() {
-		List<Thread> threads = new ArrayList<>(numTasks);
-		for (int i = 0; i < numTasks; i++) {
-			Thread thread = new Thread(this::runTask);
-			thread.run();
-			threads.add(thread);
-		}
-		boolean exception = false;
-		for (Thread thread : threads) {
-			try {
-				thread.join();
-			} catch (InterruptedException e) {
-				exception = true;
-			}
-		}
-		Assert.assertFalse("An interrupted exception occurred in the thread approach", exception);
 	}
 
 	private void runWithCompletableFutures() {
