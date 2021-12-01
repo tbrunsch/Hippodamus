@@ -21,8 +21,8 @@ import java.util.function.Supplier;
  * {@link ForkJoinPool} to execute tasks. Since this {@link ExecutorService}
  * cannot be shut down, submitted tasks cannot be stopped, but run until end. The interfaces
  * {@link StoppableExceptionalRunnable} and {@link StoppableExceptionalCallable}
- * allow implementers of a task to query whether the task should be stopped.<br/>
- * <br/>
+ * allow implementers of a task to query whether the task should be stopped.<br>
+ * <br>
  * This test verifies that reacting to a stop request indeed has an effect.
  */
 @RunWith(Parameterized.class)

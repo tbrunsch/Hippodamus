@@ -20,13 +20,13 @@ import java.util.concurrent.ExecutorService;
  * submits tasks to the {@link ExecutorService}, if
  * all of its dependencies are resolved. If dependencies are not specified
  * correctly, then tasks might end up actively waiting for other tasks to
- * complete.<br/>
- * <br/>
+ * complete.<br>
+ * <br>
  * Dependency verification allows to check whether for all tasks all
  * dependencies are specified. If activated, then there will be an exception
  * when accessing the result of a task that has not yet completed. If
- * deactivated, then the task will wait for the other task to complete.<br/>
- * <br/>
+ * deactivated, then the task will wait for the other task to complete.<br>
+ * <br>
  * This task focuses on testing both modi, which should be both supported
  * by the framework.
  */

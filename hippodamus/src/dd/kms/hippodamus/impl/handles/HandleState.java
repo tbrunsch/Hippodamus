@@ -18,8 +18,8 @@ class HandleState<T>
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
-	 * is stopped. It is meant to be waited for in the {@link Handle#join()}-method.<br/>
-	 * <br/>
+	 * is stopped. It is meant to be waited for in the {@link Handle#join()}-method.<br>
+	 * <br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
 	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
 	 * {@link ResultHandleImpl#get()}.
@@ -29,7 +29,7 @@ class HandleState<T>
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
 	 * is stopped. It operates on the coordinator's termination lock we obtain by calling
-	 * {@link InternalCoordinator#getTerminationLock()}.<br/>
+	 * {@link InternalCoordinator#getTerminationLock()}.<br>
 	 * Note that the value must be set to true <b>after</b> calling any listener to ensure that the
 	 * coordinator does not close before notifying all listeners.
 	 */
@@ -106,8 +106,8 @@ class HandleState<T>
 	}
 
 	/**
-	 * Ensure that this method is only called when the coordinator is locked.<br/>
-	 * <br/>
+	 * Ensure that this method is only called when the coordinator is locked.<br>
+	 * <br>
 	 * The return value is always {@code true} such that this method can be used
 	 * within Boolean expressions.
 	 */

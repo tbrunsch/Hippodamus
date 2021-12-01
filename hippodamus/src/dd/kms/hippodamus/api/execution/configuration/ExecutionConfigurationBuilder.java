@@ -20,16 +20,16 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 
 	/**
 	 * Specifies the type of the task. Based on the type the {@link ExecutionCoordinator} decides which {@link ExecutorService}
-	 * the task should be submitted to.<br/>
-	 * <br/>
+	 * the task should be submitted to.<br>
+	 * <br>
 	 * You can use predefined task types {@link TaskType#REGULAR} (default) and {@link TaskType#IO} or define
 	 * custom types and register {@code ExecutorService}s for these types (see {@link Coordinators#} and {@link ExecutionCoordinatorBuilder#executorService(int, ExecutorService, boolean)}).
 	 */
 	ExecutionConfigurationBuilder taskType(int type);
 
 	/**
-	 * Specifies the tasks dependencies.<br/>
-	 * <br/>
+	 * Specifies the tasks dependencies.<br>
+	 * <br>
 	 * The task will not be submitted to the {@link ExecutorService} unless all dependencies have completed.
 	 */
 	ExecutionConfigurationBuilder dependencies(Handle... dependencies);

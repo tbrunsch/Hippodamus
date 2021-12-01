@@ -11,8 +11,8 @@ import java.util.concurrent.ExecutorService;
 public interface Handle
 {
 	/**
-	 * Submits the runnable/callable behind the handle to the underlying {@link ExecutorService}.<br/>
-	 * <br/>
+	 * Submits the runnable/callable behind the handle to the underlying {@link ExecutorService}.<br>
+	 * <br>
 	 * Users should not call this method directly. It will be called by the framework if all of the handle's dependencies
 	 * have completed.
 	 */
@@ -24,11 +24,11 @@ public interface Handle
 	boolean hasCompleted();
 
 	/**
-	 * @return {@code true} iff the task has been stopped manually, either manually or because of an exception<br/>
-	 * <br/>
-	 * If a task has completed before it had been stopped manually, then {@link #hasCompleted()} and {@link #hasStopped()}
-	 * both return {@code true}.<br/>
-	 * <br/>
+	 * @return {@code true} iff the task has been stopped manually, either manually or because of an exception<br>
+	 * <br>
+	 * If a task has completed before it had been stopped manually, then {@link #hasCompleted()} and {@code hasStopped()}
+	 * both return {@code true}.<br>
+	 * <br>
 	 * Note that stopping a task is just a request. A running task does not have to react to that request and may
 	 * decide to keep running. Nevertheless, it is considered stopped.
 	 */
@@ -54,8 +54,8 @@ public interface Handle
 
 	/**
 	 * Waits until the task associated with this handle completes or is stopped form some reason (e.g., stopped
-	 * manually, stopped due to short circuit evaluation, or stopped due to an exception).<br/>
-	 * <br/>
+	 * manually, stopped due to short circuit evaluation, or stopped due to an exception).<br>
+	 * <br>
 	 * The behavior of that method depends on whether dependencies are verified or not (cf.
 	 * {@link ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
 	 * <ul>
@@ -89,11 +89,11 @@ public interface Handle
 	/**
 	 * Installs a listener that is called when the task completes. That call will be in the thread that executed the
 	 * task. If a listener is installed after the task has completed, then the listener is called immediately in the
-	 * caller's thread.<br/>
-	 * <br/>
+	 * caller's thread.<br>
+	 * <br>
 	 * One goal of the {@link ExecutionCoordinator} framework is to get rid of the need to install custom listeners.
 	 * If you need to install a listener nevertheless, you should do it immediately after executing the task inside
-	 * of the coordinator's try-block:<br/>
+	 * of the coordinator's try-block:<br>
 	 * <pre>
 	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 	 *         ...
@@ -110,11 +110,11 @@ public interface Handle
 	/**
 	 * Installs a listener that is called when the task throws an exception. The call will be in the thread that
 	 * executed the task. If a listener is installed  after the task has thrown an exception, then the listener is
-	 * called immediately in the caller's thread.<br/>
-	 * <br/>
+	 * called immediately in the caller's thread.<br>
+	 * <br>
 	 * One goal of the {@link ExecutionCoordinator} framework is to get rid of the need to install custom listeners.
 	 * If you need to install a listener nevertheless, you should do it immediately after executing the task inside
-	 * of the coordinator's try-block:<br/>
+	 * of the coordinator's try-block:<br>
 	 * <pre>
 	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 	 *         ...

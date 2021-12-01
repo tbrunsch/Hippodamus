@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 /**
- * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br/>
- * <br/>
+ * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br>
+ * <br>
  * The test executes equally sized tasks on {@link #PARALLELISM} threads. In each round, {@code NUM_THREADS} tasks
  * are executed in parallel. After {@link #NUM_ROUNDS_UNTIL_EXCEPTION} rounds, there will be a task that throws
  * an exception after {@link #HALF_TASK_TIME_MS} milliseconds causing the coordinator to stop all tasks. The

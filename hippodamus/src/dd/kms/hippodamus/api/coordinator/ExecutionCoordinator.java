@@ -14,15 +14,15 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	ExecutionConfigurationBuilder configure();
 
 	/**
-	 * Call this method to permit/deny submission of tasks to an {@link ExecutorService}.<br/>
+	 * Call this method to permit/deny submission of tasks to an {@link ExecutorService}.<br>
 	 * By default, task submission is permitted. In that case, tasks can already be executed although not
 	 * all tasks have been registered at the coordinator via {@link #execute(ExceptionalRunnable)}
 	 * or related methods. However, the coordinator can only manage exceptions that are thrown inside the tasks.
 	 * It cannot handle exceptions that are directly raised inside the try-block. If such an exception occurs,
 	 * all executed tasks will run to end while the coordinator is closing (because the coordinator does not get
 	 * informed about this exception). Only then, the exception will be caught by any exception handler. Hence,
-	 * a lot of time may be wasted between throwing and catching the exception.<br/>
-	 * You can avoid wasting that time by guarding the code inside the try-block with calls to this method:<br/>
+	 * a lot of time may be wasted between throwing and catching the exception.<br>
+	 * You can avoid wasting that time by guarding the code inside the try-block with calls to this method:<br>
 	 * <pre>
 	 * try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 	 *     coordinator.permitTaskSubmission(false);
@@ -43,8 +43,8 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 
 	/**
 	 * Checks if any of the current tasks has already thrown an exception. If so, it throws that exception,
-	 * provided it has not already thrown them in a previous call to {@code checkException()}.<br/>
-	 * <br/>
+	 * provided it has not already thrown them in a previous call to {@code checkException()}.<br>
+	 * <br>
 	 * Calling this method is usually <b>not necessary</b> because it is automatically calling when executing
 	 * further tasks and at the end of the try-block. However, if you decide, for whatever reason, that you
 	 * need a time-consuming block in the {@link ExecutionCoordinator}'s thread within the coordinator's try-block,

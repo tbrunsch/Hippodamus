@@ -3,8 +3,8 @@ package dd.kms.hippodamus.impl.handles;
 import java.util.concurrent.Semaphore;
 
 /**
- * Boolean value that can be waited for until true.<br/>
- * <br/>
+ * Boolean value that can be waited for until true.<br>
+ * <br>
  * Note that it the value is initially true and must be set to false manually after construction.
  */
 class AwaitableBoolean

@@ -15,8 +15,8 @@ import java.util.stream.IntStream;
 /**
  * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and
  * dependencies. In this test we benchmark the framework against {@link CompletableFuture}
- * in different scenarios, once with specified dependencies and once without.<br/>
- * <br/>
+ * in different scenarios, once with specified dependencies and once without.<br>
+ * <br>
  * We use parallelization to speed up recursive MergeSort steps.
  */
 public class DependencyBenchmark

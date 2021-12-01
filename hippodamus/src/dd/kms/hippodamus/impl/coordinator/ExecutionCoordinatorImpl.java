@@ -25,8 +25,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private final CoordinatorConfiguration	coordinatorConfiguration;
 
 	/**
-	 * Handles the dependencies between handles.<br/>
-	 * <br/>
+	 * Handles the dependencies between handles.<br>
+	 * <br>
 	 * The state of the dependency manager will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the cached state of the dependency manager
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is required to
@@ -35,8 +35,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private final HandleDependencyManager	handleDependencyManager			= new HandleDependencyManager();
 
 	/**
-	 * Contains human-friendly, by default generic task names.<br/>
-	 * <br/>
+	 * Contains human-friendly, by default generic task names.<br>
+	 * <br>
 	 * The state of that set will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the cached state of the set
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
@@ -46,8 +46,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	/**
 	 * Describes whether tasks that are eligible for execution may be submitted to an {@link ExecutorService}.
-	 * If not, the handles of these tasks will be collected in {@link #pendingHandles}.<br/>
-	 * <br/>
+	 * If not, the handles of these tasks will be collected in {@link #pendingHandles}.<br>
+	 * <br>
 	 * The flag will only be changed by calls to {@link #permitTaskSubmission(boolean)}, which is only called
 	 * in the coordinator's thread. Hence, the cached value will always be coherent in the coordinator's thread.
 	 * No {@code synchronized}-block is required to access the value in methods that are only called in the
@@ -73,16 +73,16 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private volatile Throwable				exception;
 
 	/**
-	 * This field is required to ensure that {@link #checkException()} does not throw an exception twice.<br/>
-	 * <br/>
+	 * This field is required to ensure that {@link #checkException()} does not throw an exception twice.<br>
+	 * <br>
 	 * <b>Necessity:</b> Assume that an exception is thrown inside the try-block due to a call of
 	 * {@link #checkException()}. This will cause the {@link #close()} method to be called automatically,
 	 * which also checks for an existing exception to be thrown by calling {@code checkException()}. If this
 	 * method would throw the stored exception again, then we had two exceptions to be thrown. Such conflicts
 	 * are resolved by automatically calling {@link Throwable#addSuppressed(Throwable)}. However, this method
 	 * fails if both exceptions are identical. In that case, we would obtain an {@link IllegalArgumentException}
-	 * "Self-suppression not permitted" instead, which is not what we want.<br/>
-	 * <br/>
+	 * "Self-suppression not permitted" instead, which is not what we want.<br>
+	 * <br>
 	 * Since this flag is only used within method {@code checkException()}, which is only meant to be called
 	 * in the coordinator's thread, cache coherence is guaranteed.
 	 */
@@ -90,8 +90,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	/**
 	 * This flag is set to true if at any point the logger threw an exception when logging. In that case,
-	 * we do not try to log further messages to avoid further exceptions.<br/>
-	 * <br/>
+	 * we do not try to log further messages to avoid further exceptions.<br>
+	 * <br>
 	 * Since this flag is only used within the method {@link #log(LogLevel, Handle, String)} and this
 	 * method must be called with logging the coordinator, cache coherence is guaranteed.
 	 */

@@ -13,10 +13,10 @@ public enum LogLevel
 	 * and some task X tries to access the value of a {@link ResultHandle} of
 	 * another task Y task X depends but that has not completed yet. This indicates either an
 	 * error in the framework or it means that the programmer forgot to specify that
-	 * task X depends on task Y.<br/>
-	 * <br/>
+	 * task X depends on task Y.<br>
+	 * <br>
 	 * Note that exceptions that are thrown by the tasks itself are not considered as
-	 * internal errors and reported differently.
+	 * internal errors and are reported differently.
 	 */
 	INTERNAL_ERROR,
 

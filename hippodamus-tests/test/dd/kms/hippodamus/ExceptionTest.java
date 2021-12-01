@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * This test focuses on how the framework handles exceptions.<br/>
- * <br/>
+ * This test focuses on how the framework handles exceptions.<br>
+ * <br>
  * The framework should force the user to write catch clauses for exactly the checked
  * exceptions that are declared to be thrown by the methods called asynchronously.
  */

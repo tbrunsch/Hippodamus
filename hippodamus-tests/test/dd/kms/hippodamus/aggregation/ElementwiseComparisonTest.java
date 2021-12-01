@@ -21,8 +21,8 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 /**
  * This test simulates the element-wise comparison of two objects. The elements of one object
  * are, e.g., loaded from a file (IO task), whereas the elements of the other object are
- * generated (regular task). The corresponding elements are then compared (regular task).<br/>
- * <br/>
+ * generated (regular task). The corresponding elements are then compared (regular task).<br>
+ * <br>
  * The total comparison result is the conjunction of the element comparison results. If we
  * would use a single task for loading one element from file, generating the other element
  * and comparing them, then this would be a scenario similar to what is covered by
@@ -46,14 +46,14 @@ public class ElementwiseComparisonTest
 	 * other without interruptions. During that time, the generation of all elements and the
 	 * comparision of all but the last element pair can be done in another thread. Only the
 	 * comparison of the last element pair happens after loading the last element. Hence, the total
-	 * time will be at least (and approximately)<br/>
-	 * <br/>
-	 *       {@code n*LOAD_TIME_MS + COMPARISON_TIME_MS}.<br/>
-	 * <br/>
-	 * This motivates the following time constraints that we test for:<br/>
-	 * <br/>
-	 *       {@code L <= time <= L+PRECISION_MS} for<br/>
-	 * <br/>
+	 * time will be at least (and approximately)<br>
+	 * <br>
+	 *       {@code n*LOAD_TIME_MS + COMPARISON_TIME_MS}.<br>
+	 * <br>
+	 * This motivates the following time constraints that we test for:<br>
+	 * <br>
+	 *       {@code L <= time <= L+PRECISION_MS} for<br>
+	 * <br>
 	 * 		{@code L = n*LOAD_TIME_MS + COMPARISON_TIME_MS}
 	 */
 	private static final long	LOAD_TIME_MS		= 2000;

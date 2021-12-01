@@ -7,8 +7,8 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 public interface AggregationManager<S> extends ExecutionManager
 {
 	/**
-	 * Executes an {@link ExceptionalCallable} and returns a handle to the resulting task.<br/>
-	 * <br/>
+	 * Executes an {@link ExceptionalCallable} and returns a handle to the resulting task.<br>
+	 * <br>
 	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed. If the
 	 * task completes, then its result will be aggregated.
 	 *
@@ -17,8 +17,8 @@ public interface AggregationManager<S> extends ExecutionManager
 	<T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T;
 
 	/**
-	 * Executes a {@link StoppableExceptionalCallable} and returns a handle to the resulting task.<br/>
-	 * <br/>
+	 * Executes a {@link StoppableExceptionalCallable} and returns a handle to the resulting task.<br>
+	 * <br>
 	 * The task will not be submitted to the {@code ExecutorService} unless all dependencies have completed. If the
 	 * task completes, then its result will be aggregated.
 	 *
