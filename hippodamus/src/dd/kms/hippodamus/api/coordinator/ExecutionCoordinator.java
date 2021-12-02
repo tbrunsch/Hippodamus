@@ -6,6 +6,17 @@ import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuild
 
 import java.util.concurrent.ExecutorService;
 
+/**
+ * This is the central class of Hippodamus. It handles the execution of tasks. The coordinator
+ * must be used with try-with-resources:
+ * <pre>
+ * try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+ *     coordinator.execute(() -> System.out.println("Hello World!"));
+ *     ResultHandle<Double> value = coordinator.execute(Math::random);
+ * }
+ * </pre>
+ * See the documentation for details.
+ */
 public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 {
 	/**

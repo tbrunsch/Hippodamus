@@ -4,8 +4,9 @@ import dd.kms.hippodamus.api.execution.AggregationManager;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
 
 /**
- * Special {@link ExecutionCoordinator} for aggregating results of callables that are
- * evaluated in parallel.
+ * Special {@link ExecutionCoordinator} that additionally allows aggregating results
+ * of callables that are evaluated in parallel with a user-defined
+ * {@link dd.kms.hippodamus.api.aggregation.Aggregator Aggregator}.
  *
  * @param <S> The type of the values that are aggregated
  * @param <R> The type of the result value
