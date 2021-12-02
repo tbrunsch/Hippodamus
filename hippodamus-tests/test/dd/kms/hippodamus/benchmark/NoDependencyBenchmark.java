@@ -62,13 +62,13 @@ public class NoDependencyBenchmark
 	}
 
 	private void runWithCompletableFutures() {
-		List<Future> futures = new ArrayList<>(numTasks);
+		List<Future<Void>> futures = new ArrayList<>(numTasks);
 		for (int i = 0; i < numTasks; i++) {
-			Future future = CompletableFuture.runAsync(this::runTask);
+			Future<Void> future = CompletableFuture.runAsync(this::runTask);
 			futures.add(future);
 		}
 		boolean exception = false;
-		for (Future future : futures) {
+		for (Future<Void> future : futures) {
 			try {
 				future.get();
 			} catch (Exception e) {

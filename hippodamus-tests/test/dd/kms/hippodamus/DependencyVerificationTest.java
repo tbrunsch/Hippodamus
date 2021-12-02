@@ -64,11 +64,11 @@ public class DependencyVerificationTest
 			 * If task 3 is executed, task 2 will not even be submitted to an ExecutorService
 			 * because it is waiting in task 1.
 			 */
-			task3 = coordinator.execute(() -> task2.get());
+			task3 = coordinator.execute(task2::get);
 		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
-		Assert.assertTrue("task3 is null", task3 != null);
+		Assert.assertNotNull("task3 is null", task3);
 		if (verifyDependencies) {
 			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
 			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
@@ -97,7 +97,10 @@ public class DependencyVerificationTest
 		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
-		Assert.assertTrue("sum is null", sum != null);
+		if (sum == null) {
+			Assert.fail("sum is null");
+			return;
+		}
 		if (verifyDependencies) {
 			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
 			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
@@ -113,7 +116,7 @@ public class DependencyVerificationTest
 		return number;
 	}
 
-	private class TestLogger implements Logger
+	private static class TestLogger implements Logger
 	{
 		private boolean encounteredInternalError;
 

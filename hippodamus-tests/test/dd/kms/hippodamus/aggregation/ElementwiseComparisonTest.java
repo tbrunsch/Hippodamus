@@ -44,7 +44,7 @@ public class ElementwiseComparisonTest
 	 * tasks as parallel as possible ("load" in a single thread, "generate" in another thread,
 	 * "compare" after "load" + "generate"), then the IO thread will load one element after the
 	 * other without interruptions. During that time, the generation of all elements and the
-	 * comparision of all but the last element pair can be done in another thread. Only the
+	 * comparison of all but the last element pair can be done in another thread. Only the
 	 * comparison of the last element pair happens after loading the last element. Hence, the total
 	 * time will be at least (and approximately)<br>
 	 * <br>
@@ -111,7 +111,7 @@ public class ElementwiseComparisonTest
 			checkTimeConstraints(stopWatch.getElapsedTimeMs());
 		}
 
-		Assert.assertTrue(conjunctionAggregator.getAggregatedValue() == expectedResult);
+		Assert.assertEquals(expectedResult, conjunctionAggregator.getAggregatedValue());
 	}
 
 	private int simulateLoadElement(int index) {

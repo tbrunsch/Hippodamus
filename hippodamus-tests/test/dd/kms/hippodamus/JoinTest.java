@@ -40,11 +40,11 @@ public class JoinTest
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			ResultHandle<String> task1 = coordinator.execute(this::runExceptionally);
 			/*
-			 * Accessing the value of a task that terminates exceptionally causes a HandleException.
+			 * Accessing the value of a task that terminates exceptionally causes a TaskStoppedException.
 			 * This causes task 2 to terminate immediately instead of waiting for TASK_TIME_MS
 			 * milliseconds.
 			 *
-			 * However, the coordinator should ignore the HandleException in task 2 and prefer
+			 * However, the coordinator should ignore the TaskStoppedException in task 2 and prefer
 			 * the TestException of task 1.
 			 */
 			ResultHandle<String> task2 = coordinator.execute(() -> {

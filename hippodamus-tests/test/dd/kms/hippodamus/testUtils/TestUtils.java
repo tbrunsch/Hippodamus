@@ -52,6 +52,6 @@ public class TestUtils
 	public static <T> T createNamedInstance(Class<T> instanceInterface, T unnamedInstance, String name) {
 		InvocationHandler invocationHandler = (proxy, method, args) ->
 			"toString".equals(method.getName()) && (args == null || args.length == 0) ? name : method.invoke(unnamedInstance, args);
-		return (T) Proxy.newProxyInstance(instanceInterface.getClassLoader(), new Class[]{instanceInterface}, invocationHandler);
+		return instanceInterface.cast(Proxy.newProxyInstance(instanceInterface.getClassLoader(), new Class[]{instanceInterface}, invocationHandler));
 	}
 }

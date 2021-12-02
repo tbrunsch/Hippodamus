@@ -60,7 +60,7 @@ public class LoggingTest
 		}
 	}
 
-	private class TestLogger implements Logger
+	private static class TestLogger implements Logger
 	{
 		private final Set<LogLevel>	encounteredLogLevels	= new HashSet<>();
 

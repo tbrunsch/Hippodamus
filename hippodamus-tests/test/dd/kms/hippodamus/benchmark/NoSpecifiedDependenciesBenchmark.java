@@ -64,12 +64,12 @@ public class NoSpecifiedDependenciesBenchmark
 		return value + 1;
 	}
 
-	private <T> T get(Future<T> future) {
+	private int get(Future<Integer> future) {
 		try {
 			return future.get();
 		} catch (Exception e) {
-			Assert.fail("Exception when calling Future.get(): " + e.getMessage());
-			return null;
+			Assert.fail("Exception when calling Future.get(): " + e);
+			return 0;
 		}
 	}
 }

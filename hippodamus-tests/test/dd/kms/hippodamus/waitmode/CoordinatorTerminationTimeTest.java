@@ -98,7 +98,7 @@ public class CoordinatorTerminationTimeTest
 		TestUtils.simulateWork(TASK_TIME_MS);
 	}
 
-	private class TaskCounter
+	private static class TaskCounter
 	{
 		private int	counter;
 
@@ -107,5 +107,5 @@ public class CoordinatorTerminationTimeTest
 		}
 	}
 
-	private static class TestException extends Exception {};
+	private static class TestException extends Exception {}
 }

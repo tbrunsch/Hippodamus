@@ -118,7 +118,7 @@ public class ListenerTest
 		} catch (TestException e) {
 			orderVerifier.register(ID_COORDINATOR);
 		}
-		orderVerifier.checkIdOrder(Arrays.asList(ID_COORDINATOR));
+		orderVerifier.checkIdOrder(Collections.singletonList(ID_COORDINATOR));
 	}
 
 	private int getValue(int result, long waitTimeMs, boolean throwException) {

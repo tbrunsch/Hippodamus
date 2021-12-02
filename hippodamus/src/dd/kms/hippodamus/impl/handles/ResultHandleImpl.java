@@ -150,7 +150,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public T get() {
 		join();
-		return state.getResult(true);
+		return state.getResult();
 	}
 
 	private void executeCallable() {

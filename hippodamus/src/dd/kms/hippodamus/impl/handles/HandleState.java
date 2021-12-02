@@ -14,7 +14,7 @@ class HandleState<T>
 
 	private final ResultDescription<T>	resultDescription	= new ResultDescription<>();
 	private volatile HandleStage		handleStage			= HandleStage.INITIAL;
-	private volatile boolean			stopped				= false;
+	private volatile boolean			stopped;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -86,10 +86,8 @@ class HandleState<T>
 		return resultDescription.getResultType() == ResultType.COMPLETED;
 	}
 
-	T getResult(boolean checkExistence) {
-		if (checkExistence) {
-			checkCondition(resultDescription.getResultType() == ResultType.COMPLETED, "Trying to access unavailable result");
-		}
+	T getResult() {
+		checkCondition(resultDescription.getResultType() == ResultType.COMPLETED, "Trying to access unavailable result");
 		return resultDescription.getResult();
 	}
 
