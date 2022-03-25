@@ -1,9 +1,9 @@
 package dd.kms.hippodamus.impl.coordinator.configuration;
 
+import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.api.logging.Loggers;
@@ -41,9 +41,7 @@ abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder>
 
 	@Override
 	public B maximumParallelism(int taskType, int maxParallelism) {
-		if (maxParallelism <= 0) {
-			throw new CoordinatorException("The maximum parallelism must be positive");
-		}
+		Preconditions.checkArgument(maxParallelism > 0, "Maximum parallelism must be positive");
 		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
 			? ExecutorServiceWrapper.commonForkJoinPoolWrapper(maxParallelism)

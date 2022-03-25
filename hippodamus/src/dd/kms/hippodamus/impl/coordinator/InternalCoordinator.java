@@ -9,6 +9,8 @@ import java.util.concurrent.Semaphore;
 
 public interface InternalCoordinator extends ExecutionCoordinator
 {
+	boolean supportsTaskType(int taskType);
+
 	/**
 	 * Stops all dependent handles of the specified handle if the handle has been created by this service.
 	 */

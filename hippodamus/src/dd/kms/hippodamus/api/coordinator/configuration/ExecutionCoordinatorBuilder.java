@@ -57,7 +57,7 @@ public interface ExecutionCoordinatorBuilder
 	 * 	                        {@link ExecutionConfigurationBuilder#taskType(int)}.
 	 * @param maxParallelism    The maximum number of tasks processed by the dedicated {@code ExecutorService}.
 	 *
-	 * @throws CoordinatorException if {@code maxParallelism} is not positive.
+	 * @throws IllegalArgumentException if {@code maxParallelism} is not positive.
 	 */
 	ExecutionCoordinatorBuilder maximumParallelism(int taskType, int maxParallelism);
 

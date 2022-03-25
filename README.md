@@ -435,12 +435,11 @@ When calling `ExecutionCoordinator.execute()`, Hippodamus utilizes type inferenc
 
 Hippodamus throws `dd.kms.hippodamus.api.exceptions.CoordinatorException`s when an internal error occurs. Internal errors are errors in the framework or in the usage of the framework. Errors in the usage of the framework include the following scenarios:
 
-- A dependency specified for a task is assigned a different coordinator.
 - Dependency verification is enabled and there is an attempt to access the value of a task that has not yet completed (cf. Section [Dependency Verification](#dependency-verification)).
 - The logger throws an exception (cf. Section [Configuring Coordinators](#configuring-coordinators)).
 - A completion or exception listener throws an exception (cf. Section [Task Listeners](#task-listeners)).
 
-Internal errors are treated wth the highest priority as they are fatal. If a task throws an exception and, e.g., an exception listener which is notified also throws an exception, then the coordinator will throw a `CoordinatorException` containing information about the listener that threw an exception. The task's exception is ignored in this case.
+Internal errors are treated with the highest priority as they are fatal. If a task throws an exception and, e.g., an exception listener which is notified also throws an exception, then the coordinator will throw a `CoordinatorException` containing information about the listener that threw an exception. The task's exception is ignored in this case.
 
 ## Intractable Exceptions
 

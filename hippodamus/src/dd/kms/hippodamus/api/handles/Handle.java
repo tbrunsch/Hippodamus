@@ -98,7 +98,7 @@ public interface Handle
 	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 	 *         ...
 	 *         Handle handle = coordinator.execute(() -> doSomething());
-	 *         handle.onCompletion(() -> onHandleCompleted(handle));
+	 *         handle.onCompletion(() -> onTaskCompleted(handle));
 	 *         ...
 	 *     }
 	 * </pre>
@@ -119,7 +119,7 @@ public interface Handle
 	 *     try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 	 *         ...
 	 *         Handle handle = coordinator.execute(() -> doSomething());
-	 *         handle.onException(() -> onExceptionCompleted(handle));
+	 *         handle.onException(() -> onTaskCompletedExceptionally(handle));
 	 *         ...
 	 *     }
 	 * </pre>

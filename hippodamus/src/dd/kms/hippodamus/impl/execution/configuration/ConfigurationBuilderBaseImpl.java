@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.execution.configuration;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.exceptions.*;
@@ -35,6 +36,7 @@ abstract class ConfigurationBuilderBaseImpl<C extends ExecutionCoordinatorImpl, 
 
 	@Override
 	public B taskType(int type) {
+		Preconditions.checkArgument(coordinator.supportsTaskType(taskType), "No ExecutorService has been specified for task type " + taskType);
 		this.taskType = type;
 		return getBuilder();
 	}
@@ -46,18 +48,18 @@ abstract class ConfigurationBuilderBaseImpl<C extends ExecutionCoordinatorImpl, 
 
 	@Override
 	public B dependencies(Collection<Handle> dependencies) {
-		Handle dependencyWithWrongCoordinator = dependencies.stream()
+		this.dependencies = ImmutableList.copyOf(dependencies);
+		Handle dependencyWithWrongCoordinator = this.dependencies.stream()
 			.filter(dependency -> dependency.getExecutionCoordinator() != coordinator)
 			.findFirst()
 			.orElse(null);
 		if (dependencyWithWrongCoordinator != null) {
-			String error = MessageFormat.format("At least one dependency refers to a task ('{0}') that is not managed by this coordinator: {1}",
+			String error = MessageFormat.format("Task '{0}' ({1}) is not managed by this coordinator",
 				dependencyWithWrongCoordinator.getTaskName(),
 				dependencyWithWrongCoordinator
 			);
-			throw new CoordinatorException(error);
+			throw new IllegalArgumentException(error);
 		}
-		this.dependencies = ImmutableList.copyOf(dependencies);
 		return getBuilder();
 	}
 

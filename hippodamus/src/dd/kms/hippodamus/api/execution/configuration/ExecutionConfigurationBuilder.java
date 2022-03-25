@@ -24,6 +24,8 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	 * <br>
 	 * You can use predefined task types {@link TaskType#REGULAR} (default) and {@link TaskType#IO} or define
 	 * custom types and register {@code ExecutorService}s for these types (see {@link Coordinators#} and {@link ExecutionCoordinatorBuilder#executorService(int, ExecutorService, boolean)}).
+	 *
+	 * @throws IllegalArgumentException if no {@code ExecutorService} has been specified for the task type
 	 */
 	ExecutionConfigurationBuilder taskType(int type);
 
@@ -31,6 +33,8 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	 * Specifies the tasks dependencies.<br>
 	 * <br>
 	 * The task will not be submitted to the {@link ExecutorService} unless all dependencies have completed.
+	 *
+	 * @throws IllegalArgumentException if one of the specified dependencies belongs to a different {@link ExecutionCoordinator}
 	 */
 	ExecutionConfigurationBuilder dependencies(Handle... dependencies);
 

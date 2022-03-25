@@ -156,14 +156,23 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		return "Task " + (handleDependencyManager.getManagedHandles().size() + 1);
 	}
 
+	@Override
+	public boolean supportsTaskType(int taskType) {
+		return getExecutorServiceWrapper(taskType) != null;
+	}
+
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
 		int taskType = configuration.getTaskType();
-		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
-		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
+		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskType);
 		if (executorServiceWrapper == null) {
-			throw new CoordinatorException("No executor service registered for task type " + taskType + ". Use TaskType.REGULAR or TaskType.IO or a custom type you have registered an executor service for.");
+			throw new CoordinatorException("Internal error: No executor service registered for task type " + taskType + ". This should not happen because ExecutionConfigurationBuilder.taskType(int) checks this.");
 		}
 		return executorServiceWrapper;
+	}
+
+	private ExecutorServiceWrapper getExecutorServiceWrapper(int taskType) {
+		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
+		return executorServiceWrappersByTaskType.get(taskType);
 	}
 
 	@Override
