@@ -4,6 +4,13 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 
+/**
+ * This interface provides methods to execute or aggregate tasks. You will usually implement against
+ * the subinterfaces {@link dd.kms.hippodamus.api.coordinator.AggregationCoordinator} and
+ * {@link dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder}. You will
+ * obtain the latter by calling {@link dd.kms.hippodamus.api.coordinator.AggregationCoordinator#configure()}
+ * in case you want to configure how a task will be executed or aggregated.
+ */
 public interface AggregationManager<S> extends ExecutionManager
 {
 	/**

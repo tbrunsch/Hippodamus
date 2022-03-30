@@ -12,6 +12,16 @@ import dd.kms.hippodamus.api.logging.Loggers;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 
+/**
+ * Builder for an {@link ExecutionCoordinator} that allows specifying
+ * <ul>
+ *     <li>the {@link ExecutorService} for tasks of a certain type,</li>
+ *     <li>the maximum parallelism,</li>
+ *     <li>whether to verify the specified dependencies,</li>
+ *     <li>how long the {@code ExecutionCoordinator}'s {@code close()} method waits, and</li>
+ *     <li>a {@link Logger} and the minimum log level</li>
+ * </ul>
+ */
 public interface ExecutionCoordinatorBuilder
 {
 	/**

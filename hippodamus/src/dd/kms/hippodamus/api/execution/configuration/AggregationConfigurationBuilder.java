@@ -5,6 +5,12 @@ import dd.kms.hippodamus.api.handles.Handle;
 
 import java.util.Collection;
 
+/**
+ * Same as {@link ExecutionConfigurationBuilder}, but for tasks of an
+ * {@link dd.kms.hippodamus.api.coordinator.AggregationCoordinator}.
+ * Call {@link dd.kms.hippodamus.api.coordinator.AggregationCoordinator#configure()}
+ * to create this builder for a task.
+ */
 public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigurationBuilder, AggregationManager<S>
 {
 	@Override

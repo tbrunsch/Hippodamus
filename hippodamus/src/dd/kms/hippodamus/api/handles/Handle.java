@@ -6,8 +6,17 @@ import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * When submitting a task to an {@link ExecutionCoordinator} via one of the {@code execute()}
+ * methods, the submitter obtains a handle that represents that task within the coordinator.
+ * This handle can be used, among others, to query information about the task. Another important
+ * function is that it can be used to describe dependencies between tasks (see
+ * {@link ExecutionConfigurationBuilder#dependencies(Handle...)} and
+ * {@link ExecutionConfigurationBuilder#dependencies(Collection)}).
+ */
 public interface Handle
 {
 	/**

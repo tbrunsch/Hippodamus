@@ -7,6 +7,13 @@ import dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 
+/**
+ * This interface provides methods to execute tasks. You will usually implement against the subinterfaces
+ * {@link dd.kms.hippodamus.api.coordinator.ExecutionCoordinator} and
+ * {@link dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder}. You will obtain the
+ * latter by calling {@link dd.kms.hippodamus.api.coordinator.ExecutionCoordinator#configure()} in case you
+ * want to configure how a task will be executed.
+ */
 public interface ExecutionManager
 {
 	/**

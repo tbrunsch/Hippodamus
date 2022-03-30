@@ -2,6 +2,12 @@ package dd.kms.hippodamus.api.coordinator.configuration;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 
+/**
+ * Enum that is used to describe how long the {@link ExecutionCoordinator}'s
+ * {@code close()} method will wait.
+ * 
+ * @see ExecutionCoordinatorBuilder#waitMode(WaitMode)
+ */
 public enum WaitMode
 {
 	/**

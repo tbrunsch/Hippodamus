@@ -6,6 +6,16 @@ import dd.kms.hippodamus.api.logging.Logger;
 
 import java.util.concurrent.ExecutorService;
 
+/**
+ * Builder for an {@link AggregationCoordinator} that allows specifying
+ * <ul>
+ *     <li>the {@link ExecutorService} for tasks of a certain type,</li>
+ *     <li>the maximum parallelism,</li>
+ *     <li>whether to verify the specified dependencies,</li>
+ *     <li>how long the {@code AggregationCoordinator}'s {@code close()} method waits, and</li>
+ *     <li>a {@link Logger} and the minimum log level</li>
+ * </ul>
+ */
 public interface AggregationCoordinatorBuilder<S, R> extends ExecutionCoordinatorBuilder
 {
 	@Override

@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.api.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
-import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
@@ -10,6 +9,16 @@ import dd.kms.hippodamus.api.handles.Handle;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 
+/**
+ * Use this interface to specify information about a task and how it will be executed. You can specify
+ * <ul>
+ *     <li>the task's name,</li>
+ *     <li>the task's type, and</li>
+ *     <li>other tasks this task depends on and which have to be executed before this task.</li>
+ * </ul>
+ * Call {@link dd.kms.hippodamus.api.coordinator.ExecutionCoordinator#configure()} to create
+ * this builder for a task.
+ */
 public interface ExecutionConfigurationBuilder extends ExecutionManager
 {
 	/**
@@ -19,8 +28,8 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	ExecutionConfigurationBuilder name(String name);
 
 	/**
-	 * Specifies the type of the task. Based on the type the {@link ExecutionCoordinator} decides which {@link ExecutorService}
-	 * the task should be submitted to.<br>
+	 * Specifies the type of the task. Based on the type the {@link dd.kms.hippodamus.api.coordinator.ExecutionCoordinator}
+	 * decides which {@link ExecutorService} the task should be submitted to.<br>
 	 * <br>
 	 * You can use predefined task types {@link TaskType#REGULAR} (default) and {@link TaskType#IO} or define
 	 * custom types and register {@code ExecutorService}s for these types (see {@link Coordinators#} and {@link ExecutionCoordinatorBuilder#executorService(int, ExecutorService, boolean)}).
