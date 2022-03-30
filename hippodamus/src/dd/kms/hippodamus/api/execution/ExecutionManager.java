@@ -18,6 +18,8 @@ public interface ExecutionManager
 
 	/**
 	 * Executes a {@link StoppableExceptionalRunnable} and returns a handle to the resulting task.
+	 * Use this method if the task should be able to check whether it should stop prematurely.
+	 * This can be the case if, e.g., another task terminates exceptionally.
 	 *
 	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
@@ -32,6 +34,8 @@ public interface ExecutionManager
 
 	/**
 	 * Executes a {@link StoppableExceptionalCallable} and returns a handle to the resulting task.
+	 * Use this method if the task should be able to check whether it should stop prematurely.
+	 * This can be the case if, e.g., another task terminates exceptionally.
 	 *
 	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
