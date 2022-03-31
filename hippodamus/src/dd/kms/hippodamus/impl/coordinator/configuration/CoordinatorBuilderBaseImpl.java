@@ -6,8 +6,8 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-import dd.kms.hippodamus.api.logging.Loggers;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.logging.NoLogger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutorService;
 abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder> implements ExecutionCoordinatorBuilder
 {
 	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
-	private Logger										logger								= Loggers.NO_LOGGER;
+	private Logger										logger								= NoLogger.LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
 	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION_REQUESTED;

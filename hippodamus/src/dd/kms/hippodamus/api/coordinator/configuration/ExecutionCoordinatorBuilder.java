@@ -7,7 +7,6 @@ import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuild
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-import dd.kms.hippodamus.api.logging.Loggers;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
@@ -72,8 +71,7 @@ public interface ExecutionCoordinatorBuilder
 	ExecutionCoordinatorBuilder maximumParallelism(int taskType, int maxParallelism);
 
 	/**
-	 * Specifies the logger that is used to log received messages. If not specified, then the {@link Loggers#NO_LOGGER}
-	 * will be used.
+	 * Specifies the logger that is used to log received messages. If not specified, then nothing will be logged.
 	 */
 	ExecutionCoordinatorBuilder logger(Logger logger);
 
