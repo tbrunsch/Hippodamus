@@ -4,6 +4,10 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 
+/**
+ * Describes the severity of the messages send to the {@link Logger}. Currently, there are only two levels:
+ * {@link #INTERNAL_ERROR} for certain types of errors and {@link #STATE} for state changes.
+ */
 public enum LogLevel
 {
 	/**
