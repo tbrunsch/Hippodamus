@@ -11,7 +11,7 @@ import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.AggregationConfigurationBuilderImpl;
-import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfiguration;
+import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
 
 import java.util.Map;
 
@@ -26,10 +26,10 @@ public class AggregationCoordinatorImpl<S, R>
 		this.aggregator = aggregator;
 	}
 
-	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable, ExecutionConfiguration configuration) throws T {
+	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable, TaskConfiguration taskConfiguration) throws T {
 		synchronized (this) {
 			boolean initiallyStopped = aggregator.hasAggregationCompleted();
-			ResultHandle<S> handle = execute(callable, configuration, initiallyStopped);
+			ResultHandle<S> handle = execute(callable, taskConfiguration, initiallyStopped);
 			if (!initiallyStopped) {
 				handle.onCompletion(() -> aggregate(handle.get()));
 			}

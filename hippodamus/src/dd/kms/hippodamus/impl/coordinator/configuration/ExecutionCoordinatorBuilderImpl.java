@@ -10,7 +10,7 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 
 import java.util.Map;
 
-public class ExecutionCoordinatorBuilderImpl extends CoordinatorBuilderBaseImpl<ExecutionCoordinatorBuilder, ExecutionCoordinator> implements ExecutionCoordinatorBuilder
+public class ExecutionCoordinatorBuilderImpl extends CoordinatorBuilderBase<ExecutionCoordinatorBuilder, ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
 	@Override
 	ExecutionCoordinatorBuilder getBuilder() {

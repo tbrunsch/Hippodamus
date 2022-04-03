@@ -9,7 +9,7 @@ import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.exceptions.Exceptions;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfiguration;
+import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.handles.Handles;
 
@@ -30,7 +30,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	/**
 	 * Handles the dependencies between handles.<br>
 	 * <br>
-	 * The state of the dependency manager will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
+	 * The state of the dependency manager will only be changed by calls to {@link #execute(StoppableExceptionalCallable, TaskConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the cached state of the dependency manager
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is required to
 	 * access the dependency manager in methods that are only called in the coordinator's thread.
@@ -40,7 +40,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	/**
 	 * Contains human-friendly, by default generic task names.<br>
 	 * <br>
-	 * The state of that set will only be changed by calls to {@link #execute(StoppableExceptionalCallable, ExecutionConfiguration)},
+	 * The state of that set will only be changed by calls to {@link #execute(StoppableExceptionalCallable, TaskConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the cached state of the set
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
 	 * required to access the map in methods that are only called in the coordinator's thread.
@@ -115,14 +115,14 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		this.waitMode = waitMode;
 	}
 
-	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration) {
-		return execute(callable, configuration, false);
+	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
+		return execute(callable, taskConfiguration, false);
 	}
 
-	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration, boolean initiallyStopped) {
-		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
-		String taskName = getTaskName(configuration);
-		Collection<Handle> dependencies = configuration.getDependencies();
+	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration, boolean initiallyStopped) {
+		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
+		String taskName = getTaskName(taskConfiguration);
+		Collection<Handle> dependencies = taskConfiguration.getDependencies();
 		synchronized (this) {
 			checkException();
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
@@ -142,8 +142,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	/*
 	 * Task names
 	 */
-	String getTaskName(ExecutionConfiguration configuration) {
-		Optional<String> taskName = configuration.getName();
+	String getTaskName(TaskConfiguration taskConfiguration) {
+		Optional<String> taskName = taskConfiguration.getName();
 		String nameSuggestion = taskName.orElse(createGenericTaskName());
 		return createUniqueTaskName(nameSuggestion);
 	}
@@ -167,8 +167,8 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		return executorServiceWrappersByTaskType.get(taskType) != null;
 	}
 
-	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
-		int taskType = configuration.getTaskType();
+	private ExecutorServiceWrapper getExecutorServiceWrapper(TaskConfiguration taskConfiguration) {
+		int taskType = taskConfiguration.getTaskType();
 		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		if (executorServiceWrapper == null) {
 			throw new CoordinatorException("Internal error: No executor service registered for task type " + taskType + ". This should not happen because ExecutionConfigurationBuilder.taskType(int) checks this.");

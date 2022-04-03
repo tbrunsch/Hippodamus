@@ -14,7 +14,12 @@ import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.Collection;
 
-abstract class ConfigurationBuilderBaseImpl<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
+/**
+ * Base class for {@link ExecutionConfigurationBuilderImpl} and {@link AggregationConfigurationBuilderImpl}
+ * to avoid implementing all methods of {@link dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder}
+ * by delegating to the super method and returning a more concrete type.
+ */
+abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
 {
 	final C						coordinator;
 
@@ -22,7 +27,7 @@ abstract class ConfigurationBuilderBaseImpl<C extends ExecutionCoordinatorImpl, 
 	private int					taskType		= TaskType.REGULAR;
 	private Collection<Handle>	dependencies	= ImmutableList.of();
 
-	ConfigurationBuilderBaseImpl(C coordinator) {
+	ConfigurationBuilderBase(C coordinator) {
 		this.coordinator = coordinator;
 	}
 
@@ -83,7 +88,7 @@ abstract class ConfigurationBuilderBaseImpl<C extends ExecutionCoordinatorImpl, 
 		return coordinator.execute(callable, createConfiguration());
 	}
 
-	ExecutionConfiguration createConfiguration() {
-		return new ExecutionConfiguration(name, taskType, dependencies);
+	TaskConfiguration createConfiguration() {
+		return new TaskConfiguration(name, taskType, dependencies);
 	}
 }

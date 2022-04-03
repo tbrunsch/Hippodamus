@@ -8,7 +8,7 @@ import dd.kms.hippodamus.impl.coordinator.AggregationCoordinatorImpl;
 import dd.kms.hippodamus.impl.exceptions.Exceptions;
 
 public class AggregationConfigurationBuilderImpl<S, R>
-	extends ConfigurationBuilderBaseImpl<AggregationCoordinatorImpl<S, R>, AggregationConfigurationBuilder<S, R>>
+	extends ConfigurationBuilderBase<AggregationCoordinatorImpl<S, R>, AggregationConfigurationBuilder<S, R>>
 	implements AggregationConfigurationBuilder<S, R>
 {
 	public AggregationConfigurationBuilderImpl(AggregationCoordinatorImpl<S, R> coordinator) {

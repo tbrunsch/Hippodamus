@@ -19,7 +19,7 @@ import java.util.concurrent.ExecutorService;
  * to avoid implementing all methods of {@link dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder}
  * by delegating to the super method and returning a more concrete type.
  */
-abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder, C extends ExecutionCoordinator> implements ExecutionCoordinatorBuilder
+abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C extends ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
 	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
 	private Logger										logger								= NoLogger.LOGGER;
@@ -27,7 +27,7 @@ abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder,
 	private boolean										verifyDependencies					= false;
 	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION_REQUESTED;
 
-	CoordinatorBuilderBaseImpl() {
+	CoordinatorBuilderBase() {
 		executorServiceWrappersByTaskType = new HashMap<>();
 		executorServiceWrappersByTaskType.put(TaskType.REGULAR,	ExecutorServiceWrapper.commonForkJoinPoolWrapper(Integer.MAX_VALUE));
 		executorServiceWrappersByTaskType.put(TaskType.IO,		ExecutorServiceWrapper.create(1, Integer.MAX_VALUE));

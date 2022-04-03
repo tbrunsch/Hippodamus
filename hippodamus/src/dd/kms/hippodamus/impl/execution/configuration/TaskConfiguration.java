@@ -6,13 +6,17 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Optional;
 
-public class ExecutionConfiguration
+/**
+ * Stores all information that can be configured by a {@link dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder}
+ * (or a {@link dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder}).
+ */
+public class TaskConfiguration
 {
 	private final @Nullable String		name;
 	private final int					taskType;
 	private final Collection<Handle>	dependencies;
 
-	ExecutionConfiguration(String name, int taskType, Collection<Handle> dependencies) {
+	TaskConfiguration(String name, int taskType, Collection<Handle> dependencies) {
 		this.name = name;
 		this.taskType = taskType;
 		this.dependencies = dependencies;

@@ -12,7 +12,7 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import java.util.Map;
 
 public class AggregationCoordinatorBuilderImpl<S, R>
-	extends CoordinatorBuilderBaseImpl<AggregationCoordinatorBuilder<S, R>, AggregationCoordinator<S, R>>
+	extends CoordinatorBuilderBase<AggregationCoordinatorBuilder<S, R>, AggregationCoordinator<S, R>>
 	implements AggregationCoordinatorBuilder<S, R>
 {
 	private final Aggregator<S, R> aggregator;
