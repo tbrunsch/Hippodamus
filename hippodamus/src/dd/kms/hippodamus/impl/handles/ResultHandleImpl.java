@@ -6,7 +6,7 @@ import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
-import dd.kms.hippodamus.impl.coordinator.InternalCoordinator;
+import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.InternalTaskHandle;
 
@@ -21,7 +21,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
-	private final InternalCoordinator					coordinator;
+	private final ExecutionCoordinatorImpl				coordinator;
 	private final String								taskName;
 	private final int									id;
 	private final ExecutorServiceWrapper				executorServiceWrapper;
@@ -35,7 +35,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private volatile InternalTaskHandle					taskHandle;
 
-	ResultHandleImpl(InternalCoordinator coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -143,7 +143,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 	}
 
 	@Override
-	public final InternalCoordinator getExecutionCoordinator() {
+	public final ExecutionCoordinatorImpl getExecutionCoordinator() {
 		return coordinator;
 	}
 

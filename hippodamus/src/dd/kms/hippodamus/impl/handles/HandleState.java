@@ -3,18 +3,18 @@ package dd.kms.hippodamus.impl.handles;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
-import dd.kms.hippodamus.impl.coordinator.InternalCoordinator;
+import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
 import java.util.concurrent.Semaphore;
 
 class HandleState<T>
 {
-	private final Handle handle;
-	private final InternalCoordinator	coordinator;
+	private final Handle 					handle;
+	private final ExecutionCoordinatorImpl	coordinator;
 
-	private final ResultDescription<T>	resultDescription	= new ResultDescription<>();
-	private volatile HandleStage		handleStage			= HandleStage.INITIAL;
-	private volatile boolean			stopped;
+	private final ResultDescription<T>		resultDescription	= new ResultDescription<>();
+	private volatile HandleStage			handleStage			= HandleStage.INITIAL;
+	private volatile boolean				stopped;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -29,13 +29,13 @@ class HandleState<T>
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
 	 * is stopped. It operates on the coordinator's termination lock we obtain by calling
-	 * {@link InternalCoordinator#getTerminationLock()}.<br>
+	 * {@link ExecutionCoordinatorImpl#getTerminationLock()}.<br>
 	 * Note that the value must be set to true <b>after</b> calling any listener to ensure that the
 	 * coordinator does not close before notifying all listeners.
 	 */
 	private final AwaitableBoolean		releaseCoordinatorFlag;
 
-	HandleState(Handle handle, InternalCoordinator coordinator, boolean stopped) {
+	HandleState(Handle handle, ExecutionCoordinatorImpl coordinator, boolean stopped) {
 		this.handle = handle;
 		this.coordinator = coordinator;
 		this.stopped = stopped;

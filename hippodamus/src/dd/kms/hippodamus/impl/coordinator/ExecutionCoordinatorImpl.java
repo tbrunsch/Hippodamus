@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.coordinator;
 
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.*;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
@@ -17,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 
-public class ExecutionCoordinatorImpl implements InternalCoordinator
+public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 {
 	private static final int	MAX_NUM_TASKS	= Integer.MAX_VALUE;
 
@@ -101,7 +102,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	private boolean							loggerFaulty;
 
 	/**
-	 * This lock is hold by all managed tasks. The coordinator will wait in its {@link #close()} method until
+	 * This lock is held by all managed tasks. The coordinator will wait in its {@link #close()} method until
 	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally,
 	 * or when being stopped if the coordinator is configured with {@link WaitMode#UNTIL_TERMINATION_REQUESTED}.
 	 */
@@ -162,7 +163,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		return "Task " + (handleDependencyManager.getManagedHandles().size() + 1);
 	}
 
-	@Override
 	public boolean supportsTaskType(int taskType) {
 		return executorServiceWrappersByTaskType.get(taskType) != null;
 	}
@@ -199,12 +199,16 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	@Override
+	/**
+	 * @return The coordinators termination lock. This lock is held by all handles managed by the coordinator.
+	 * The coordinator will wait in its {@link #close()} method until all tasks have released it.<br>
+	 * <br>
+	 * Handles must release it when terminating, either successfully or exceptionally, or when being stopped.
+	 */
 	public Semaphore getTerminationLock() {
 		return terminationLock;
 	}
 
-	@Override
 	public WaitMode getWaitMode() {
 		return waitMode;
 	}
@@ -217,7 +221,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	@Override
 	public void onCompletion(Handle handle) {
 		synchronized (this) {
 			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
@@ -225,7 +228,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	@Override
 	public void onException(Handle handle) {
 		onException(handle.getException(), false);
 	}
@@ -247,7 +249,9 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 		}
 	}
 
-	@Override
+	/**
+	 * Stops all dependent handles of the specified handle if the handle has been created by this service.
+	 */
 	public void stopDependentHandles(Handle handle) {
 		synchronized (this) {
 			List<Handle> dependentHandles = handleDependencyManager.getDependentHandles(handle);
@@ -256,9 +260,10 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	}
 
 	/**
+	 * Logs a message for a certain handle at a certain log message.<br>
+	 * <br>
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	@Override
 	public void log(LogLevel logLevel, Handle handle, String message) {
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
