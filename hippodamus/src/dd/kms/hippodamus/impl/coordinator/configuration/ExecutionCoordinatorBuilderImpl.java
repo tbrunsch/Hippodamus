@@ -2,9 +2,15 @@ package dd.kms.hippodamus.impl.coordinator.configuration;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
+import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
+import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 
-public class ExecutionCoordinatorBuilderImpl extends CoordinatorBuilderBaseImpl<ExecutionCoordinatorBuilder> implements ExecutionCoordinatorBuilder
+import java.util.Map;
+
+public class ExecutionCoordinatorBuilderImpl extends CoordinatorBuilderBaseImpl<ExecutionCoordinatorBuilder, ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
 	@Override
 	ExecutionCoordinatorBuilder getBuilder() {
@@ -12,8 +18,7 @@ public class ExecutionCoordinatorBuilderImpl extends CoordinatorBuilderBaseImpl<
 	}
 
 	@Override
-	public ExecutionCoordinator build() {
-		CoordinatorConfiguration configuration = createConfiguration();
-		return new ExecutionCoordinatorImpl(configuration);
+	ExecutionCoordinator createCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+		return new ExecutionCoordinatorImpl(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
 	}
 }

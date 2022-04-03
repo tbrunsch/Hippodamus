@@ -2,13 +2,18 @@ package dd.kms.hippodamus.impl.coordinator;
 
 import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.impl.coordinator.configuration.CoordinatorConfiguration;
+import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.logging.Logger;
+import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.AggregationConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfiguration;
+
+import java.util.Map;
 
 public class AggregationCoordinatorImpl<S, R>
 	extends ExecutionCoordinatorImpl
@@ -16,8 +21,8 @@ public class AggregationCoordinatorImpl<S, R>
 {
 	private final Aggregator<S, R>		aggregator;
 
-	public AggregationCoordinatorImpl(Aggregator<S, R> aggregator, CoordinatorConfiguration coordinatorConfiguration) {
-		super(coordinatorConfiguration);
+	public AggregationCoordinatorImpl(Aggregator<S, R> aggregator, Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+		super(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
 		this.aggregator = aggregator;
 	}
 

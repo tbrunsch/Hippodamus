@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.coordinator.configuration;
 
 import com.google.common.base.Preconditions;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
@@ -13,7 +14,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder> implements ExecutionCoordinatorBuilder
+/**
+ * Base class for {@link ExecutionCoordinatorBuilderImpl} and {@link AggregationCoordinatorBuilderImpl}
+ * to avoid implementing all methods of {@link dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder}
+ * by delegating to the super method and returning a more concrete type.
+ */
+abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder, C extends ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
 	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
 	private Logger										logger								= NoLogger.LOGGER;
@@ -28,6 +34,7 @@ abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder>
 	}
 
 	abstract B getBuilder();
+	abstract C createCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode);
 
 	@Override
 	public B executorService(int taskType, ExecutorService executorService, boolean shutdownRequired) {
@@ -73,7 +80,8 @@ abstract class CoordinatorBuilderBaseImpl<B extends ExecutionCoordinatorBuilder>
 		return getBuilder();
 	}
 
-	CoordinatorConfiguration createConfiguration() {
-		return new CoordinatorConfiguration(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
+	@Override
+	public C build() {
+		return createCoordinator(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
 	}
 }

@@ -7,7 +7,6 @@ import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-import dd.kms.hippodamus.impl.coordinator.configuration.CoordinatorConfiguration;
 import dd.kms.hippodamus.impl.exceptions.Exceptions;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfiguration;
@@ -22,7 +21,11 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 {
 	private static final int	MAX_NUM_TASKS	= Integer.MAX_VALUE;
 
-	private final CoordinatorConfiguration	coordinatorConfiguration;
+	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
+	private final Logger								logger;
+	private final LogLevel								minimumLogLevel;
+	private final boolean								verifyDependencies;
+	private final WaitMode								waitMode;
 
 	/**
 	 * Handles the dependencies between handles.<br>
@@ -104,8 +107,12 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 */
 	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
 
-	public ExecutionCoordinatorImpl(CoordinatorConfiguration coordinatorConfiguration) {
-		this.coordinatorConfiguration = coordinatorConfiguration;
+	public ExecutionCoordinatorImpl(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+		this.executorServiceWrappersByTaskType = executorServiceWrappersByTaskType;
+		this.logger = logger;
+		this.minimumLogLevel = minimumLogLevel;
+		this.verifyDependencies = verifyDependencies;
+		this.waitMode = waitMode;
 	}
 
 	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration) {
@@ -115,7 +122,6 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, ExecutionConfiguration configuration, boolean initiallyStopped) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(configuration);
 		String taskName = getTaskName(configuration);
-		boolean verifyDependencies = coordinatorConfiguration.isVerifyDependencies();
 		Collection<Handle> dependencies = configuration.getDependencies();
 		synchronized (this) {
 			checkException();
@@ -158,21 +164,16 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	@Override
 	public boolean supportsTaskType(int taskType) {
-		return getExecutorServiceWrapper(taskType) != null;
+		return executorServiceWrappersByTaskType.get(taskType) != null;
 	}
 
 	private ExecutorServiceWrapper getExecutorServiceWrapper(ExecutionConfiguration configuration) {
 		int taskType = configuration.getTaskType();
-		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskType);
+		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		if (executorServiceWrapper == null) {
 			throw new CoordinatorException("Internal error: No executor service registered for task type " + taskType + ". This should not happen because ExecutionConfigurationBuilder.taskType(int) checks this.");
 		}
 		return executorServiceWrapper;
-	}
-
-	private ExecutorServiceWrapper getExecutorServiceWrapper(int taskType) {
-		Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType = coordinatorConfiguration.getExecutorServiceWrappersByTaskType();
-		return executorServiceWrappersByTaskType.get(taskType);
 	}
 
 	@Override
@@ -205,7 +206,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 
 	@Override
 	public WaitMode getWaitMode() {
-		return coordinatorConfiguration.getWaitMode();
+		return waitMode;
 	}
 
 	@Override
@@ -259,12 +260,10 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 	 */
 	@Override
 	public void log(LogLevel logLevel, Handle handle, String message) {
-		LogLevel minimumLogLevel = coordinatorConfiguration.getMinimumLogLevel();
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
 		String name = handle.getTaskName();
-		Logger logger = coordinatorConfiguration.getLogger();
 		CoordinatorException exception = null;
 		try {
 			if (!loggerFaulty) {
@@ -301,8 +300,7 @@ public class ExecutionCoordinatorImpl implements InternalCoordinator
 			}
 			checkException();
 		} finally {
-			Collection<ExecutorServiceWrapper> executorServiceWrappers = coordinatorConfiguration.getExecutorServiceWrappersByTaskType().values();
-			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappers) {
+			for (ExecutorServiceWrapper executorServiceWrapper : executorServiceWrappersByTaskType.values()) {
 				try {
 					executorServiceWrapper.close();
 				} catch (Throwable t) {
