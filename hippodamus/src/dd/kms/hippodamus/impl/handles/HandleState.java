@@ -14,6 +14,11 @@ class HandleState<T>
 
 	private final ResultDescription<T>		resultDescription	= new ResultDescription<>();
 	private volatile HandleStage			handleStage			= HandleStage.INITIAL;
+
+	/**
+	 * Describes whether the task has been stopped or not. The flag is set while the coordinator
+	 * is locked.
+	 */
 	private volatile boolean				stopped;
 
 	/**
@@ -54,6 +59,9 @@ class HandleState<T>
 		}
 	}
 
+	/**
+	 * Ensure that this method is called with locking the coordinator.
+	 */
 	boolean setResult(T result) {
 		return !stopped
 			&& checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
@@ -61,6 +69,9 @@ class HandleState<T>
 			&& transitionTo(HandleStage.TERMINATING);
 	}
 
+	/**
+	 * Ensure that this method is called with locking the coordinator.
+	 */
 	boolean setException(Throwable exception) {
 		return !stopped
 			&& checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
@@ -68,6 +79,9 @@ class HandleState<T>
 			&& transitionTo(HandleStage.TERMINATING);
 	}
 
+	/**
+	 * Ensure that this method is called with locking the coordinator.
+	 */
 	boolean stop() {
 		if (stopped) {
 			return false;
@@ -191,7 +205,9 @@ class HandleState<T>
 
 	private boolean checkCondition(boolean condition, String message) {
 		if (!condition) {
-			coordinator.log(LogLevel.INTERNAL_ERROR, handle, message);
+			synchronized (coordinator) {
+				coordinator.log(LogLevel.INTERNAL_ERROR, handle, message);
+			}
 		}
 		return condition;
 	}

@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-class ResultHandleImpl<T> implements ResultHandle<T>
+public class ResultHandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -35,7 +35,7 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private volatile InternalTaskHandle					taskHandle;
 
-	ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -153,6 +153,9 @@ class ResultHandleImpl<T> implements ResultHandle<T>
 		return state.getResult();
 	}
 
+	/**
+	 * Ensure that this method is called with locking the coordinator.
+	 */
 	private void executeCallable() {
 		if (!startExecution()) {
 			return;
