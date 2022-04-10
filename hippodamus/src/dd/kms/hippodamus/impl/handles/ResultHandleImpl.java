@@ -56,7 +56,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!state.isStopped() && state.transitionTo(HandleStage.SUBMITTED)) {
-				taskHandle = executorServiceWrapper.submit(id, this::executeCallable);
+				taskHandle = executorServiceWrapper.submit(this);
 			}
 		}
 	}
@@ -160,7 +160,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	/**
 	 * Ensure that this method is called with locking the coordinator.
 	 */
-	private void executeCallable() {
+	public void executeCallable() {
 		if (!startExecution()) {
 			return;
 		}

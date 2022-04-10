@@ -1,24 +1,26 @@
 package dd.kms.hippodamus.impl.execution;
 
+import dd.kms.hippodamus.impl.handles.ResultHandleImpl;
+
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 public class TaskHandle
 {
-	private final int					id;
-	private final Supplier<Future<?>>	submitter;
-	private Future<?>					future;
+	private final ResultHandleImpl<?>		handle;
+	private final ExecutorServiceWrapper	executorServiceWrapper;
+	private Future<?>						future;
 
-	TaskHandle(int id, Supplier<Future<?>> submitter) {
-		this.id = id;
-		this.submitter = submitter;
+	TaskHandle(ResultHandleImpl<?> handle, ExecutorServiceWrapper executorServiceWrapper) {
+		this.handle = handle;
+		this.executorServiceWrapper = executorServiceWrapper;
 	}
 
 	/**
 	 * @return The ID of the associated task handle
 	 */
 	public int getId() {
-		return id;
+		return handle.getId();
 	}
 
 	/**
@@ -26,7 +28,7 @@ public class TaskHandle
 	 */
 	public void submit() {
 		if (future == null) {
-			future = submitter.get();
+			future = executorServiceWrapper.submitNow(handle);
 		}
 	}
 

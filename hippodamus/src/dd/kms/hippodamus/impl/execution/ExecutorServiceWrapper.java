@@ -1,5 +1,7 @@
 package dd.kms.hippodamus.impl.execution;
 
+import dd.kms.hippodamus.impl.handles.ResultHandleImpl;
+
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.Queue;
@@ -56,8 +58,8 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public TaskHandle submit(int id, Runnable runnable) {
-		TaskHandle taskHandle = new TaskHandle(id, () -> submitNow(runnable));
+	public TaskHandle submit(ResultHandleImpl<?> handle) {
+		TaskHandle taskHandle = new TaskHandle(handle, this);
 		if (canSubmitTask()) {
 			taskHandle.submit();
 		} else {
@@ -86,9 +88,9 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return numPendingSubmittedTasks < maxParallelism;
 	}
 
-	private Future<?> submitNow(Runnable runnable) {
+	Future<?> submitNow(ResultHandleImpl<?> handle) {
 		numPendingSubmittedTasks++;
-		return executorService.submit(runnable);
+		return executorService.submit(handle::executeCallable);
 	}
 
 	@Override
