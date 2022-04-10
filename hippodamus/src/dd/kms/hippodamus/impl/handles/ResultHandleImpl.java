@@ -45,6 +45,10 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 		this.state = new HandleState<>(this, coordinator, stopped);
 	}
 
+	public int getId() {
+		return id;
+	}
+
 	/*****************
 	 * Stage Changes *
 	 ****************/
