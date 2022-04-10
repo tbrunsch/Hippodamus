@@ -11,24 +11,33 @@ import java.util.concurrent.Future;
 public class ExecutorServiceWrapper implements AutoCloseable
 {
 	public static ExecutorServiceWrapper commonForkJoinPoolWrapper(int maxParallelism) {
-		return new ExecutorServiceWrapper(ForkJoinPool.commonPool(), false, maxParallelism);
+		return create(ForkJoinPool.commonPool(), false, maxParallelism);
 	}
 
 	public static ExecutorServiceWrapper create(int numThreads, int maxParallelism) {
-		return new ExecutorServiceWrapper(Executors.newWorkStealingPool(numThreads), true, maxParallelism);
+		return create(Executors.newWorkStealingPool(numThreads), true, maxParallelism);
 	}
 
 	public static ExecutorServiceWrapper create(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		return new ExecutorServiceWrapper(executorService, shutdownRequired, maxParallelism);
 	}
 
-	private final ExecutorService			executorService;
-	private final boolean					shutdownRequired;
-	private final int						maxParallelism;
+	private final ExecutorService				executorService;
+	private final boolean						shutdownRequired;
+	private final int							maxParallelism;
 
-	private final Queue<InternalTaskHandle> unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandle::getId));
+	/*
+	 * The unsubmitted tasks are ordered according to their id. The reason is that tasks with a lower id cannot depend
+	 * on tasks with higher ids because the ids reflect the tasks' creation order. So this order is save even if one
+	 * forgets to specify certain dependencies.
+	 */
+	private final Queue<InternalTaskHandleImpl>	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandleImpl::getId));
 
-	private int 							numPendingSubmittedTasks;
+	/**
+	 * Number of tasks that have been submitted to the wrapped {@link ExecutorService} and
+	 * that have not finished yet.
+	 */
+	private int 								numPendingSubmittedTasks;
 
 	private ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		this.executorService = executorService;
@@ -47,8 +56,8 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public InternalTaskHandle submit(int id, Runnable runnable) {
-		InternalTaskHandle taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(runnable));
+	public InternalTaskHandleImpl submit(int id, Runnable runnable) {
+		InternalTaskHandleImpl taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(runnable));
 		if (canSubmitTask()) {
 			taskHandle.submit();
 		} else {
@@ -63,13 +72,16 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	public void onTaskCompleted() {
 		numPendingSubmittedTasks--;
 		if (canSubmitTask()) {
-			InternalTaskHandle taskHandle = unsubmittedTasks.poll();
+			InternalTaskHandleImpl taskHandle = unsubmittedTasks.poll();
 			if (taskHandle != null) {
 				taskHandle.submit();
 			}
 		}
 	}
 
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	private boolean canSubmitTask() {
 		return numPendingSubmittedTasks < maxParallelism;
 	}

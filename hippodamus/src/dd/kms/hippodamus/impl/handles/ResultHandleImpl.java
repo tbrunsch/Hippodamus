@@ -8,7 +8,7 @@ import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-import dd.kms.hippodamus.impl.execution.InternalTaskHandle;
+import dd.kms.hippodamus.impl.execution.InternalTaskHandleImpl;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -33,7 +33,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private final HandleState<T>						state;
 
-	private volatile InternalTaskHandle					taskHandle;
+	private volatile InternalTaskHandleImpl				taskHandle;
 
 	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;

@@ -3,7 +3,7 @@ package dd.kms.hippodamus.impl.execution;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
-class InternalTaskHandleImpl implements InternalTaskHandle
+public class InternalTaskHandleImpl
 {
 	private final int					id;
 	private final Supplier<Future<?>>	submitter;
@@ -14,19 +14,25 @@ class InternalTaskHandleImpl implements InternalTaskHandle
 		this.submitter = submitter;
 	}
 
-	@Override
+	/**
+	 * @return The ID of the associated task handle
+	 */
 	public int getId() {
 		return id;
 	}
 
-	@Override
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	public void submit() {
 		if (future == null) {
 			future = submitter.get();
 		}
 	}
 
-	@Override
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
 	public void stop() {
 		if (future != null) {
 			future.cancel(true);
