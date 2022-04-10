@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.execution;
 
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.impl.handles.ResultHandleImpl;
 
 import java.util.Comparator;
@@ -10,6 +11,21 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
+/**
+ * Wraps an {@link ExecutorService} to provide two additional features:
+ * <ul>
+ *     <li>
+ *         Maximum parallelism: You can specify the maximum number of tasks the underlying {@code ExecutorService} should
+ *         manage at the same time, independent of the parallelism of the {@code ExecutorService}. The {@code ExecutorServiceWrapper}
+ *         will queue further tasks and submit the next of them when one of the tasks that has been submitted to the
+ *         {@code ExecutorService} terminates.
+ *     </li>
+ *     <li>
+ *         You can specify whether or not to shut down the underlying {@code ExecutorService} when the {@code ExecutorServiceWrapper}
+ *         is closed, which happens when the {@link ExecutionCoordinator} is closed.
+ *     </li>
+ * </ul>
+ */
 public class ExecutorServiceWrapper implements AutoCloseable
 {
 	public static ExecutorServiceWrapper commonForkJoinPoolWrapper(int maxParallelism) {

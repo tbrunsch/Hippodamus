@@ -5,6 +5,9 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable;
 
+/**
+ * Utility class concerning exceptions
+ */
 public class Exceptions
 {
 	@SuppressWarnings("unchecked")
