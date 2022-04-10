@@ -40,22 +40,22 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return new ExecutorServiceWrapper(executorService, shutdownRequired, maxParallelism);
 	}
 
-	private final ExecutorService	executorService;
-	private final boolean			shutdownRequired;
-	private final int				maxParallelism;
+	private final ExecutorService				executorService;
+	private final boolean						shutdownRequired;
+	private final int							maxParallelism;
 
 	/*
 	 * The unsubmitted tasks are ordered according to their id. The reason is that tasks with a lower id cannot depend
 	 * on tasks with higher ids because the ids reflect the tasks' creation order. So this order is save even if one
 	 * forgets to specify certain dependencies.
 	 */
-	private final Queue<TaskHandle>	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(TaskHandle::getId));
+	private final Queue<ResultHandleImpl<?> >	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(ResultHandleImpl::getId));
 
 	/**
 	 * Number of tasks that have been submitted to the wrapped {@link ExecutorService} and
 	 * that have not finished yet.
 	 */
-	private int 					numPendingSubmittedTasks;
+	private int 								numPendingSubmittedTasks;
 
 	private ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		this.executorService = executorService;
@@ -74,14 +74,12 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public TaskHandle submit(ResultHandleImpl<?> handle) {
-		TaskHandle taskHandle = new TaskHandle(handle, this);
+	public void submit(ResultHandleImpl<?> handle) {
 		if (canSubmitTask()) {
-			taskHandle.submit();
+			submitNow(handle);
 		} else {
-			unsubmittedTasks.add(taskHandle);
+			unsubmittedTasks.add(handle);
 		}
-		return taskHandle;
 	}
 
 	/**
@@ -90,9 +88,9 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	public void onTaskCompleted() {
 		numPendingSubmittedTasks--;
 		if (canSubmitTask()) {
-			TaskHandle taskHandle = unsubmittedTasks.poll();
-			if (taskHandle != null) {
-				taskHandle.submit();
+			ResultHandleImpl<?> handle = unsubmittedTasks.poll();
+			if (handle != null) {
+				submitNow(handle);
 			}
 		}
 	}
@@ -104,9 +102,13 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return numPendingSubmittedTasks < maxParallelism;
 	}
 
-	Future<?> submitNow(ResultHandleImpl<?> handle) {
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	private void submitNow(ResultHandleImpl<?> handle) {
 		numPendingSubmittedTasks++;
-		return executorService.submit(handle::executeCallable);
+		Future<?> future = executorService.submit(handle::executeCallable);
+		handle.setFuture(future);
 	}
 
 	@Override

@@ -8,13 +8,13 @@ import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-import dd.kms.hippodamus.impl.execution.TaskHandle;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 public class ResultHandleImpl<T> implements ResultHandle<T>
@@ -33,7 +33,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	private final HandleState<T>						state;
 
-	private volatile TaskHandle							taskHandle;
+	private Future<?>									future;
 
 	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
@@ -56,7 +56,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!state.isStopped() && state.transitionTo(HandleStage.SUBMITTED)) {
-				taskHandle = executorServiceWrapper.submit(this);
+				executorServiceWrapper.submit(this);
 			}
 		}
 	}
@@ -110,8 +110,8 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 					state.transitionTo(HandleStage.TERMINATED);
 				}
 				coordinator.stopDependentHandles(this);
-				if (taskHandle != null) {
-					taskHandle.stop();
+				if (future != null) {
+					future.cancel(true);
 				}
 			} finally {
 				if (oldHandleStage == HandleStage.EXECUTING && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
@@ -155,6 +155,13 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public T get() {
 		join();
 		return state.getResult();
+	}
+
+	/**
+	 * Ensure that this method is only called with locking the coordinator.
+	 */
+	public void setFuture(Future<?> future) {
+		this.future = future;
 	}
 
 	/**
