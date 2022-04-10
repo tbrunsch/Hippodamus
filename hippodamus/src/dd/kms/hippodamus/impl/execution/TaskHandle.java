@@ -3,13 +3,13 @@ package dd.kms.hippodamus.impl.execution;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
-public class InternalTaskHandleImpl
+public class TaskHandle
 {
 	private final int					id;
 	private final Supplier<Future<?>>	submitter;
 	private Future<?>					future;
 
-	InternalTaskHandleImpl(int id, Supplier<Future<?>> submitter) {
+	TaskHandle(int id, Supplier<Future<?>> submitter) {
 		this.id = id;
 		this.submitter = submitter;
 	}

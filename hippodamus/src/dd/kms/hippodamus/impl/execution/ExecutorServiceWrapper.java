@@ -22,22 +22,22 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return new ExecutorServiceWrapper(executorService, shutdownRequired, maxParallelism);
 	}
 
-	private final ExecutorService				executorService;
-	private final boolean						shutdownRequired;
-	private final int							maxParallelism;
+	private final ExecutorService	executorService;
+	private final boolean			shutdownRequired;
+	private final int				maxParallelism;
 
 	/*
 	 * The unsubmitted tasks are ordered according to their id. The reason is that tasks with a lower id cannot depend
 	 * on tasks with higher ids because the ids reflect the tasks' creation order. So this order is save even if one
 	 * forgets to specify certain dependencies.
 	 */
-	private final Queue<InternalTaskHandleImpl>	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(InternalTaskHandleImpl::getId));
+	private final Queue<TaskHandle>	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(TaskHandle::getId));
 
 	/**
 	 * Number of tasks that have been submitted to the wrapped {@link ExecutorService} and
 	 * that have not finished yet.
 	 */
-	private int 								numPendingSubmittedTasks;
+	private int 					numPendingSubmittedTasks;
 
 	private ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		this.executorService = executorService;
@@ -56,8 +56,8 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	/**
 	 * Ensure that this method is only called with locking the coordinator.
 	 */
-	public InternalTaskHandleImpl submit(int id, Runnable runnable) {
-		InternalTaskHandleImpl taskHandle = new InternalTaskHandleImpl(id, () -> submitNow(runnable));
+	public TaskHandle submit(int id, Runnable runnable) {
+		TaskHandle taskHandle = new TaskHandle(id, () -> submitNow(runnable));
 		if (canSubmitTask()) {
 			taskHandle.submit();
 		} else {
@@ -72,7 +72,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	public void onTaskCompleted() {
 		numPendingSubmittedTasks--;
 		if (canSubmitTask()) {
-			InternalTaskHandleImpl taskHandle = unsubmittedTasks.poll();
+			TaskHandle taskHandle = unsubmittedTasks.poll();
 			if (taskHandle != null) {
 				taskHandle.submit();
 			}
