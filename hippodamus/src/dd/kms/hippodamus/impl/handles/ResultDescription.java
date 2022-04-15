@@ -1,21 +1,34 @@
 package dd.kms.hippodamus.impl.handles;
 
+/**
+ * Stores information about whether a task has finished regularly or exceptionally and,
+ * if so, what the result was or which exception had been thrown, respectively.
+ */
 class ResultDescription<T>
 {
-	private volatile ResultType	resultType	= ResultType.NONE;
+	private volatile boolean	finished;
 	private volatile T			result;
 	private volatile Throwable	exception;
 
-	ResultType getResultType() {
-		return resultType;
+	boolean hasFinished() {
+		return finished;
+	}
+
+	boolean hasCompleted() {
+		// Check the exception instead of the result because null could also be a valid result
+		return finished && exception == null;
+	}
+
+	boolean hasTerminatedExceptionally() {
+		return finished && exception != null;
 	}
 
 	boolean setResult(T result) {
-		if (resultType != ResultType.NONE) {
+		if (finished) {
 			return false;
 		}
 		this.result = result;
-		resultType = ResultType.COMPLETED;
+		finished = true;
 		return true;
 	}
 
@@ -24,11 +37,11 @@ class ResultDescription<T>
 	}
 
 	boolean setException(Throwable exception) {
-		if (resultType != ResultType.NONE) {
+		if (finished) {
 			return false;
 		}
 		this.exception = exception;
-		resultType = ResultType.EXCEPTION;
+		finished = true;
 		return true;
 	}
 

@@ -95,11 +95,11 @@ class HandleState<T>
 	}
 
 	boolean hasCompleted() {
-		return resultDescription.getResultType() == ResultType.COMPLETED;
+		return resultDescription.hasCompleted();
 	}
 
 	T getResult() {
-		checkCondition(resultDescription.getResultType() == ResultType.COMPLETED, "Trying to access unavailable result");
+		checkCondition(resultDescription.hasCompleted(), "Trying to access unavailable result");
 		return resultDescription.getResult();
 	}
 
@@ -108,7 +108,7 @@ class HandleState<T>
 	}
 
 	boolean hasTerminatedExceptionally() {
-		return resultDescription.getResultType() == ResultType.EXCEPTION;
+		return resultDescription.hasTerminatedExceptionally();
 	}
 
 	TaskStage getTaskStage() {
@@ -157,13 +157,13 @@ class HandleState<T>
 				throw new TaskStoppedException(taskName);
 			}
 		}
-		if (stopped || resultDescription.getResultType() == ResultType.EXCEPTION) {
+		if (stopped || resultDescription.hasTerminatedExceptionally()) {
 			throw new TaskStoppedException(taskName);
 		}
 		boolean completed;
 		try {
 			resultTypeDeterminedFlag.waitUntilTrue();
-			completed = resultDescription.getResultType() == ResultType.COMPLETED;
+			completed = resultDescription.hasCompleted();
 		} catch (InterruptedException e) {
 			completed = false;
 		}
@@ -196,15 +196,10 @@ class HandleState<T>
 	 * may occur or with locking the coordinator.                  *
 	 **************************************************************/
 	private boolean checkState() {
-		boolean success = true;
-		ResultType resultType = resultDescription.getResultType();
-		if (taskStage == TaskStage.INITIAL || taskStage == TaskStage.SUBMITTED || taskStage == TaskStage.EXECUTING) {
-			success = success && checkCondition(resultType == ResultType.NONE, "The result should still be undefined");
-		}
-		if (resultType != ResultType.NONE) {
-			success = success && checkCondition(taskStage == TaskStage.TERMINATING || taskStage == TaskStage.TERMINATED, "The task should have terminated");
-		}
-		return success;
+		return checkCondition(
+			!resultDescription.hasFinished() || taskStage == TaskStage.TERMINATING || taskStage == TaskStage.TERMINATED,
+			"The task should have terminated"
+		);
 	}
 
 	private boolean checkCondition(boolean condition, String message) {
