@@ -11,7 +11,7 @@ class HandleState<T>
 	private final ExecutionCoordinatorImpl	coordinator;
 
 	private final ResultDescription<T>		resultDescription	= new ResultDescription<>();
-	private volatile HandleStage			handleStage			= HandleStage.INITIAL;
+	private volatile TaskStage				taskStage			= TaskStage.INITIAL;
 
 	/**
 	 * Describes whether the task has been stopped or not. The flag is set while the coordinator
@@ -64,7 +64,7 @@ class HandleState<T>
 		return !stopped
 			&& checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
 			&& log(LogLevel.STATE, "result = " + result)
-			&& transitionTo(HandleStage.TERMINATING);
+			&& transitionTo(TaskStage.TERMINATING);
 	}
 
 	/**
@@ -74,7 +74,7 @@ class HandleState<T>
 		return !stopped
 			&& checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
 			&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
-			&& transitionTo(HandleStage.TERMINATING);
+			&& transitionTo(TaskStage.TERMINATING);
 	}
 
 	/**
@@ -111,8 +111,8 @@ class HandleState<T>
 		return resultDescription.getResultType() == ResultType.EXCEPTION;
 	}
 
-	HandleStage getHandleStage() {
-		return handleStage;
+	TaskStage getTaskStage() {
+		return taskStage;
 	}
 
 	/**
@@ -129,21 +129,21 @@ class HandleState<T>
 	/**
 	 * Ensure that this method is called with locking the coordinator.
 	 */
-	boolean transitionTo(HandleStage newStage) {
-		if (handleStage.compareTo(HandleStage.TERMINATING) < 0 && HandleStage.TERMINATING.compareTo(newStage) <= 0) {
+	boolean transitionTo(TaskStage newStage) {
+		if (taskStage.compareTo(TaskStage.TERMINATING) < 0 && TaskStage.TERMINATING.compareTo(newStage) <= 0) {
 			onResultTypeDetermined();
 		}
-		if (newStage == HandleStage.TERMINATED) {
-			if (handleStage != HandleStage.TERMINATED) {
+		if (newStage == TaskStage.TERMINATED) {
+			if (taskStage != TaskStage.TERMINATED) {
 				releaseCoordinator();
 			}
 		} else {
-			if (!checkCondition(newStage.ordinal() == handleStage.ordinal() + 1, "Trying to transition state from '" + handleStage + "' to '" + newStage + "'")) {
+			if (!checkCondition(newStage.ordinal() == taskStage.ordinal() + 1, "Trying to transition state from '" + taskStage + "' to '" + newStage + "'")) {
 				return false;
 			}
 		}
-		handleStage = newStage;
-		log(LogLevel.STATE, handleStage.toString());
+		taskStage = newStage;
+		log(LogLevel.STATE, taskStage.toString());
 		return checkState();
 	}
 
@@ -198,11 +198,11 @@ class HandleState<T>
 	private boolean checkState() {
 		boolean success = true;
 		ResultType resultType = resultDescription.getResultType();
-		if (handleStage == HandleStage.INITIAL || handleStage == HandleStage.SUBMITTED || handleStage == HandleStage.EXECUTING) {
+		if (taskStage == TaskStage.INITIAL || taskStage == TaskStage.SUBMITTED || taskStage == TaskStage.EXECUTING) {
 			success = success && checkCondition(resultType == ResultType.NONE, "The result should still be undefined");
 		}
 		if (resultType != ResultType.NONE) {
-			success = success && checkCondition(handleStage == HandleStage.TERMINATING || handleStage == HandleStage.TERMINATED, "The task should have terminated");
+			success = success && checkCondition(taskStage == TaskStage.TERMINATING || taskStage == TaskStage.TERMINATED, "The task should have terminated");
 		}
 		return success;
 	}

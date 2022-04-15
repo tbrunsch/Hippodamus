@@ -4,10 +4,18 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 
 import java.util.concurrent.ExecutorService;
 
-enum HandleStage
+/**
+ * Describes the stage a task is in. The following diagram shows the possible stage transitions.
+ * <pre>
+ *     INITIAL -> SUBMITTED -> EXECUTING -> TERMINATING
+ *       |            |            |             |
+ *       ------------------------------------------------> TERMINATED
+ * </pre>
+ */
+enum TaskStage
 {
 	/**
-	 * The task is not yet submitted.
+	 * The task has not yet been submitted.
 	 */
 	INITIAL("initial state"),
 
@@ -34,7 +42,7 @@ enum HandleStage
 
 	private final String	description;
 
-	HandleStage(String description) {
+	TaskStage(String description) {
 		this.description = description;
 	}
 

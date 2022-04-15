@@ -55,7 +55,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public void submit() {
 		synchronized (coordinator) {
-			if (!state.isStopped() && state.transitionTo(HandleStage.SUBMITTED)) {
+			if (!state.isStopped() && state.transitionTo(TaskStage.SUBMITTED)) {
 				executorServiceWrapper.submit(this);
 			}
 		}
@@ -66,7 +66,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private boolean startExecution() {
 		synchronized (coordinator) {
-			return !state.isStopped() && state.transitionTo(HandleStage.EXECUTING);
+			return !state.isStopped() && state.transitionTo(TaskStage.EXECUTING);
 		}
 	}
 
@@ -78,7 +78,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				}
 				executorServiceWrapper.onTaskCompleted();
 			} finally {
-				state.transitionTo(HandleStage.TERMINATED);
+				state.transitionTo(TaskStage.TERMINATED);
 			}
 		}
 	}
@@ -90,7 +90,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 					notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 				}
 			} finally {
-				state.transitionTo(HandleStage.TERMINATED);
+				state.transitionTo(TaskStage.TERMINATED);
 			}
 		}
 	}
@@ -98,23 +98,23 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public final void stop() {
 		synchronized (coordinator) {
-			HandleStage oldHandleStage = state.getHandleStage();
+			TaskStage oldTaskStage = state.getTaskStage();
 			try {
 				if (!state.stop()) {
 					return;
 				}
-				if (oldHandleStage == HandleStage.EXECUTING) {
+				if (oldTaskStage == TaskStage.EXECUTING) {
 					// since we stop the task, the current result type won't change anymore
 					state.onResultTypeDetermined();
 				} else {
-					state.transitionTo(HandleStage.TERMINATED);
+					state.transitionTo(TaskStage.TERMINATED);
 				}
 				coordinator.stopDependentHandles(this);
 				if (future != null) {
 					future.cancel(true);
 				}
 			} finally {
-				if (oldHandleStage == HandleStage.EXECUTING && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
+				if (oldTaskStage == TaskStage.EXECUTING && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
 					state.releaseCoordinator();
 				}
 			}
@@ -175,7 +175,10 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 			T result = callable.call(this::hasStopped);
 			complete(result);
 		} catch (TaskStoppedException e) {
-			state.transitionTo(HandleStage.TERMINATED);
+
+			// TODO: Do we have to manually transition the state here or can we rely on stop()?
+			state.transitionTo(TaskStage.TERMINATED);
+
 			stop();
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
