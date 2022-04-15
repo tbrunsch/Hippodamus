@@ -111,8 +111,8 @@ class HandleState<T>
 		return resultDescription.hasTerminatedExceptionally();
 	}
 
-	TaskStage getTaskStage() {
-		return taskStage;
+	boolean isExecuting() {
+		return taskStage == TaskStage.EXECUTING;
 	}
 
 	/**

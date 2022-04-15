@@ -98,12 +98,12 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public final void stop() {
 		synchronized (coordinator) {
-			TaskStage oldTaskStage = state.getTaskStage();
+			boolean isExecuting = state.isExecuting();
 			try {
 				if (!state.stop()) {
 					return;
 				}
-				if (oldTaskStage == TaskStage.EXECUTING) {
+				if (isExecuting) {
 					// since we stop the task, the current result type won't change anymore
 					state.onResultTypeDetermined();
 				} else {
@@ -114,7 +114,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 					future.cancel(true);
 				}
 			} finally {
-				if (oldTaskStage == TaskStage.EXECUTING && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
+				if (isExecuting && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
 					state.releaseCoordinator();
 				}
 			}
