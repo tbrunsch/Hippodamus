@@ -5,8 +5,6 @@ import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
-import java.util.concurrent.Semaphore;
-
 class HandleState<T>
 {
 	private final Handle 					handle;
@@ -29,7 +27,7 @@ class HandleState<T>
 	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
 	 * {@link ResultHandleImpl#get()}.
 	 */
-	private final AwaitableBoolean resultTypeDeterminedFlag;
+	private final AwaitableFlag				resultTypeDeterminedFlag;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -38,7 +36,7 @@ class HandleState<T>
 	 * Note that the value must be set to true <b>after</b> calling any listener to ensure that the
 	 * coordinator does not close before notifying all listeners.
 	 */
-	private final AwaitableBoolean		releaseCoordinatorFlag;
+	private final AwaitableFlag				releaseCoordinatorFlag;
 
 	HandleState(Handle handle, ExecutionCoordinatorImpl coordinator, boolean stopped) {
 		this.handle = handle;
@@ -46,13 +44,13 @@ class HandleState<T>
 		this.stopped = stopped;
 		checkState();
 
-		resultTypeDeterminedFlag = new AwaitableBoolean(new Semaphore(1));
-		releaseCoordinatorFlag = new AwaitableBoolean(coordinator.getTerminationLock());
+		resultTypeDeterminedFlag = new AwaitableFlag();
+		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
 
 		if (!stopped) {
 			try {
-				resultTypeDeterminedFlag.setFalse();
-				releaseCoordinatorFlag.setFalse();
+				resultTypeDeterminedFlag.unset();
+				releaseCoordinatorFlag.unset();
 			} catch (InterruptedException e) {
 				handle.stop();
 			}
@@ -162,8 +160,14 @@ class HandleState<T>
 		if (stopped || resultDescription.getResultType() == ResultType.EXCEPTION) {
 			throw new TaskStoppedException(taskName);
 		}
-		resultTypeDeterminedFlag.waitUntilTrue();
-		if (resultDescription.getResultType() != ResultType.COMPLETED) {
+		boolean completed;
+		try {
+			resultTypeDeterminedFlag.waitUntilTrue();
+			completed = resultDescription.getResultType() == ResultType.COMPLETED;
+		} catch (InterruptedException e) {
+			completed = false;
+		}
+		if (!completed) {
 			throw new TaskStoppedException(taskName);
 		}
 	}
@@ -175,14 +179,14 @@ class HandleState<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	void onResultTypeDetermined() {
-		resultTypeDeterminedFlag.setTrue();
+		resultTypeDeterminedFlag.set();
 	}
 
 	/**
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	void releaseCoordinator() {
-		releaseCoordinatorFlag.setTrue();
+		releaseCoordinatorFlag.set();
 	}
 
 	/***************************************************************
