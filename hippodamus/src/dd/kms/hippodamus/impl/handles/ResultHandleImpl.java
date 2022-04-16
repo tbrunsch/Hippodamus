@@ -55,7 +55,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public void submit() {
 		synchronized (coordinator) {
-			if (!state.isStopped() && state.transitionTo(TaskStage.SUBMITTED)) {
+			if (!state.hasStopped() && state.transitionTo(TaskStage.SUBMITTED)) {
 				executorServiceWrapper.submit(this);
 			}
 		}
@@ -66,7 +66,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private boolean startExecution() {
 		synchronized (coordinator) {
-			return !state.isStopped() && state.transitionTo(TaskStage.EXECUTING);
+			return !state.hasStopped() && state.transitionTo(TaskStage.EXECUTING);
 		}
 	}
 
@@ -105,7 +105,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				}
 				if (isExecuting) {
 					// since we stop the task, the current result type won't change anymore
-					state.onResultTypeDetermined();
+					state.onTerminated();
 				} else {
 					state.transitionTo(TaskStage.TERMINATED);
 				}
@@ -123,7 +123,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	@Override
 	public void join() {
-		state.waitUntilResultTypeDetermined(taskName, verifyDependencies);
+		state.waitUntilTerminated(taskName, verifyDependencies);
 	}
 
 	@Override
@@ -133,7 +133,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	@Override
 	public final boolean hasStopped() {
-		return state.isStopped();
+		return state.hasStopped();
 	}
 
 	@Override

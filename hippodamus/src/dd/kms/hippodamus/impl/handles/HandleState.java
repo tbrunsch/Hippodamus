@@ -27,7 +27,7 @@ class HandleState<T>
 	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
 	 * {@link ResultHandleImpl#get()}.
 	 */
-	private final AwaitableFlag				resultTypeDeterminedFlag;
+	private final AwaitableFlag				terminatedFlag;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -44,12 +44,12 @@ class HandleState<T>
 		this.stopped = stopped;
 		checkState();
 
-		resultTypeDeterminedFlag = new AwaitableFlag();
+		terminatedFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
 
 		if (!stopped) {
 			try {
-				resultTypeDeterminedFlag.unset();
+				terminatedFlag.unset();
 				releaseCoordinatorFlag.unset();
 			} catch (InterruptedException e) {
 				handle.stop();
@@ -90,7 +90,7 @@ class HandleState<T>
 		return true;
 	}
 
-	boolean isStopped() {
+	boolean hasStopped() {
 		return stopped;
 	}
 
@@ -131,7 +131,7 @@ class HandleState<T>
 	 */
 	boolean transitionTo(TaskStage newStage) {
 		if (taskStage.compareTo(TaskStage.TERMINATING) < 0 && TaskStage.TERMINATING.compareTo(newStage) <= 0) {
-			onResultTypeDetermined();
+			onTerminated();
 		}
 		if (newStage == TaskStage.TERMINATED) {
 			if (taskStage != TaskStage.TERMINATED) {
@@ -147,7 +147,7 @@ class HandleState<T>
 		return checkState();
 	}
 
-	void waitUntilResultTypeDetermined(String taskName, boolean verifyDependencies) {
+	void waitUntilTerminated(String taskName, boolean verifyDependencies) {
 		if (hasCompleted()) {
 			return;
 		}
@@ -162,7 +162,7 @@ class HandleState<T>
 		}
 		boolean completed;
 		try {
-			resultTypeDeterminedFlag.waitUntilTrue();
+			terminatedFlag.waitUntilTrue();
 			completed = resultDescription.hasCompleted();
 		} catch (InterruptedException e) {
 			completed = false;
@@ -178,8 +178,8 @@ class HandleState<T>
 	/**
 	 * Ensure that this method is called with locking the coordinator.
 	 */
-	void onResultTypeDetermined() {
-		resultTypeDeterminedFlag.set();
+	void onTerminated() {
+		terminatedFlag.set();
 	}
 
 	/**
