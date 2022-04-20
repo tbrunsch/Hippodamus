@@ -31,7 +31,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	private final List<Runnable>						completionListeners					= new ArrayList<>();
 	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
 
-	private final HandleState<T>						state;
+	private final TaskStateController<T>				stateController;
 
 	private Future<?>									future;
 
@@ -42,7 +42,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
 		this.verifyDependencies = verifyDependencies;
-		this.state = new HandleState<>(this, coordinator, stopped);
+		this.stateController = new TaskStateController<>(this, coordinator, stopped);
 	}
 
 	public int getId() {
@@ -55,7 +55,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public void submit() {
 		synchronized (coordinator) {
-			if (!state.hasStopped() && state.transitionTo(TaskStage.SUBMITTED)) {
+			if (!stateController.hasStopped() && stateController.transitionTo(TaskStage.SUBMITTED)) {
 				executorServiceWrapper.submit(this);
 			}
 		}
@@ -66,19 +66,19 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private boolean startExecution() {
 		synchronized (coordinator) {
-			return !state.hasStopped() && state.transitionTo(TaskStage.EXECUTING);
+			return !stateController.hasStopped() && stateController.transitionTo(TaskStage.EXECUTING);
 		}
 	}
 
 	private void complete(T result) {
 		synchronized (coordinator) {
 			try {
-				if (state.setResult(result)) {
+				if (stateController.setResult(result)) {
 					notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 				}
 				executorServiceWrapper.onTaskCompleted();
 			} finally {
-				state.transitionTo(TaskStage.TERMINATED);
+				stateController.transitionTo(TaskStage.TERMINATED);
 			}
 		}
 	}
@@ -86,11 +86,11 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	private void terminateExceptionally(Throwable exception) {
 		synchronized (coordinator) {
 			try {
-				if (state.setException(exception)) {
+				if (stateController.setException(exception)) {
 					notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
 				}
 			} finally {
-				state.transitionTo(TaskStage.TERMINATED);
+				stateController.transitionTo(TaskStage.TERMINATED);
 			}
 		}
 	}
@@ -98,16 +98,16 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public final void stop() {
 		synchronized (coordinator) {
-			boolean isExecuting = state.isExecuting();
+			boolean isExecuting = stateController.isExecuting();
 			try {
-				if (!state.stop()) {
+				if (!stateController.stop()) {
 					return;
 				}
 				if (isExecuting) {
 					// since we stop the task, the current result type won't change anymore
-					state.onTerminated();
+					stateController.onTerminated();
 				} else {
-					state.transitionTo(TaskStage.TERMINATED);
+					stateController.transitionTo(TaskStage.TERMINATED);
 				}
 				coordinator.stopDependentHandles(this);
 				if (future != null) {
@@ -115,7 +115,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				}
 			} finally {
 				if (isExecuting && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
-					state.releaseCoordinator();
+					stateController.releaseCoordinator();
 				}
 			}
 		}
@@ -123,22 +123,22 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	@Override
 	public void join() {
-		state.waitUntilTerminated(taskName, verifyDependencies);
+		stateController.waitUntilTerminated(taskName, verifyDependencies);
 	}
 
 	@Override
 	public boolean hasCompleted() {
-		return state.hasCompleted();
+		return stateController.hasCompleted();
 	}
 
 	@Override
 	public final boolean hasStopped() {
-		return state.hasStopped();
+		return stateController.hasStopped();
 	}
 
 	@Override
 	public @Nullable Throwable getException() {
-		return state.getException();
+		return stateController.getException();
 	}
 
 	@Override
@@ -154,7 +154,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	@Override
 	public T get() {
 		join();
-		return state.getResult();
+		return stateController.getResult();
 	}
 
 	/**
@@ -177,7 +177,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 		} catch (TaskStoppedException e) {
 
 			// TODO: Do we have to manually transition the state here or can we rely on stop()?
-			state.transitionTo(TaskStage.TERMINATED);
+			stateController.transitionTo(TaskStage.TERMINATED);
 
 			stop();
 		} catch (Throwable throwable) {
@@ -192,7 +192,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public void onCompletion(Runnable listener) {
 		synchronized (coordinator) {
 			completionListeners.add(listener);
-			if (state.hasCompleted()) {
+			if (stateController.hasCompleted()) {
 				// only run this listener; other listeners have already been notified
 				notifyListeners(Collections.singletonList(listener), "completion listener", NO_HANDLE_CONSUMER);
 			}
@@ -203,7 +203,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public void onException(Runnable listener) {
 		synchronized (coordinator) {
 			exceptionListeners.add(listener);
-			if (state.hasTerminatedExceptionally()) {
+			if (stateController.hasTerminatedExceptionally()) {
 				// only inform this handler; other handlers have already been notified
 				notifyListeners(Collections.singletonList(listener), "exception listener", NO_HANDLE_CONSUMER);
 			}

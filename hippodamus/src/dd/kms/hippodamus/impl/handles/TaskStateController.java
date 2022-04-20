@@ -5,19 +5,12 @@ import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
-class HandleState<T>
+class TaskStateController<T>
 {
 	private final Handle 					handle;
 	private final ExecutionCoordinatorImpl	coordinator;
 
-	private final ResultDescription<T>		resultDescription	= new ResultDescription<>();
-	private volatile TaskStage				taskStage			= TaskStage.INITIAL;
-
-	/**
-	 * Describes whether the task has been stopped or not. The flag is set while the coordinator
-	 * is locked.
-	 */
-	private volatile boolean				stopped;
+	private final TaskState<T>				state;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -38,10 +31,10 @@ class HandleState<T>
 	 */
 	private final AwaitableFlag				releaseCoordinatorFlag;
 
-	HandleState(Handle handle, ExecutionCoordinatorImpl coordinator, boolean stopped) {
+	TaskStateController(Handle handle, ExecutionCoordinatorImpl coordinator, boolean stopped) {
 		this.handle = handle;
 		this.coordinator = coordinator;
-		this.stopped = stopped;
+		this.state = new TaskState<>(stopped);
 		checkState();
 
 		terminatedFlag = new AwaitableFlag();
@@ -61,8 +54,8 @@ class HandleState<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	boolean setResult(T result) {
-		return !stopped
-			&& checkCondition(resultDescription.setResult(result), "Cannot set result due to inconsistent state")
+		return !state.hasStopped()
+			&& checkCondition(state.setResult(result), "Cannot set result due to inconsistent state")
 			&& log(LogLevel.STATE, "result = " + result)
 			&& transitionTo(TaskStage.TERMINATING);
 	}
@@ -71,8 +64,8 @@ class HandleState<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	boolean setException(Throwable exception) {
-		return !stopped
-			&& checkCondition(resultDescription.setException(exception), "Cannot set exception due to inconsistent state")
+		return !state.hasStopped()
+			&& checkCondition(state.setException(exception), "Cannot set exception due to inconsistent state")
 			&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
 			&& transitionTo(TaskStage.TERMINATING);
 	}
@@ -81,38 +74,37 @@ class HandleState<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	boolean stop() {
-		if (stopped) {
+		if (!state.stop()) {
 			return false;
 		}
-		stopped = true;
 		log(LogLevel.STATE, "stopped");
 		checkState();
 		return true;
 	}
 
 	boolean hasStopped() {
-		return stopped;
+		return state.hasStopped();
 	}
 
 	boolean hasCompleted() {
-		return resultDescription.hasCompleted();
+		return state.hasCompleted();
 	}
 
 	T getResult() {
-		checkCondition(resultDescription.hasCompleted(), "Trying to access unavailable result");
-		return resultDescription.getResult();
+		checkCondition(state.hasCompleted(), "Trying to access unavailable result");
+		return state.getResult();
 	}
 
 	Throwable getException() {
-		return resultDescription.getException();
+		return state.getException();
 	}
 
 	boolean hasTerminatedExceptionally() {
-		return resultDescription.hasTerminatedExceptionally();
+		return state.hasTerminatedExceptionally();
 	}
 
 	boolean isExecuting() {
-		return taskStage == TaskStage.EXECUTING;
+		return state.isExecuting();
 	}
 
 	/**
@@ -130,20 +122,17 @@ class HandleState<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	boolean transitionTo(TaskStage newStage) {
-		if (taskStage.compareTo(TaskStage.TERMINATING) < 0 && TaskStage.TERMINATING.compareTo(newStage) <= 0) {
+		if (!state.hasTerminated() && newStage.isTerminalStage()) {
 			onTerminated();
 		}
-		if (newStage == TaskStage.TERMINATED) {
-			if (taskStage != TaskStage.TERMINATED) {
-				releaseCoordinator();
-			}
-		} else {
-			if (!checkCondition(newStage.ordinal() == taskStage.ordinal() + 1, "Trying to transition state from '" + taskStage + "' to '" + newStage + "'")) {
-				return false;
-			}
+		String transitionError = state.transitionTo(newStage);
+		if (!checkCondition(transitionError == null, transitionError)) {
+			return false;
 		}
-		taskStage = newStage;
-		log(LogLevel.STATE, taskStage.toString());
+		if (newStage == TaskStage.TERMINATED) {
+			releaseCoordinator();
+		}
+		log(LogLevel.STATE, newStage.toString());
 		return checkState();
 	}
 
@@ -157,13 +146,13 @@ class HandleState<T>
 				throw new TaskStoppedException(taskName);
 			}
 		}
-		if (stopped || resultDescription.hasTerminatedExceptionally()) {
+		if (state.hasStopped() || state.hasTerminatedExceptionally()) {
 			throw new TaskStoppedException(taskName);
 		}
 		boolean completed;
 		try {
 			terminatedFlag.waitUntilTrue();
-			completed = resultDescription.hasCompleted();
+			completed = state.hasCompleted();
 		} catch (InterruptedException e) {
 			completed = false;
 		}
@@ -197,7 +186,7 @@ class HandleState<T>
 	 **************************************************************/
 	private boolean checkState() {
 		return checkCondition(
-			!resultDescription.hasFinished() || taskStage == TaskStage.TERMINATING || taskStage == TaskStage.TERMINATED,
+			!state.hasFinished() || state.hasTerminated(),
 			"The task should have terminated"
 		);
 	}
