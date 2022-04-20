@@ -353,7 +353,10 @@ You can stop a task by calling `Handle.stop()` on its handle. Although it seems 
 
 1. If a task is stopped, then all of its dependencies will be stopped as well. This is even the case for dependent tasks that have not been executed (submitted to the coordinator) at the point of stopping the task. In particular, this means that stopping a completed task still has an effect on tasks that depend on that task.  
 
-The first point is especially important because, by default, the coordinator will wait until all of its handles have completed or stopped. This behavior is described by the enum value `WaitMode.UNTIL_TERMINATION_REQUESTED`. As explained above, this does not necessarily mean that all of the coordinator's tasks have terminated. Hence, the coordinator is not a strict nursery by default. However, you can set the wait mode to `WaitMode.UNTIL_TERMINATION` when configuring the coordinator (see Section [Configuring Coordinators](#configuring-coordinators)). In that case, the coordinator will not terminate as long as some of its tasks are still being executed.  
+The first point is especially important because you can configure how the coordinator behaves when all tasks have terminated or have been stopped, but some tasks are still running (see Section [Configuring Coordinators](#configuring-coordinators)). You do this by specifying the `WaitMode`:
+
+* With `WaitMode.UNTIL_TERMINATION` (default) the coordinator will wait until the tasks that are still being executed terminate.
+* With `WaitMode.UNTIL_TERMINATION_REQUESTED` the coordinator will terminate even if some tasks are still running (provided that they have been stopped). In this mode, the coordinator is not a strict nursery.
 
 Hippodamus offers a way for tasks to query whether they have been stopped or not giving them a chance to react to a stop request. For this, the tasks have to implement one of the functional interfaces `dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable` or `dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable`. The method of both interfaces gets the stop flag as a `Supplier<Boolean>`. This flag can be polled by the task. 
 

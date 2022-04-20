@@ -25,7 +25,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	private Logger										logger								= NoLogger.LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
-	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION_REQUESTED;
+	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION;
 
 	CoordinatorBuilderBase() {
 		executorServiceWrappersByTaskType = new HashMap<>();
