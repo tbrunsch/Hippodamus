@@ -2,6 +2,7 @@ package dd.kms.hippodamus.stopping;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.testUtils.StopWatch;
@@ -33,14 +34,21 @@ public class StopReactionTest
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
 	private static final long	PRECISION_MS			= 300;
 
-	@Parameters(name = "react to stop: {0}")
+	@Parameters(name = "wait mode: {0}, react to stop: {1}")
 	public static Object getParameters() {
-		return new Object[]{ false, true };
+		return new Object[]{
+			new Object[]{WaitMode.UNTIL_TERMINATION, false},
+			new Object[]{WaitMode.UNTIL_TERMINATION, true},
+			new Object[]{WaitMode.UNTIL_TERMINATION_REQUESTED, false},
+			new Object[]{WaitMode.UNTIL_TERMINATION_REQUESTED, true}
+		};
 	}
 
-	private final boolean reactToStop;
+	private final WaitMode	waitMode;
+	private final boolean 	reactToStop;
 
-	public StopReactionTest(boolean reactToStop) {
+	public StopReactionTest(WaitMode waitMode, boolean reactToStop) {
+		this.waitMode = waitMode;
 		this.reactToStop = reactToStop;
 	}
 
@@ -49,7 +57,7 @@ public class StopReactionTest
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
 		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+		try (ExecutionCoordinator coordinator = Coordinators.configureExecutionCoordinator().waitMode(waitMode).build()) {
 			coordinator.execute(this::run1);
 			coordinator.execute(this::run2);
 		} catch (ExpectedException e) {
@@ -72,7 +80,9 @@ public class StopReactionTest
 		 * it does not wait for them to stop. If submitted tasks themselves to not check
 		 * whether they should stop, then they will run until end.
 		 */
-		long expectedTimeCoordinatorMs = TIME_UNTIL_EXCEPTION_MS;
+		long expectedTimeCoordinatorMs = waitMode == WaitMode.UNTIL_TERMINATION && !reactToStop
+			? TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL
+			: TIME_UNTIL_EXCEPTION_MS;
 		TestUtils.assertTimeLowerBound(expectedTimeCoordinatorMs, elapsedTimeCoordinatorMs);
 		TestUtils.assertTimeUpperBound(expectedTimeCoordinatorMs + PRECISION_MS, elapsedTimeCoordinatorMs);
 
