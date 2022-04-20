@@ -57,7 +57,7 @@ class TaskStateController<T>
 		return !state.hasStopped()
 			&& checkCondition(state.setResult(result), "Cannot set result due to inconsistent state")
 			&& log(LogLevel.STATE, "result = " + result)
-			&& transitionTo(TaskStage.TERMINATING);
+			&& transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
 	/**
@@ -67,7 +67,7 @@ class TaskStateController<T>
 		return !state.hasStopped()
 			&& checkCondition(state.setException(exception), "Cannot set exception due to inconsistent state")
 			&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
-			&& transitionTo(TaskStage.TERMINATING);
+			&& transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
 	/**

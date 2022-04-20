@@ -7,9 +7,9 @@ import java.util.concurrent.ExecutorService;
 /**
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
- *     INITIAL -> SUBMITTED -> EXECUTING -> TERMINATING
- *       |            |            |             |
- *       ------------------------------------------------> TERMINATED
+ *     INITIAL -> SUBMITTED -> EXECUTING -> EXECUTION_FINISHED
+ *       |            |            |               |
+ *       ------------------------------------------------------> TERMINATED
  * </pre>
  */
 enum TaskStage
@@ -31,9 +31,9 @@ enum TaskStage
 	EXECUTING("started execution", false),
 
 	/**
-	 * The task has terminated, but we still have to notify listeners.
+	 * The task has finished, either regularly or exceptionally, but we still have to notify listeners.
 	 */
-	TERMINATING("terminating...", true),
+	EXECUTION_FINISHED("execution finished", true),
 
 	/**
 	 * The task has terminated and we have notified all listeners (if required).
