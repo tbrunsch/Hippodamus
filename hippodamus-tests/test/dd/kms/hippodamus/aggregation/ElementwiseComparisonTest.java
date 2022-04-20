@@ -4,6 +4,7 @@ import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.aggregation.Aggregators;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
@@ -50,34 +51,43 @@ public class ElementwiseComparisonTest
 	 * <br>
 	 *       {@code n*LOAD_TIME_MS + COMPARISON_TIME_MS}.<br>
 	 * <br>
-	 * This motivates the following time constraints that we test for:<br>
+	 * If there are more than n pairs of elements, then it is possible that during the comparison of
+	 * the n'th pair of elements the n+1'st element is loaded. If the coordinator is configured to
+	 * wait until termination, then it also has to wait for that task. This motivates the following
+	 * time constraints that we test for:<br>
 	 * <br>
-	 *       {@code L <= time <= L+PRECISION_MS} for<br>
+	 *       {@code L <= time <= L+x+PRECISION_MS} for<br>
 	 * <br>
-	 * 		{@code L = n*LOAD_TIME_MS + COMPARISON_TIME_MS}
+	 * 		{@code L = n*LOAD_TIME_MS + COMPARISON_TIME_MS} and<br>
+	 * 	    {@code x = LOAD_TIME_MS} for {@link WaitMode#UNTIL_TERMINATION} and if there are more
+	 * 	    than {@code n} pairs of elements to compare or {@code x = 0} otherwise
 	 */
 	private static final long	LOAD_TIME_MS		= 2000;
 	private static final long	GENERATION_TIME_MS	= 800;
 	private static final long	COMPARISON_TIME_MS	= 1000;
 	private static final long	PRECISION_MS		= 500;
 
-	@Parameterized.Parameters(name = "comparison results: {0}, {1}, {2}")
+	private static final int	NUM_ELEMENTS		= 3;
+
+	@Parameterized.Parameters(name = "wait mode: {0}, number of elements: {1}, deviating element index: {2}")
 	public static Object getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
-		for (boolean cmp1 : BOOLEANS) {
-			for (boolean cmp2 : BOOLEANS) {
-				for (boolean cmp3 : BOOLEANS) {
-					parameters.add(new Object[]{ cmp1, cmp2, cmp3 });
-				}
+		for (WaitMode waitMode : WaitMode.values()) {
+			for (int deviatingElementIndex = -1; deviatingElementIndex < NUM_ELEMENTS; deviatingElementIndex++) {
+				parameters.add(new Object[]{waitMode, NUM_ELEMENTS, deviatingElementIndex});
 			}
 		}
 		return parameters;
 	}
 
-	private final boolean[] elementComparisonResults;
+	private final WaitMode	waitMode;
+	private final int		numElements;
+	private final int		deviatingElementIndex;
 
-	public ElementwiseComparisonTest(boolean elementComparisonResult1, boolean elementComparisonResult2, boolean elementComparisonResult3) {
-		this.elementComparisonResults = new boolean[]{ elementComparisonResult1, elementComparisonResult2, elementComparisonResult3 };
+	public ElementwiseComparisonTest(WaitMode waitMode, int numElements, int deviatingElementIndex) {
+		this.waitMode = waitMode;
+		this.numElements = numElements;
+		this.deviatingElementIndex = deviatingElementIndex;
 	}
 
 	@Test
@@ -86,10 +96,10 @@ public class ElementwiseComparisonTest
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
 		boolean expectedResult = true;
 		StopWatch stopWatch = new StopWatch();
-		try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.createAggregationCoordinator(conjunctionAggregator)) {
-			for (int i = 0; i < elementComparisonResults.length; i++) {
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.configureAggregationCoordinator(conjunctionAggregator).waitMode(waitMode).build()) {
+			for (int i = 0; i < numElements; i++) {
 				int index = i;
-				boolean equal = elementComparisonResults[i];
+				boolean equal = i != deviatingElementIndex;
 				expectedResult &= equal;
 				ResultHandle<Integer> loadElementHandle = coordinator.configure()
 					.name("Load element " + index)
@@ -138,16 +148,16 @@ public class ElementwiseComparisonTest
 	 * See comment on LOAD_TIME_MS, GENERATION_TIME_MS, and COMPARISON_TIME_MS
 	 */
 	private void checkTimeConstraints(long elapsedTimeMs) {
-		int numRequiredTasksForComparison = 1;
-		for (int i = 0; i < elementComparisonResults.length - 1; i++) {
-			if (!elementComparisonResults[i]) {
-				break;
-			}
-			numRequiredTasksForComparison++;
-		}
+		int numRequiredTasksForComparison = deviatingElementIndex == -1
+			? numElements
+			: deviatingElementIndex + 1;
+
+		long waitForFurtherLoadTimeMs = waitMode == WaitMode.UNTIL_TERMINATION && numRequiredTasksForComparison < numElements
+			? LOAD_TIME_MS
+			: 0;
 
 		long lowerBoundMs = numRequiredTasksForComparison * LOAD_TIME_MS + COMPARISON_TIME_MS;
-		long upperBoundMs = lowerBoundMs + PRECISION_MS;
+		long upperBoundMs = lowerBoundMs + waitForFurtherLoadTimeMs + PRECISION_MS;
 		TestUtils.assertTimeLowerBound(lowerBoundMs, elapsedTimeMs);
 		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
 	}
