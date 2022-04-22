@@ -1,10 +1,31 @@
 package dd.kms.hippodamus.impl.handles;
 
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
+/**
+ * Controls state changes of a task.<br>
+ * <br>
+ * <b>When a task Finishes</b> (either exceptionally or regularly), the following things happen in the given order:
+ * <ol>
+ *     <li>The result/exception is stored (see {@link #setResult(Object)} and {@link #setException(Throwable)}, respectively)</li>
+ *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#EXECUTION_FINISHED}</li>
+ *     <li>The lock that makes callers of {@link ResultHandle#get()} wait is released (see {@link #transitionTo(TaskStage)})</li>
+ *     <li>Completion/exception listeners are informed and</li>
+ *     <li>
+ *         the stage changes from {@code TaskStage.EXECUTION_FINISHED} to {@link TaskStage#TERMINATED}
+ *         (see {@code ResultHandleImpl.complete(Object)} and {@code ResultHandleImpl.terminateExceptionally(Throwable)}, respectively)
+ *     </li>
+ *     <li>
+ *         The lock that forces the {@link ExecutionCoordinator} to wait is released (see {@link #transitionTo(TaskStage)})
+ *     </li>
+ * </ol>
+ *
+ */
 class TaskStateController<T>
 {
 	private final Handle 					handle;
@@ -122,12 +143,13 @@ class TaskStateController<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	boolean transitionTo(TaskStage newStage) {
-		if (!state.hasTerminated() && newStage.isTerminalStage()) {
-			onTerminated();
-		}
+		boolean wasInTerminalStage = state.hasTerminated();
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
 			return false;
+		}
+		if (!wasInTerminalStage && newStage.isTerminalStage()) {
+			onTerminated();
 		}
 		if (newStage == TaskStage.TERMINATED) {
 			releaseCoordinator();
