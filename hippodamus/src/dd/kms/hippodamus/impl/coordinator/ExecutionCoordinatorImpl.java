@@ -64,7 +64,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 * because {@link #permitTaskSubmission} is {@code false}. These handles will be submitted as
 	 * soon as {@code permitTaskSubmission} is set to {@code true}.
 	 */
-	private final List<Handle>				pendingHandles					= new ArrayList<>();
+	private final List<ResultHandleImpl<?>>	pendingHandles					= new ArrayList<>();
 
 	/**
 	 * In this field all information about exceptional situations is collected.
@@ -98,7 +98,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
 			int taskIndex = handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, taskNames);
-			ResultHandle<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies, stopped);
+			ResultHandleImpl<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies, stopped);
 			handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!stopped && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				scheduleForSubmission(resultHandle);
@@ -125,7 +125,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			permitTaskSubmission = permit;
 			if (permit) {
-				pendingHandles.forEach(Handle::submit);
+				pendingHandles.forEach(ResultHandleImpl::submit);
 				pendingHandles.clear();
 			}
 		}
@@ -135,7 +135,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 * Must be called with a lock on {@code this}. Submits the handle if {@link #permitTaskSubmission}
 	 * is {@code true} or collects it for later submission otherwise.
 	 */
-	private void scheduleForSubmission(Handle handle) {
+	private void scheduleForSubmission(ResultHandleImpl<?> handle) {
 		if (permitTaskSubmission) {
 			handle.submit();
 		} else {
@@ -165,7 +165,9 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	public void onCompletion(Handle handle) {
 		synchronized (this) {
 			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
-			executableHandles.forEach(this::scheduleForSubmission);
+			for (Handle executableHandle : executableHandles) {
+				scheduleForSubmission((ResultHandleImpl<?>) executableHandle);
+			}
 		}
 	}
 

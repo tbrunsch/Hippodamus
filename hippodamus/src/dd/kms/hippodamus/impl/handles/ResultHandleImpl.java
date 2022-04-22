@@ -52,7 +52,6 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	/*****************
 	 * Stage Changes *
 	 ****************/
-	@Override
 	public void submit() {
 		synchronized (coordinator) {
 			if (!stateController.hasStopped() && stateController.transitionTo(TaskStage.SUBMITTED)) {

@@ -7,7 +7,6 @@ import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuild
 
 import javax.annotation.Nullable;
 import java.util.Collection;
-import java.util.concurrent.ExecutorService;
 
 /**
  * When submitting a task to an {@link ExecutionCoordinator} via one of the {@code execute()}
@@ -19,14 +18,6 @@ import java.util.concurrent.ExecutorService;
  */
 public interface Handle
 {
-	/**
-	 * Submits the runnable/callable behind the handle to the underlying {@link ExecutorService}.<br>
-	 * <br>
-	 * Users should not call this method directly. It will be called by the framework if all of the handle's dependencies
-	 * have completed.
-	 */
-	void submit();
-
 	/**
 	 * @return {@code true} iff the task has already been processed
 	 */
