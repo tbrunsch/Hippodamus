@@ -65,12 +65,12 @@ public class TransactionTest
 		 */
 		FileSystem fileSystem = new FileSystem(System.currentTimeMillis() + fileSystemAvailabilityTimeMs);
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
-			.executorService(TaskType.IO, Executors.newFixedThreadPool(2), true);
+			.executorService(TaskType.BLOCKING, Executors.newFixedThreadPool(2), true);
 		boolean caughtException = false;
 		List<CreateFileAction> actions = TRANSACTION.getActions();
 		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
 			for (CreateFileAction action : actions) {
-				coordinator.configure().taskType(TaskType.IO).execute(() -> action.apply(fileSystem));
+				coordinator.configure().taskType(TaskType.BLOCKING).execute(() -> action.apply(fileSystem));
 			}
 		} catch (IOException e) {
 			caughtException = true;

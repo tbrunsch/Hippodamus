@@ -16,8 +16,7 @@ import org.junit.runners.Parameterized;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dd.kms.hippodamus.api.coordinator.TaskType.IO;
-import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
+import static dd.kms.hippodamus.api.coordinator.TaskType.BLOCKING;
 
 /**
  * This test simulates the element-wise comparison of two objects. The elements of one object
@@ -103,7 +102,7 @@ public class ElementwiseComparisonTest
 				expectedResult &= equal;
 				ResultHandle<Integer> loadElementHandle = coordinator.configure()
 					.name("Load element " + index)
-					.taskType(IO)
+					.taskType(BLOCKING)
 					.execute(() -> simulateLoadElement(index));
 				ResultHandle<Integer> generateElementHandle = coordinator.configure()
 					.name("Generate element " + index)

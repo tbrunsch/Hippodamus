@@ -2,6 +2,7 @@ package dd.kms.hippodamus.impl.coordinator.configuration;
 
 import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.logging.LogLevel;
@@ -27,7 +28,7 @@ public class AggregationCoordinatorBuilderImpl<S, R>
 	}
 
 	@Override
-	AggregationCoordinator<S, R> createCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+	AggregationCoordinator<S, R> createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
 		return new AggregationCoordinatorImpl<>(aggregator, executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
 	}
 }

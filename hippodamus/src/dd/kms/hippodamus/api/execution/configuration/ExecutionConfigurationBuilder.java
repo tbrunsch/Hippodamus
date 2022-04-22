@@ -31,12 +31,13 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	 * Specifies the type of the task. Based on the type the {@link dd.kms.hippodamus.api.coordinator.ExecutionCoordinator}
 	 * decides which {@link ExecutorService} the task should be submitted to.<br>
 	 * <br>
-	 * You can use predefined task types {@link TaskType#REGULAR} (default) and {@link TaskType#IO} or define
-	 * custom types and register {@code ExecutorService}s for these types (see {@link Coordinators#} and {@link ExecutionCoordinatorBuilder#executorService(int, ExecutorService, boolean)}).
+	 * You can use predefined task types {@link TaskType#COMPUTATIONAL} (default) and {@link TaskType#BLOCKING} or define
+	 * custom types and register {@code ExecutorService}s for these types (see {@link TaskType#create(int)},
+	 * {@link Coordinators#configureExecutionCoordinator()}, and {@link ExecutionCoordinatorBuilder#executorService(TaskType, ExecutorService, boolean)}).
 	 *
 	 * @throws IllegalArgumentException if no {@code ExecutorService} has been specified for the task type
 	 */
-	ExecutionConfigurationBuilder taskType(int type);
+	ExecutionConfigurationBuilder taskType(TaskType type);
 
 	/**
 	 * Specifies the tasks dependencies.<br>

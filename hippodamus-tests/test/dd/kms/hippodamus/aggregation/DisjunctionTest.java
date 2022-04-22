@@ -67,7 +67,7 @@ public class DisjunctionTest
 		Handle h2;
 		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
 			.configureAggregationCoordinator(disjunctionAggregator)
-			.executorService(TaskType.REGULAR, executorService, true);
+			.executorService(TaskType.COMPUTATIONAL, executorService, true);
 		try (AggregationCoordinator<Boolean, Boolean> coordinator = coordinatorBuilder.build()) {
 			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
 			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));

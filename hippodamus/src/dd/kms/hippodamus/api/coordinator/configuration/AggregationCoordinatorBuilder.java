@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.api.coordinator.configuration;
 
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 
@@ -19,10 +20,10 @@ import java.util.concurrent.ExecutorService;
 public interface AggregationCoordinatorBuilder<S, R> extends ExecutionCoordinatorBuilder
 {
 	@Override
-	AggregationCoordinatorBuilder<S, R> executorService(int taskType, ExecutorService executorService, boolean shutdownRequired);
+	AggregationCoordinatorBuilder<S, R> executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired);
 
 	@Override
-	AggregationCoordinatorBuilder<S, R> maximumParallelism(int taskType, int maxParallelism);
+	AggregationCoordinatorBuilder<S, R> maximumParallelism(TaskType taskType, int maxParallelism);
 
 	@Override
 	AggregationCoordinatorBuilder<S, R> logger(Logger logger);

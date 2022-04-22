@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.execution.configuration;
 
+import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.handles.Handle;
 
 import javax.annotation.Nullable;
@@ -13,10 +14,10 @@ import java.util.Optional;
 public class TaskConfiguration
 {
 	private final @Nullable String		name;
-	private final int					taskType;
+	private final TaskType				taskType;
 	private final Collection<Handle>	dependencies;
 
-	TaskConfiguration(String name, int taskType, Collection<Handle> dependencies) {
+	TaskConfiguration(String name, TaskType taskType, Collection<Handle> dependencies) {
 		this.name = name;
 		this.taskType = taskType;
 		this.dependencies = dependencies;
@@ -26,7 +27,7 @@ public class TaskConfiguration
 		return Optional.ofNullable(name);
 	}
 
-	public int getTaskType() {
+	public TaskType getTaskType() {
 		return taskType;
 	}
 

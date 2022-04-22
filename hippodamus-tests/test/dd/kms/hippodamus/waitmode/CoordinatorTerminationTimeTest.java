@@ -62,7 +62,7 @@ public class CoordinatorTerminationTimeTest
 		TaskCounter counter = new TaskCounter();
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.waitMode(waitMode)
-			.maximumParallelism(TaskType.REGULAR, PARALLELISM);
+			.maximumParallelism(TaskType.COMPUTATIONAL, PARALLELISM);
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtException = false;
 		try (ExecutionCoordinator coordinator = builder.build()) {

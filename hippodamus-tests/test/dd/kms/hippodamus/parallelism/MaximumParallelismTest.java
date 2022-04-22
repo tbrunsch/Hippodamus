@@ -38,7 +38,7 @@ public class MaximumParallelismTest
 	public void testMaximumParallelism() {
 		maxNumRunningTasks = 0;
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.maximumParallelism(TaskType.REGULAR, maxParallelism);
+			.maximumParallelism(TaskType.COMPUTATIONAL, maxParallelism);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			for (int i = 0; i < NUM_TASKS; i++) {
 				coordinator.execute(this::runTask);

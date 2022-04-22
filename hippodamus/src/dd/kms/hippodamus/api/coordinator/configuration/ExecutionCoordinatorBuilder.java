@@ -27,19 +27,19 @@ public interface ExecutionCoordinatorBuilder
 	 * Specify an {@link ExecutorService} for a certain type of task and whether it has to be
 	 * shut down when the {@link ExecutionCoordinator} finishes.
 	 *
-	 * @param taskType			The type of a task. This may either be {@link TaskType#REGULAR} for regular
-	 *                          tasks, {@link TaskType#IO} for IO tasks or any non-negative integer for
-	 *                          a custom type of task (cf. {@link ExecutionCoordinator#configure()} and
-	 *                          {@link ExecutionConfigurationBuilder#taskType(int)}.
+	 * @param taskType			The type of a task. This may either be {@link TaskType#COMPUTATIONAL},
+	 *                          {@link TaskType#BLOCKING}, or any custom {@link TaskType} with a
+	 *                          non-negative id (cf. {@link TaskType#create(int)}, {@link ExecutionCoordinator#configure()},
+	 *                          and {@link ExecutionConfigurationBuilder#taskType(TaskType)}.
 	 * @param executorService	The {@code ExecutorService} to be used for the specified type of task.
-	 *                          By default, tasks of type {@code TaskType#REGULAR} will be executed on the
-	 *                          common {@link ForkJoinPool}, whereas tasks of type
-	 *                          {@code TaskType#IO} will be executed on a dedicated single-threaded
+	 *                          By default, tasks of type {@code TaskType.COMPUTATIONAL} will be executed on the
+	 *                          common {@link ForkJoinPool}, whereas tasks of type {@code TaskType.BLOCKING} will
+	 *                          be executed on a dedicated single-threaded
 	 *                          {@code ExecutorService}.
 	 * @param shutdownRequired	If set to true, then the specified {@code ExecutorService} will be shut down
 	 *                          when the {@code ExecutionCoordinator} finishes.
 	 */
-	ExecutionCoordinatorBuilder executorService(int taskType, ExecutorService executorService, boolean shutdownRequired);
+	ExecutionCoordinatorBuilder executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired);
 
 	/**
 	 * Specify the maximum number of tasks of a certain type that are processed by their dedicated
@@ -60,15 +60,15 @@ public interface ExecutionCoordinatorBuilder
 	 *     </li>
 	 * </ul>
 	 *
-	 * @param taskType          The type of a task. This may either be {@link TaskType#REGULAR} for regular
-	 * 	                        tasks, {@link TaskType#IO} for IO tasks or any non-negative integer for
-	 * 	                        a custom type of task (cf. {@link ExecutionCoordinator#configure()} and
-	 * 	                        {@link ExecutionConfigurationBuilder#taskType(int)}.
+	 * @param taskType			The type of a task. This may either be {@link TaskType#COMPUTATIONAL},
+	 *                          {@link TaskType#BLOCKING}, or any custom {@link TaskType} with a
+	 *                          non-negative id (cf. {@link TaskType#create(int)}, {@link ExecutionCoordinator#configure()},
+	 *                          and {@link ExecutionConfigurationBuilder#taskType(TaskType)}.
 	 * @param maxParallelism    The maximum number of tasks processed by the dedicated {@code ExecutorService}.
 	 *
 	 * @throws IllegalArgumentException if {@code maxParallelism} is not positive.
 	 */
-	ExecutionCoordinatorBuilder maximumParallelism(int taskType, int maxParallelism);
+	ExecutionCoordinatorBuilder maximumParallelism(TaskType taskType, int maxParallelism);
 
 	/**
 	 * Specifies the logger that is used to log received messages. If not specified, then nothing will be logged.

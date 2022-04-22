@@ -106,7 +106,7 @@ There are two ways to execute a task within a coordinator's try-block:
 1. By directly calling `ExecutionCoordinator.execute()` or
 1. By calling `ExecutionCoordinator.configure()`.
 
-The first method is used for executing tasks that need no further configuration. This is the case for regular tasks (see Section [Task Types](#task-types)) without dependencies. In all other cases you should call the second method.
+The first method is used for executing tasks that need no further configuration. This is the case for computational tasks (see Section [Task Types](#task-types)) without dependencies. In all other cases you should call the second method.
 
 When executing a task, you get a `Handle` (comparable to a `Future`) to that task that allows some control over the task. In particular, it allows specifying dependencies between tasks.  
 
@@ -120,20 +120,20 @@ To configure tasks before executing them, you must call `ExecutionCoordinator.co
 
 ## Task Types
 
-`CompletableFuture`s allow specifying `ExecutorService`s for each task. This is reasonable because, e.g., IO tasks should not block the common `ExecutorService`.
+`CompletableFuture`s allow specifying `ExecutorService`s for each task. This is reasonable because, e.g., blocking tasks should not jam the common `ExecutorService`.
 
 Hippodamus abstracts from this concept by separating
 
 1. What kind a task is (task type) and
 1. How a certain task type should be handled.
 
-There are two predefined types of tasks defined in `dd.kms.hippodamus.api.coordinator.TaskType`: regular tasks (`TaskType.REGULAR`) and IO tasks (`TaskType.IO`). For extensibility, these are not values of an enum, but plain `int`s. Hence, you can introduce arbitrary non-negative `int`constants as additional custom task types. By default, a task is assumed to be a regular task.
+There are two predefined types of tasks defined in `dd.kms.hippodamus.api.coordinator.TaskType`: computational tasks (`TaskType.COMPUTATIONAL`) and blocking tasks (`TaskType.BLOCKING`). You can define further `TaskType`s by calling `TaskType.create(id)` for any non-negative id. By default, a task is assumed to be a computational task.
 
 When configuring the coordinator (see Section [Configuring Coordinators](#configuring-coordinators)), you can specify which `ExecutorService` to use for which task type. When configuring a task, you can specify which type it is. Hence, you indirectly specify which `ExecutorService` it will be submitted to.
 
 Since the `ExecutorService`s are not bound to the tasks, but to the coordinator, shutting them down (if desired) can be automatically done in the coordinator's `close()` method.
 
-Note that, by default, regular tasks are sent to the common `ForkJoinPool`, whereas IO tasks are sent to a dedicated single-threaded `ExecutorService`.
+Note that, by default, computational tasks are sent to the common `ForkJoinPool`, whereas blockung tasks are sent to a dedicated single-threaded `ExecutorService`.
 
 **TaskTypeSample.java:**
 
@@ -141,8 +141,8 @@ Note that, by default, regular tasks are sent to the common `ForkJoinPool`, wher
 try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
     for (int i = 1; i <= 10; i++) {
         int count = i;
-        coordinator.configure().taskType(TaskType.REGULAR).execute(() -> printWithDelay("Finished regular task " + count));
-        coordinator.configure().taskType(TaskType.IO)     .execute(() -> printWithDelay("Finished IO task "      + count));
+        coordinator.configure().taskType(TaskType.COMPUTATIONAL).execute(() -> printWithDelay("Finished computational task " + count));
+        coordinator.configure().taskType(TaskType.BLOCKING)     .execute(() -> printWithDelay("Finished blocking task " + count));
     }
 } catch (InterruptedException e) {
     e.printStackTrace();
@@ -158,9 +158,9 @@ void printWithDelay(String s) throws InterruptedException {
 }
 ```
 
-The previous example creates 10 regular tasks and 10 IO tasks. When executing the code, one can see that the regular tasks are executed in parallel, while the IO tasks are executed sequentially. Note that:
+The previous example creates 10 computational tasks and 10 blocking tasks. When executing the code, you can see that the computational tasks are executed in parallel, while the blocking tasks are executed sequentially. Note that:
 
-- It is not necessary to specify the type of regular tasks. In the example we only did this to emphasize the different types.
+- It is not necessary to specify the type of computational tasks. In the example we only did this to emphasize the different types.
 - As already mentioned in Section [Exception Handling](#exception-handling), it is no problem if tasks throw checked exceptions. The framework forces you to handle these exceptions. For more details see Section [Exception Handling Magic](#exception-handling-magic).
 - In many of the samples in this documentation we have to catch an `InterruptedException`. This is only due to the fact that we use the method `Thread.sleep()` to simulate the execution of a real task that requires a certain amount of time.   
 
@@ -249,7 +249,7 @@ In this section we discuss why we use a priority queue rather than a FIFO queue 
 
 ```
     ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-        .maximumParallelism(TaskType.REGULAR, 2)
+        .maximumParallelism(TaskType.COMPUTATIONAL, 2)
         .logger(((logLevel, taskName, message) -> System.out.println(taskName + ": " + message)));
     try (ExecutionCoordinator coordinator = builder.build()) {
         ResultHandle<Integer> task1 = coordinator.execute(() -> returnWithDelay(1));

@@ -42,7 +42,7 @@ public class RejectedExecutionExceptionTest
 	@Test
 	public void testRejectedExecutionException() {
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.executorService(TaskType.REGULAR, executorServiceSupplier.get(), true);
+			.executorService(TaskType.COMPUTATIONAL, executorServiceSupplier.get(), true);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			for (int i = 0; i < NUM_TASKS; i++) {
 				coordinator.execute(() -> TestUtils.simulateWork(TASK_TIME_MS));

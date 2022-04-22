@@ -24,7 +24,7 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	final C						coordinator;
 
 	private @Nullable String	name			= null;
-	private int					taskType		= TaskType.REGULAR;
+	private TaskType			taskType		= TaskType.COMPUTATIONAL;
 	private Collection<Handle>	dependencies	= ImmutableList.of();
 
 	ConfigurationBuilderBase(C coordinator) {
@@ -40,7 +40,7 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	@Override
-	public B taskType(int type) {
+	public B taskType(TaskType type) {
 		Preconditions.checkArgument(coordinator.supportsTaskType(taskType), "No ExecutorService has been specified for task type " + taskType);
 		this.taskType = type;
 		return getBuilder();

@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.api.execution.configuration;
 
+import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.execution.AggregationManager;
 import dd.kms.hippodamus.api.handles.Handle;
 
@@ -17,7 +18,7 @@ public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigur
 	AggregationConfigurationBuilder<S, R> name(String name);
 
 	@Override
-	AggregationConfigurationBuilder<S, R> taskType(int type);
+	AggregationConfigurationBuilder<S, R> taskType(TaskType type);
 
 	@Override
 	AggregationConfigurationBuilder<S, R> dependencies(Handle... dependencies);

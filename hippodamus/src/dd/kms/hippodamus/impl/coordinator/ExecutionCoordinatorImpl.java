@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.coordinator;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.*;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
@@ -21,7 +22,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 {
 	private static final int	MAX_NUM_TASKS	= Integer.MAX_VALUE;
 
-	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
+	private final Map<TaskType, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
 	private final Logger								logger;
 	private final LogLevel								minimumLogLevel;
 	private final boolean								verifyDependencies;
@@ -77,7 +78,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 */
 	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
 
-	public ExecutionCoordinatorImpl(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+	public ExecutionCoordinatorImpl(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
 		this.executorServiceWrappersByTaskType = executorServiceWrappersByTaskType;
 		this.logger = logger;
 		this.minimumLogLevel = minimumLogLevel;
@@ -106,17 +107,17 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		}
 	}
 
-	public boolean supportsTaskType(int taskType) {
+	public boolean supportsTaskType(TaskType taskType) {
 		return executorServiceWrappersByTaskType.containsKey(taskType);
 	}
 
 	private ExecutorServiceWrapper getExecutorServiceWrapper(TaskConfiguration taskConfiguration) {
-		int taskType = taskConfiguration.getTaskType();
+		TaskType taskType = taskConfiguration.getTaskType();
 		ExecutorServiceWrapper executorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		if (executorServiceWrapper != null) {
 			return executorServiceWrapper;
 		}
-		throw new CoordinatorException("Internal error: No executor service registered for task type " + taskType + ". This should not happen because ExecutionConfigurationBuilder.taskType(int) checks this.");
+		throw new CoordinatorException("Internal error: No executor service registered for task type " + taskType + ". This should not happen because ExecutionConfigurationBuilder.taskType(TaskType) checks this.");
 	}
 
 	@Override

@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutorService;
  */
 abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C extends ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
-	private final Map<Integer, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
+	private final Map<TaskType, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
 	private Logger										logger								= NoLogger.LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
@@ -29,15 +29,15 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 
 	CoordinatorBuilderBase() {
 		executorServiceWrappersByTaskType = new HashMap<>();
-		executorServiceWrappersByTaskType.put(TaskType.REGULAR,	ExecutorServiceWrapper.commonForkJoinPoolWrapper(Integer.MAX_VALUE));
-		executorServiceWrappersByTaskType.put(TaskType.IO,		ExecutorServiceWrapper.create(1, Integer.MAX_VALUE));
+		executorServiceWrappersByTaskType.put(TaskType.COMPUTATIONAL,	ExecutorServiceWrapper.commonForkJoinPoolWrapper(Integer.MAX_VALUE));
+		executorServiceWrappersByTaskType.put(TaskType.BLOCKING,		ExecutorServiceWrapper.create(1, Integer.MAX_VALUE));
 	}
 
 	abstract B getBuilder();
-	abstract C createCoordinator(Map<Integer, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode);
+	abstract C createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode);
 
 	@Override
-	public B executorService(int taskType, ExecutorService executorService, boolean shutdownRequired) {
+	public B executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired) {
 		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
 			? ExecutorServiceWrapper.create(executorService, shutdownRequired, Integer.MAX_VALUE)
@@ -47,7 +47,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	}
 
 	@Override
-	public B maximumParallelism(int taskType, int maxParallelism) {
+	public B maximumParallelism(TaskType taskType, int maxParallelism) {
 		Preconditions.checkArgument(maxParallelism > 0, "Maximum parallelism must be positive");
 		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
 		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null

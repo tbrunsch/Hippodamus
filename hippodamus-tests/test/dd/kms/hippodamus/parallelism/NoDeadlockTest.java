@@ -36,7 +36,7 @@ public class NoDeadlockTest
 	public void testNoDeadlock() {
 		Thread stoppingThread;	// used to stop coordinator in case of a dead lock
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.maximumParallelism(TaskType.REGULAR, maxParallelism);
+			.maximumParallelism(TaskType.COMPUTATIONAL, maxParallelism);
 		StopWatch stopWatch = new StopWatch();
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			ResultHandle<Integer> task1 = coordinator.execute(() -> returnWithDelay(1));

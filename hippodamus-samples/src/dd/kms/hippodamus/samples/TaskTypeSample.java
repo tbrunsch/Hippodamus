@@ -10,8 +10,8 @@ public class TaskTypeSample
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 1; i <= 10; i++) {
 				int count = i;
-				coordinator.configure().taskType(TaskType.REGULAR).execute(() -> printWithDelay("Finished regular task " + count));
-				coordinator.configure().taskType(TaskType.IO)     .execute(() -> printWithDelay("Finished IO task "      + count));
+				coordinator.configure().taskType(TaskType.COMPUTATIONAL).execute(() -> printWithDelay("Finished computational task " + count));
+				coordinator.configure().taskType(TaskType.BLOCKING)     .execute(() -> printWithDelay("Finished blocking task " + count));
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
