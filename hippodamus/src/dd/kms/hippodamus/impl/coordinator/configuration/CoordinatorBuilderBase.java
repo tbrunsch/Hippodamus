@@ -11,8 +11,12 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.logging.NoLogger;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 
 /**
  * Base class for {@link ExecutionCoordinatorBuilderImpl} and {@link AggregationCoordinatorBuilderImpl}
@@ -21,16 +25,17 @@ import java.util.concurrent.ExecutorService;
  */
 abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C extends ExecutionCoordinator> implements ExecutionCoordinatorBuilder
 {
-	private final Map<TaskType, ExecutorServiceWrapper>	executorServiceWrappersByTaskType;
+	private final Map<TaskType, ExecutorService>		executorServicesByTaskType			= new HashMap<>();
+	private final Set<TaskType> 						taskTypesThatRequireShutdown		= new HashSet<>();
+	private final Map<TaskType, Integer>				maximumParallelismByTaskType		= new HashMap<>();
 	private Logger										logger								= NoLogger.LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
 	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION;
 
 	CoordinatorBuilderBase() {
-		executorServiceWrappersByTaskType = new HashMap<>();
-		executorServiceWrappersByTaskType.put(TaskType.COMPUTATIONAL,	ExecutorServiceWrapper.commonForkJoinPoolWrapper(Integer.MAX_VALUE));
-		executorServiceWrappersByTaskType.put(TaskType.BLOCKING,		ExecutorServiceWrapper.create(1, Integer.MAX_VALUE));
+		maximumParallelism(TaskType.COMPUTATIONAL, Integer.MAX_VALUE);
+		executorService(TaskType.BLOCKING, Executors.newWorkStealingPool(1), true);
 	}
 
 	abstract B getBuilder();
@@ -38,22 +43,19 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 
 	@Override
 	public B executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired) {
-		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
-		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
-			? ExecutorServiceWrapper.create(executorService, shutdownRequired, Integer.MAX_VALUE)
-			: oldExecutorServiceWrapper.derive(executorService, shutdownRequired);
-		executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
+		executorServicesByTaskType.put(taskType, executorService);
+		if (shutdownRequired) {
+			taskTypesThatRequireShutdown.add(taskType);
+		} else {
+			taskTypesThatRequireShutdown.remove(taskType);
+		}
 		return getBuilder();
 	}
 
 	@Override
 	public B maximumParallelism(TaskType taskType, int maxParallelism) {
 		Preconditions.checkArgument(maxParallelism > 0, "Maximum parallelism must be positive");
-		ExecutorServiceWrapper oldExecutorServiceWrapper = executorServiceWrappersByTaskType.get(taskType);
-		ExecutorServiceWrapper executorServiceWrapper = oldExecutorServiceWrapper == null
-			? ExecutorServiceWrapper.commonForkJoinPoolWrapper(maxParallelism)
-			: oldExecutorServiceWrapper.derive(maxParallelism);
-		executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
+		maximumParallelismByTaskType.put(taskType, maxParallelism);
 		return getBuilder();
 	}
 
@@ -82,6 +84,26 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 
 	@Override
 	public C build() {
+		Set<TaskType> taskTypes = getConfiguredTaskTypes();
+		Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType = new HashMap<>();
+		for (TaskType taskType : taskTypes) {
+			ExecutorService executorService = executorServicesByTaskType.get(taskType);
+			if (executorService == null) {
+				executorService = ForkJoinPool.commonPool();
+			}
+			boolean shutdownRequired = taskTypesThatRequireShutdown.contains(taskType);
+			int maxParallelism = maximumParallelismByTaskType.getOrDefault(taskType, Integer.MAX_VALUE);
+			ExecutorServiceWrapper executorServiceWrapper = new ExecutorServiceWrapper(executorService, shutdownRequired, maxParallelism);
+			executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
+		}
+
 		return createCoordinator(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
+	}
+
+	private Set<TaskType> getConfiguredTaskTypes() {
+		Set<TaskType> taskTypes = new HashSet<>();
+		taskTypes.addAll(executorServicesByTaskType.keySet());
+		taskTypes.addAll(maximumParallelismByTaskType.keySet());
+		return taskTypes;
 	}
 }

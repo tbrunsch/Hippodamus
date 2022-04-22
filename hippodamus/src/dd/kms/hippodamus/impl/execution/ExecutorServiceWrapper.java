@@ -7,8 +7,6 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
 /**
@@ -28,18 +26,6 @@ import java.util.concurrent.Future;
  */
 public class ExecutorServiceWrapper implements AutoCloseable
 {
-	public static ExecutorServiceWrapper commonForkJoinPoolWrapper(int maxParallelism) {
-		return create(ForkJoinPool.commonPool(), false, maxParallelism);
-	}
-
-	public static ExecutorServiceWrapper create(int numThreads, int maxParallelism) {
-		return create(Executors.newWorkStealingPool(numThreads), true, maxParallelism);
-	}
-
-	public static ExecutorServiceWrapper create(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
-		return new ExecutorServiceWrapper(executorService, shutdownRequired, maxParallelism);
-	}
-
 	private final ExecutorService				executorService;
 	private final boolean						shutdownRequired;
 	private final int							maxParallelism;
@@ -57,18 +43,10 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	 */
 	private int 								numPendingSubmittedTasks;
 
-	private ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
+	public ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		this.executorService = executorService;
 		this.shutdownRequired = shutdownRequired;
 		this.maxParallelism = maxParallelism;
-	}
-
-	public ExecutorServiceWrapper derive(ExecutorService executorService, boolean shutdownRequired) {
-		return create(executorService, shutdownRequired, this.maxParallelism);
-	}
-
-	public ExecutorServiceWrapper derive(int maxParallelism) {
-		return create(this.executorService, this.shutdownRequired, maxParallelism);
 	}
 
 	/**
