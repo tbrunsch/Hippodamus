@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
@@ -21,21 +21,21 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
-	private final ExecutionCoordinatorImpl				coordinator;
-	private final String								taskName;
-	private final int									id;
-	private final ExecutorServiceWrapper				executorServiceWrapper;
-	private final StoppableExceptionalCallable<T, ?>	callable;
-	private final boolean								verifyDependencies;
+	private final ExecutionCoordinatorImpl	coordinator;
+	private final String					taskName;
+	private final int						id;
+	private final ExecutorServiceWrapper	executorServiceWrapper;
+	private final ExceptionalCallable<T, ?> callable;
+	private final boolean					verifyDependencies;
 
-	private final List<Runnable>						completionListeners					= new ArrayList<>();
-	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
+	private final List<Runnable>			completionListeners					= new ArrayList<>();
+	private final List<Runnable>			exceptionListeners					= new ArrayList<>();
 
-	private final TaskStateController<T>				stateController;
+	private final TaskStateController<T>	stateController;
 
-	private Future<?>									future;
+	private Future<?>						future;
 
-	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -171,7 +171,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 			return;
 		}
 		try {
-			T result = callable.call(this::hasStopped);
+			T result = callable.call();
 			complete(result);
 		} catch (TaskStoppedException e) {
 

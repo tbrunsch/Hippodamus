@@ -5,7 +5,6 @@ import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
-import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
@@ -25,7 +24,7 @@ public class AggregationCoordinatorImpl<S, R> extends ExecutionCoordinatorImpl i
 		this.aggregator = aggregator;
 	}
 
-	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable, TaskConfiguration taskConfiguration) throws T {
+	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable, TaskConfiguration taskConfiguration) throws T {
 		synchronized (this) {
 			boolean initiallyStopped = aggregator.hasAggregationCompleted();
 			ResultHandle<S> handle = execute(callable, taskConfiguration, initiallyStopped);
@@ -48,11 +47,6 @@ public class AggregationCoordinatorImpl<S, R> extends ExecutionCoordinatorImpl i
 
 	@Override
 	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T {
-		return configure().aggregate(callable);
-	}
-
-	@Override
-	public <T extends Throwable> ResultHandle<S> aggregate(StoppableExceptionalCallable<S, T> callable) throws T {
 		return configure().aggregate(callable);
 	}
 

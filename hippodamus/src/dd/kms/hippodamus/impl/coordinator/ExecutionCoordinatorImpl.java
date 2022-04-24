@@ -3,7 +3,9 @@ package dd.kms.hippodamus.impl.coordinator;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.api.exceptions.*;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -31,7 +33,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	/**
 	 * Handles the dependencies between handles.<br>
 	 * <br>
-	 * The state of the dependency manager will only be changed by calls to {@link #execute(StoppableExceptionalCallable, TaskConfiguration)},
+	 * The state of the dependency manager will only be changed by calls to {@link #execute(ExceptionalCallable, TaskConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the state of the dependency manager
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is required to
 	 * access the dependency manager in methods that are only called in the coordinator's thread.
@@ -41,7 +43,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	/**
 	 * Contains human-friendly, by default generic task names.<br>
 	 * <br>
-	 * The state of that set will only be changed by calls to {@link #execute(StoppableExceptionalCallable, TaskConfiguration)},
+	 * The state of that set will only be changed by calls to {@link #execute(ExceptionalCallable, TaskConfiguration)},
 	 * which is only called in the coordinator's thread. Hence, the state of the set
 	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
 	 * required to access the map in methods that are only called in the coordinator's thread.
@@ -86,11 +88,11 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		this.waitMode = waitMode;
 	}
 
-	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
+	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
 		return execute(callable, taskConfiguration, false);
 	}
 
-	<V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration, boolean initiallyStopped) {
+	<V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration, boolean initiallyStopped) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
 		synchronized (this) {
@@ -264,17 +266,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	@Override
-	public final <T extends Throwable> Handle execute(StoppableExceptionalRunnable<T> runnable) throws T {
-		return configure().execute(runnable);
-	}
-
-	@Override
 	public final <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) throws T {
-		return configure().execute(callable);
-	}
-
-	@Override
-	public final <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable) throws T {
 		return configure().execute(callable);
 	}
 
