@@ -1,6 +1,6 @@
 package dd.kms.hippodamus.testUtils;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -38,7 +38,8 @@ public class TestUtils
 	}
 
 	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs, String description) {
-		Assert.assertTrue(description + " required " + elapsedTimeMs + " ms, but it should have required at least " + expectedLowerBoundMs + " ms", expectedLowerBoundMs <= elapsedTimeMs);
+		Assertions.assertTrue(expectedLowerBoundMs <= elapsedTimeMs,
+			description + " required " + elapsedTimeMs + " ms, but it should have required at least " + expectedLowerBoundMs + " ms");
 	}
 
 	public static void assertTimeUpperBound(long expectedUpperBoundMs, long elapsedTimeMs) {
@@ -46,7 +47,8 @@ public class TestUtils
 	}
 
 	public static void assertTimeUpperBound(long expectedUpperBoundMs, long elapsedTimeMs, String description) {
-		Assert.assertTrue(description + " required " + elapsedTimeMs + " ms, but it should have required at most " + expectedUpperBoundMs + " ms", elapsedTimeMs <= expectedUpperBoundMs);
+		Assertions.assertTrue(elapsedTimeMs <= expectedUpperBoundMs,
+			description + " required " + elapsedTimeMs + " ms, but it should have required at most " + expectedUpperBoundMs + " ms");
 	}
 
 	public static <T> T createNamedInstance(Class<T> instanceInterface, T unnamedInstance, String name) {

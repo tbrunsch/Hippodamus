@@ -7,33 +7,24 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.IntStream;
 
-@RunWith(Parameterized.class)
-public class NoDeadlockTest
+class NoDeadlockTest
 {
 	private static final long	LONG_TASK_TIME_MS	= 500;
 	private static final long	PRECISION_MS		= 200;
 
-	@Parameters(name = "max parallelism: {0}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		final int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
 		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
 	}
 
-	private final int	maxParallelism;
-
-	public NoDeadlockTest(int maxParallelism) {
-		this.maxParallelism = maxParallelism;
-	}
-
-	@Test
-	public void testNoDeadlock() {
+	@ParameterizedTest(name = "max parallelism: {0}")
+	@MethodSource("getParameters")
+	void testNoDeadlock(int maxParallelism) {
 		Thread stoppingThread;	// used to stop coordinator in case of a dead lock
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.maximumParallelism(TaskType.COMPUTATIONAL, maxParallelism);

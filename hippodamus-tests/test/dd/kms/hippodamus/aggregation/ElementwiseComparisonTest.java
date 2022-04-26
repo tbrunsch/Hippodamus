@@ -8,10 +8,9 @@ import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,8 +30,7 @@ import static dd.kms.hippodamus.api.coordinator.TaskType.BLOCKING;
  * by loading and generating elements in parallel and by performing the comparison while the
  * next elements are loaded and generated.
  */
-@RunWith(Parameterized.class)
-public class ElementwiseComparisonTest
+class ElementwiseComparisonTest
 {
 	/**
 	 * The ratio between IO and non-IO time might not be realistic, but it is important that the
@@ -68,8 +66,7 @@ public class ElementwiseComparisonTest
 
 	private static final int	NUM_ELEMENTS		= 3;
 
-	@Parameterized.Parameters(name = "wait mode: {0}, number of elements: {1}, deviating element index: {2}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
 		for (WaitMode waitMode : WaitMode.values()) {
 			for (int deviatingElementIndex = -1; deviatingElementIndex < NUM_ELEMENTS; deviatingElementIndex++) {
@@ -79,18 +76,9 @@ public class ElementwiseComparisonTest
 		return parameters;
 	}
 
-	private final WaitMode	waitMode;
-	private final int		numElements;
-	private final int		deviatingElementIndex;
-
-	public ElementwiseComparisonTest(WaitMode waitMode, int numElements, int deviatingElementIndex) {
-		this.waitMode = waitMode;
-		this.numElements = numElements;
-		this.deviatingElementIndex = deviatingElementIndex;
-	}
-
-	@Test
-	public void testComparison() {
+	@ParameterizedTest(name = "wait mode: {0}, number of elements: {1}, deviating element index: {2}")
+	@MethodSource("getParameters")
+	void testComparison(WaitMode waitMode, int numElements, int deviatingElementIndex) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		Aggregator<Boolean, Boolean> conjunctionAggregator = Aggregators.conjunction();
 		boolean expectedResult = true;
@@ -117,10 +105,10 @@ public class ElementwiseComparisonTest
 			// We do not require time constraints to be met with only 1 processor
 			System.out.println("Skipped checking time constraints");
 		} else {
-			checkTimeConstraints(stopWatch.getElapsedTimeMs());
+			checkTimeConstraints(stopWatch.getElapsedTimeMs(), waitMode, numElements, deviatingElementIndex);
 		}
 
-		Assert.assertEquals(expectedResult, conjunctionAggregator.getAggregatedValue());
+		Assertions.assertEquals(expectedResult, conjunctionAggregator.getAggregatedValue(), "Wrong aggregated result");
 	}
 
 	private int simulateLoadElement(int index) {
@@ -146,7 +134,7 @@ public class ElementwiseComparisonTest
 	/*
 	 * See comment on LOAD_TIME_MS, GENERATION_TIME_MS, and COMPARISON_TIME_MS
 	 */
-	private void checkTimeConstraints(long elapsedTimeMs) {
+	private void checkTimeConstraints(long elapsedTimeMs, WaitMode waitMode, int numElements, int deviatingElementIndex) {
 		int numRequiredTasksForComparison = deviatingElementIndex == -1
 			? numElements
 			: deviatingElementIndex + 1;

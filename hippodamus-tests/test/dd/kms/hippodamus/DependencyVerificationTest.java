@@ -8,10 +8,9 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.concurrent.ExecutorService;
 
@@ -30,22 +29,15 @@ import java.util.concurrent.ExecutorService;
  * This task focuses on testing both modi, which should be both supported
  * by the framework.
  */
-@RunWith(Parameterized.class)
-public class DependencyVerificationTest
+class DependencyVerificationTest
 {
-	@Parameterized.Parameters(name = "verify dependencies: {0}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return new Object[]{ false, true };
 	}
 
-	private final boolean	verifyDependencies;
-
-	public DependencyVerificationTest(boolean verifyDependencies) {
-		this.verifyDependencies = verifyDependencies;
-	}
-
-	@Test
-	public void testNonSubmittedTaskDependency() {
+	@ParameterizedTest(name = "verify dependencies: {0}")
+	@MethodSource("getParameters")
+	void testNonSubmittedTaskDependency(boolean verifyDependencies) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
@@ -68,19 +60,20 @@ public class DependencyVerificationTest
 		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
-		Assert.assertNotNull("task3 is null", task3);
+		Assertions.assertNotNull(task3, "task3 is null");
 		if (verifyDependencies) {
-			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
-			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
+			Assertions.assertTrue(logger.hasEncounteredInternalError(), "Expected an internal error due to missing dependency specification");
+			Assertions.assertTrue(caughtException, "Expected an exception due to missing dependency specification");
 		} else {
-			Assert.assertFalse("Encountered an internal error", logger.hasEncounteredInternalError());
-			Assert.assertFalse("Encountered an exception", caughtException);
-			Assert.assertEquals(task2Result, (int) task3.get());
+			Assertions.assertFalse(logger.hasEncounteredInternalError(), "Encountered an internal error");
+			Assertions.assertFalse(caughtException, "Encountered an exception");
+			Assertions.assertEquals(task2Result, (int) task3.get(), "Unexpected result of task 3");
 		}
 	}
 
-	@Test
-	public void testRunningTaskDependency() {
+	@ParameterizedTest(name = "verify dependencies: {0}")
+	@MethodSource("getParameters")
+	void testRunningTaskDependency(boolean verifyDependencies) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
@@ -98,16 +91,16 @@ public class DependencyVerificationTest
 			caughtException = true;
 		}
 		if (sum == null) {
-			Assert.fail("sum is null");
+			Assertions.fail("sum is null");
 			return;
 		}
 		if (verifyDependencies) {
-			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
-			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
+			Assertions.assertTrue(logger.hasEncounteredInternalError(), "Expected an internal error due to missing dependency specification");
+			Assertions.assertTrue(caughtException, "Expected an exception due to missing dependency specification");
 		} else {
-			Assert.assertFalse("Encountered an internal error", logger.hasEncounteredInternalError());
-			Assert.assertFalse("Encountered an exception", caughtException);
-			Assert.assertEquals(addend1Result + addend2Result, (int) sum.get());
+			Assertions.assertFalse(logger.hasEncounteredInternalError(), "Encountered an internal error");
+			Assertions.assertFalse(caughtException, "Encountered an exception");
+			Assertions.assertEquals(addend1Result + addend2Result, (int) sum.get());
 		}
 	}
 

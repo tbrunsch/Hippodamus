@@ -5,37 +5,28 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.IntStream;
 
-@RunWith(Parameterized.class)
-public class MaximumParallelismTest
+class MaximumParallelismTest
 {
 	private static final int	NUM_TASKS			= 100;
 	private static final long	TASK_TIME_MS		= 10;
 
-	@Parameters(name = "max parallelism: {0}")
-	public static Object getParameters() {
-		final int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
+	static Object getParameters() {
+		int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
 		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
 	}
-
-	private final int	maxParallelism;
 
 	private int			numRunningTasks;
 	private int			maxNumRunningTasks;
 
-	public MaximumParallelismTest(int maxParallelism) {
-		this.maxParallelism = maxParallelism;
-	}
-
-	@Test
-	public void testMaximumParallelism() {
+	@ParameterizedTest(name = "max parallelism: {0}")
+	@MethodSource("getParameters")
+	void testMaximumParallelism(int maxParallelism) {
 		maxNumRunningTasks = 0;
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.maximumParallelism(TaskType.COMPUTATIONAL, maxParallelism);
@@ -44,7 +35,7 @@ public class MaximumParallelismTest
 				coordinator.execute(this::runTask);
 			}
 		}
-		Assert.assertEquals("Unexpected maximum number of tasks executed in parallel", maxParallelism, maxNumRunningTasks);
+		Assertions.assertEquals(maxParallelism, maxNumRunningTasks, "Unexpected maximum number of tasks executed in parallel");
 	}
 
 	private void runTask() {

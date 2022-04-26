@@ -4,8 +4,8 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
 
@@ -13,7 +13,7 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
  * This test focuses on the behavior of the framework in case of exceptions
  * occurring where the framework has no chance to handle them.
  */
-public class IntractableExceptionTest
+class IntractableExceptionTest
 {
 	private static final int	TASK_DURATION_MS	= 1000;
 	private static final int	PRECISION_MS		= 200;
@@ -26,7 +26,7 @@ public class IntractableExceptionTest
 	 * catch-clause is executed.
 	 */
 	@Test
-	public void testIntractableException() {
+	void testIntractableException() {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtIntractableException = false;
@@ -38,7 +38,7 @@ public class IntractableExceptionTest
 		}
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
-		Assert.assertTrue(caughtIntractableException);
+		Assertions.assertTrue(caughtIntractableException, "No exception has been thrown");
 
 		TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
 		TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
@@ -50,7 +50,7 @@ public class IntractableExceptionTest
 	 * The disadvantage is that no task will be executed until the end of the try-block.
 	 */
 	@Test
-	public void testIntractableExceptionWithImmediateStop() {
+	void testIntractableExceptionWithImmediateStop() {
 		for (boolean throwException : BOOLEANS) {
 			TestUtils.waitForEmptyCommonForkJoinPool();
 			StopWatch stopWatch = new StopWatch();
@@ -66,11 +66,11 @@ public class IntractableExceptionTest
 			long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
 			if (throwException) {
-				Assert.assertTrue("No exception has been thrown", caughtIntractableException);
+				Assertions.assertTrue(caughtIntractableException, "No exception has been thrown");
 
 				TestUtils.assertTimeUpperBound(PRECISION_MS, elapsedTimeMs);
 			} else {
-				Assert.assertFalse("An exception has been thrown", caughtIntractableException);
+				Assertions.assertFalse(caughtIntractableException, "An exception has been thrown");
 
 				TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
 				TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);

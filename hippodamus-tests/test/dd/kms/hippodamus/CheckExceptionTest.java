@@ -3,19 +3,19 @@ package dd.kms.hippodamus;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
  * This test checks whether the method {@link ExecutionCoordinator#checkException()}
  * really throws an exception if exists.
  */
-public class CheckExceptionTest
+class CheckExceptionTest
 {
 	private static final String	EXCEPTION_MESSAGE	= "Break infinite loop!";
 
 	@Test
-	public void testCheckException() {
+	void testCheckException() {
 		boolean caughtException = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(() -> {
@@ -26,11 +26,11 @@ public class CheckExceptionTest
 				coordinator.checkException();
 			}
 		} catch (TestException e) {
-			Assert.assertEquals("Wrong exception message", EXCEPTION_MESSAGE, e.getMessage());
+			Assertions.assertEquals(EXCEPTION_MESSAGE, e.getMessage(), "Wrong exception message");
 			caughtException = true;
 		}
 		if (!caughtException) {
-			Assert.fail("An exception has been swallowed");
+			Assertions.fail("An exception has been swallowed");
 		}
 	}
 

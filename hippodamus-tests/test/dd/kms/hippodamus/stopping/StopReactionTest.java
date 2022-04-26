@@ -5,26 +5,22 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * This test verifies that the interrupted flag is set correctly by the {@link ExecutionCoordinator} by
  * showing that by considering the interrupted flag tasks will terminate earlier than without.
  */
-@RunWith(Parameterized.class)
-public class StopReactionTest
+class StopReactionTest
 {
 	private static final long	TIME_UNTIL_EXCEPTION_MS	= 500;
 	private static final long	TASK_2_SLEEP_INTERVAL	= 100;
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
 	private static final long	PRECISION_MS			= 300;
 
-	@Parameters(name = "wait mode: {0}, react to stop: {1}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return new Object[]{
 			new Object[]{WaitMode.UNTIL_TERMINATION, false},
 			new Object[]{WaitMode.UNTIL_TERMINATION, true},
@@ -33,22 +29,15 @@ public class StopReactionTest
 		};
 	}
 
-	private final WaitMode	waitMode;
-	private final boolean 	reactToStop;
-
-	public StopReactionTest(WaitMode waitMode, boolean reactToStop) {
-		this.waitMode = waitMode;
-		this.reactToStop = reactToStop;
-	}
-
-	@Test
-	public void testStopWithoutStopReaction() {
+	@ParameterizedTest(name = "wait mode: {0}, react to stop: {1}")
+	@MethodSource("getParameters")
+	void testStopWithoutStopReaction(WaitMode waitMode, boolean reactToStop) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
 		StopWatch stopWatch = new StopWatch();
 		try (ExecutionCoordinator coordinator = Coordinators.configureExecutionCoordinator().waitMode(waitMode).build()) {
 			coordinator.execute(this::run1);
-			coordinator.execute(this::run2);
+			coordinator.execute(() -> run2(reactToStop));
 		} catch (ExpectedException e) {
 			caughtException = true;
 		}
@@ -56,7 +45,7 @@ public class StopReactionTest
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long elapsedTimePoolMs = stopWatch.getElapsedTimeMs();
 
-		Assert.assertTrue("An exception has been swallowed", caughtException);
+		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
 		if (TestUtils.getDefaultParallelism() < 2) {
 			// We do not require time constraints to be met with only 1 processor
@@ -87,7 +76,7 @@ public class StopReactionTest
 		throw new ExpectedException();
 	}
 
-	private void run2() {
+	private void run2(boolean reactToStop) {
 		for (int i = 0; i < TASK_2_SLEEP_REPETITION; i++) {
 			if (reactToStop && Thread.currentThread().isInterrupted()) {
 				return;

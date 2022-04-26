@@ -3,8 +3,8 @@ package dd.kms.hippodamus.benchmark;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.text.MessageFormat;
 import java.util.concurrent.CompletableFuture;
@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * cannot benefit from additional information, but has a higher overhead than other approaches.
  * However, we want to ensure that the framework overhead is not too large.
  */
-public class NoSpecifiedDependenciesBenchmark
+class NoSpecifiedDependenciesBenchmark
 {
 	private static final int	NUM_TASKS		= 100;
 	private static final long	TASK_TIME_MS	= 100;
@@ -25,7 +25,7 @@ public class NoSpecifiedDependenciesBenchmark
 	private static final double	TOLERANCE		= 1.05;
 
 	@Test
-	public void benchmarkNoSpecifiedDependencies() {
+	void benchmarkNoSpecifiedDependencies() {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long futureTimeMs = BenchmarkUtils.measureTime(this::runNoSpecifiedDependenciesWithCompletableFutures);
 		TestUtils.waitForEmptyCommonForkJoinPool();
@@ -44,7 +44,7 @@ public class NoSpecifiedDependenciesBenchmark
 			future = CompletableFuture.supplyAsync(() -> plusOne(get(prevFuture)));
 		}
 		int count = get(future);
-		Assert.assertEquals("Wrong future result", NUM_TASKS, count);
+		Assertions.assertEquals(NUM_TASKS, count, "Wrong future result");
 	}
 
 	private void runNoSpecifiedDependenciesWithCoordinator() {
@@ -56,7 +56,7 @@ public class NoSpecifiedDependenciesBenchmark
 			}
 		}
 		int count = countSupplier.get();
-		Assert.assertEquals("Wrong future result", NUM_TASKS, count);
+		Assertions.assertEquals(NUM_TASKS, count, "Wrong future result");
 	}
 
 	private int plusOne(int value) {
@@ -68,7 +68,7 @@ public class NoSpecifiedDependenciesBenchmark
 		try {
 			return future.get();
 		} catch (Exception e) {
-			Assert.fail("Exception when calling Future.get(): " + e);
+			Assertions.fail("Exception when calling Future.get(): " + e);
 			return 0;
 		}
 	}

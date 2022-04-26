@@ -4,13 +4,13 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
 
 /**
  * This test verifies that manually stopping the coordinator works correctly.
  */
-public class ManualStopTest
+class ManualStopTest
 {
 	private static final long	TASK_SLEEP_INTERVAL		= 100;
 	private static final int	TASK_SLEEP_REPETITION	= 20;
@@ -18,8 +18,8 @@ public class ManualStopTest
 	private static final long	TIME_UNTIL_STOP_MS		= 1000;
 
 	@Test
-	public void testManualStop() {
-		Assume.assumeTrue("This test requires at least two tasks to be processed in parallel", TestUtils.getDefaultParallelism() > 1);
+	void testManualStop() {
+		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() > 1, "This test requires at least two tasks to be processed in parallel");
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		StopWatch stopWatch = new StopWatch();

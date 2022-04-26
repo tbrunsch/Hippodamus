@@ -5,8 +5,8 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.concurrent.*;
  * reused for other tasks, particularly for tasks that are not managed by the {@link ExecutionCoordinator}, it
  * is important that the interrupted flag is cleared when a task terminates.
  */
-public class StopCorrectTasksTest
+class StopCorrectTasksTest
 {
 	private static final int	NUM_TASKS		= 100;
 	private static final int	TASK_TIME_MS	= 300;
@@ -29,7 +29,7 @@ public class StopCorrectTasksTest
 	private final Set<Integer>			stoppedTaskIds		= ConcurrentHashMap.newKeySet();
 
 	@Test
-	public void testStopCorrectTasks() throws ExecutionException, InterruptedException {
+	void testStopCorrectTasks() throws ExecutionException, InterruptedException {
 		List<Future<?>> additionalTasks = new ArrayList<>();
 
 		ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
@@ -62,8 +62,8 @@ public class StopCorrectTasksTest
 			boolean taskCompleted = completedTaskIds.contains(taskId);
 			boolean taskStopped = stoppedTaskIds.contains(taskId);
 			boolean taskIdIsPrime = isPrime(taskId);
-			Assert.assertTrue("Task " + taskId + " should either have completed or stopped", taskCompleted ^ taskStopped);
-			Assert.assertEquals("Task " + taskCompleted + " should " + (taskIdIsPrime ? "have " : "not have ") + "stopped", taskIdIsPrime, taskStopped);
+			Assertions.assertTrue(taskCompleted ^ taskStopped, "Task " + taskId + " should either have completed or stopped");
+			Assertions.assertEquals(taskIdIsPrime, taskStopped, "Task " + taskCompleted + " should " + (taskIdIsPrime ? "have " : "not have ") + "stopped");
 		}
 	}
 

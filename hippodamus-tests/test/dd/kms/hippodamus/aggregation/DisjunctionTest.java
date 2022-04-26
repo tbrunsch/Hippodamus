@@ -8,10 +8,9 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,14 +29,12 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
  * result. The optimized approach uses short circuit evaluation and stops one task if the
  * other one completes with a positive result.
  */
-@RunWith(Parameterized.class)
-public class DisjunctionTest
+class DisjunctionTest
 {
 	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= TestUtils.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
 	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= TestUtils.createNamedInstance(Supplier.class, Executors::newWorkStealingPool, "dedicated executor service");
 
-	@Parameterized.Parameters(name = "computation of {0} || {1} with {2}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
 		for (boolean operand1 : BOOLEANS) {
 			for (boolean operand2 : BOOLEANS) {
@@ -49,18 +46,9 @@ public class DisjunctionTest
 		return parameters;
 	}
 
-	private final boolean 					operand1;
-	private final boolean 					operand2;
-	private final Supplier<ExecutorService>	executorServiceSupplier;
-
-	public DisjunctionTest(boolean operand1, boolean operand2, Supplier<ExecutorService> executorServiceSupplier) {
-		this.operand1 = operand1;
-		this.operand2 = operand2;
-		this.executorServiceSupplier = executorServiceSupplier;
-	}
-
-	@Test
-	public void testDisjunction() {
+	@ParameterizedTest(name = "computation of {0} || {1} with {2}")
+	@MethodSource("getParameters")
+	void testDisjunction(boolean operand1, boolean operand2, Supplier<ExecutorService> executorServiceSupplier) {
 		ExecutorService executorService = executorServiceSupplier.get();
 		Aggregator<Boolean, Boolean> disjunctionAggregator = Aggregators.disjunction();
 		Handle h1;
@@ -79,32 +67,32 @@ public class DisjunctionTest
 		 */
 		if (operand1) {
 			if (operand2) {
-				Assert.assertTrue("At least one of the tasks should have completed", h1.hasCompleted() || h2.hasCompleted());
+				Assertions.assertTrue(h1.hasCompleted() || h2.hasCompleted(), "At least one of the tasks should have completed");
 			} else {
-				Assert.assertTrue("Task 1 should have completed", h1.hasCompleted());
-				Assert.assertFalse("Task 2 should not have completed (short circuit evaluation)", h2.hasCompleted());
+				Assertions.assertTrue(h1.hasCompleted(), "Task 1 should have completed");
+				Assertions.assertFalse(h2.hasCompleted(), "Task 2 should not have completed (short circuit evaluation)");
 
-				Assert.assertTrue("Task 2 should have been stopped (short circuit evaluation)", h2.hasStopped());
+				Assertions.assertTrue(h2.hasStopped(), "Task 2 should have been stopped (short circuit evaluation)");
 			}
 		} else {
 			if (operand2) {
-				Assert.assertFalse("Task 1 should not have completed (short circuit evaluation)", h1.hasCompleted());
-				Assert.assertTrue("Task 2 should have completed", h2.hasCompleted());
+				Assertions.assertFalse(h1.hasCompleted(), "Task 1 should not have completed (short circuit evaluation)");
+				Assertions.assertTrue(h2.hasCompleted(), "Task 2 should have completed");
 
-				Assert.assertTrue("Task 1 should have been stopped (short circuit evaluation)", h1.hasStopped());
+				Assertions.assertTrue(h1.hasStopped(), "Task 1 should have been stopped (short circuit evaluation)");
 			} else {
-				Assert.assertTrue("Task 1 should have completed", h1.hasCompleted());
-				Assert.assertTrue("Task 2 should have completed", h2.hasCompleted());
+				Assertions.assertTrue(h1.hasCompleted(), "Task 1 should have completed");
+				Assertions.assertTrue(h2.hasCompleted(), "Task 2 should have completed");
 
-				Assert.assertFalse("Task 1 must not have stopped", h1.hasStopped());
-				Assert.assertFalse("Task 2 must not have stopped", h2.hasStopped());
+				Assertions.assertFalse(h1.hasStopped(), "Task 1 must not have stopped");
+				Assertions.assertFalse(h2.hasStopped(), "Task 2 must not have stopped");
 			}
 		}
 
 		/*
 		 * Check result
 		 */
-		Assert.assertEquals(disjunctionAggregator.getAggregatedValue(), expectedResult);
+		Assertions.assertEquals(expectedResult, disjunctionAggregator.getAggregatedValue(), "Wrong aggregated result");
 	}
 
 	/*

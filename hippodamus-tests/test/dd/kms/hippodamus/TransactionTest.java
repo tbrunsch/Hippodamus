@@ -6,10 +6,9 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -23,8 +22,7 @@ import java.util.concurrent.Executors;
  * fails, then no further task should be started and the transaction should be
  * rewound.
  */
-@RunWith(Parameterized.class)
-public class TransactionTest
+class TransactionTest
 {
 	private static final Transaction	TRANSACTION	= new Transaction(
 		new CreateFileAction("File 1", 500),
@@ -46,19 +44,13 @@ public class TransactionTest
 	 */
 	private static final int[]	START_TIMES	= { 0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100 };
 
-	@Parameterized.Parameters(name = "transaction timeout after {0} ms")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return ImmutableList.of(300, 1200, 1600, 2400, 3000);
 	}
 
-	private final long	fileSystemAvailabilityTimeMs;
-
-	public TransactionTest(long fileSystemAvailabilityTimeMs) {
-		this.fileSystemAvailabilityTimeMs = fileSystemAvailabilityTimeMs;
-	}
-
-	@Test
-	public void testCopyFiles() throws IOException {
+	@ParameterizedTest(name = "transaction timeout after {0} ms")
+	@MethodSource("getParameters")
+	void testCopyFiles(long fileSystemAvailabilityTimeMs) throws IOException {
 		/*
 		 * The file system will "shut down" after fileSystemAvailabilityTimeMs millis.
 		 * => Trying to create a file afterwards will result in an IOException.
@@ -81,19 +73,19 @@ public class TransactionTest
 				CreateFileAction action = actions.get(i);
 				boolean fileExpectedToExist = START_TIMES[i] < fileSystemAvailabilityTimeMs;
 				if (fileExpectedToExist) {
-					Assert.assertTrue("The action for file name '" + action.getFileName() + "' should have been performed", action.hasTriedToPerform());
+					Assertions.assertTrue(action.hasTriedToPerform(), "The action for file name '" + action.getFileName() + "' should have been performed");
 					expectedExistingFiles.add(action.getFileName());
 				} else {
-					Assert.assertFalse("The coordinator should have stopped the task containing that action for file name '" + action.getFileName() + "' before executing it", action.hasTriedToPerform());
+					Assertions.assertFalse(action.hasTriedToPerform(), "The coordinator should have stopped the task containing that action for file name '" + action.getFileName() + "' before executing it");
 				}
 			}
-			Assert.assertEquals("There exist other files than expected", expectedExistingFiles, fileSystem.getFiles());
+			Assertions.assertEquals(expectedExistingFiles, fileSystem.getFiles(), "There exist other files than expected");
 
 			// Undo transaction
 			TRANSACTION.undo(fileSystem);
-			Assert.assertTrue("Undo of transaction failed", fileSystem.getFiles().isEmpty());
+			Assertions.assertTrue(fileSystem.getFiles().isEmpty(), "Undo of transaction failed");
 		}
-		Assert.assertTrue("An exception has been swallowed", caughtException);
+		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 	}
 
 	private static class Transaction

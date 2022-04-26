@@ -4,30 +4,30 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class ListenerExceptionTest
+class ListenerExceptionTest
 {
 	private static final String	TASK_EXCEPTION_MESSAGE		= "This is an exception in the task";
 	private static final String	LISTENER_EXCEPTION_MESSAGE	= "This is an exception in the listener";
 
 	@Test
-	public void testCompletionListenerStillRunning() {
+	void testCompletionListenerStillRunning() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> TestUtils.simulateWork(500));
 			// task should still be running when completion listener is added
 			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
 		} catch (Throwable t) {
 			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
+			Assertions.assertTrue(message.contains(LISTENER_EXCEPTION_MESSAGE), "The exception message did not contain the listener exception text: " + message);
 			return;
 		}
-		Assert.fail("An exception has been swallowed");
+		Assertions.fail("An exception has been swallowed");
 	}
 
 	@Test
-	public void testCompletionListenerAlreadyFinished() {
+	void testCompletionListenerAlreadyFinished() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> {});
 			TestUtils.simulateWork(500);
@@ -35,14 +35,14 @@ public class ListenerExceptionTest
 			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
 		} catch (Throwable t) {
 			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
+			Assertions.assertTrue(message.contains(LISTENER_EXCEPTION_MESSAGE), "The exception message did not contain the listener exception text: " + message);
 			return;
 		}
-		Assert.fail("An exception has been swallowed");
+		Assertions.fail("An exception has been swallowed");
 	}
 
 	@Test
-	public void testExceptionListenerStillRunning() {
+	void testExceptionListenerStillRunning() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> runWithException(500, TASK_EXCEPTION_MESSAGE));
 			// task should still be running when exception listener is added
@@ -50,14 +50,14 @@ public class ListenerExceptionTest
 		} catch (Throwable t) {
 			// exception in listener should dominate task exception
 			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
+			Assertions.assertTrue(message.contains(LISTENER_EXCEPTION_MESSAGE), "The exception message did not contain the listener exception text: " + message);
 			return;
 		}
-		Assert.fail("An exception has been swallowed");
+		Assertions.fail("An exception has been swallowed");
 	}
 
 	@Test
-	public void testExceptionListenerAlreadyFinished() {
+	void testExceptionListenerAlreadyFinished() {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> runWithException(0, TASK_EXCEPTION_MESSAGE));
 			TestUtils.simulateWork(500);
@@ -66,10 +66,10 @@ public class ListenerExceptionTest
 		} catch (Throwable t) {
 			// exception in listener should dominate task exception
 			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
+			Assertions.assertTrue(message.contains(LISTENER_EXCEPTION_MESSAGE), "The exception message did not contain the listener exception text: " + message);
 			return;
 		}
-		Assert.fail("An exception has been swallowed");
+		Assertions.fail("An exception has been swallowed");
 	}
 
 	private void runWithException(long waitTimeMs, String errorMessage) {

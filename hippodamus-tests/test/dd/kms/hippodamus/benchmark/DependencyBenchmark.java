@@ -5,8 +5,8 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  * <br>
  * We use parallelization to speed up recursive MergeSort steps.
  */
-public class DependencyBenchmark
+class DependencyBenchmark
 {
 	private static final long	REFERENCE_SORT_TIME_MS	= 2000;
 	private static final int	RECURSION_THRESHOLD		= 1 << 4;
@@ -29,7 +29,7 @@ public class DependencyBenchmark
 	private static final double	TOLERANCE				= 1.05;
 
 	@Test
-	public void testMergeSort() {
+	void testMergeSort() {
 		double[] arrayToSort = determineArrayToSort();
 		double[] storage = new double[arrayToSort.length];
 
@@ -218,7 +218,7 @@ public class DependencyBenchmark
 
 	private void verifySorted(double[] array) {
 		for (int i = 1; i < array.length; i++) {
-			Assert.assertTrue("The array is not sorted", array[i-1] <= array[i]);
+			Assertions.assertTrue(array[i-1] <= array[i], "The array is not sorted");
 		}
 	}
 

@@ -5,15 +5,15 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class ListenerTest
+class ListenerTest
 {
 	private static final int	VALUE				= 42;
 
@@ -21,13 +21,13 @@ public class ListenerTest
 	private static final String	ID_TASK				= "task";
 
 	@Test
-	public void testCompletionListenerStillRunning() {
+	void testCompletionListenerStillRunning() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 500, false));
 			// task should still be running when completion listener is added
 			result.onCompletion(() -> {
-				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
+				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
 				orderVerifier.register(ID_TASK);
 			});
 		}
@@ -36,14 +36,14 @@ public class ListenerTest
 	}
 
 	@Test
-	public void testCompletionListenerAlreadyFinished() {
+	void testCompletionListenerAlreadyFinished() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 0, false));
 			TestUtils.simulateWork(500);
 			// task should already have completed when completion listener is added
 			result.onCompletion(() -> {
-				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
+				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
 				orderVerifier.register(ID_TASK);
 			});
 		}
@@ -52,7 +52,7 @@ public class ListenerTest
 	}
 
 	@Test
-	public void testExceptionListenerStillRunning() {
+	void testExceptionListenerStillRunning() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> getValue(VALUE, 500, true));	// exception
@@ -65,7 +65,7 @@ public class ListenerTest
 	}
 
 	@Test
-	public void testExceptionListenerAlreadyFinished() {
+	void testExceptionListenerAlreadyFinished() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			Handle handle = coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
@@ -79,7 +79,7 @@ public class ListenerTest
 	}
 
 	@Test
-	public void testExceptionAndCompletionListenerStillRunning() {
+	void testExceptionAndCompletionListenerStillRunning() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 1000, false));
@@ -90,7 +90,7 @@ public class ListenerTest
 			 * - task should still be running when completion listener is added
 			 */
 			result.onCompletion(() -> {
-				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
+				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
 				orderVerifier.register(ID_TASK);
 			});
 		} catch (TestException e) {
@@ -100,7 +100,7 @@ public class ListenerTest
 	}
 
 	@Test
-	public void testExceptionAndCompletionListenerAlreadyFinished() {
+	void testExceptionAndCompletionListenerAlreadyFinished() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 500, false));
@@ -112,7 +112,7 @@ public class ListenerTest
 			 * => completion listener will not be notified
 			 */
 			result.onCompletion(() -> {
-				Assert.assertEquals("Result handle has wrong value", VALUE, (int) result.get());
+				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
 				orderVerifier.register(ID_TASK);
 			});
 		} catch (TestException e) {
@@ -137,7 +137,7 @@ public class ListenerTest
 		}
 
 		void checkIdOrder(List<String> expected) {
-			Assert.assertEquals("Wrong order of ids", expected, ids);
+			Assertions.assertEquals(expected, ids, "Wrong order of ids");
 		}
 
 	}

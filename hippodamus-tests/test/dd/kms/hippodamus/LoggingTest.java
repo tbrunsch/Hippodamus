@@ -6,10 +6,9 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,22 +17,15 @@ import java.util.Set;
  * This test verifies that log messages are send to the specified logger
  * and that messages with a too low log level are ignored.
  */
-@RunWith(Parameterized.class)
-public class LoggingTest
+class LoggingTest
 {
-	@Parameterized.Parameters(name = "exception in tasks: {0}, {1}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return LogLevel.values();
 	}
 
-	private final LogLevel	minLogLevel;
-
-	public LoggingTest(LogLevel minLogLevel) {
-		this.minLogLevel = minLogLevel;
-	}
-
-	@Test
-	public void testLogger() {
+	@ParameterizedTest(name = "exception in tasks: {0}, {1}")
+	@MethodSource("getParameters")
+	void testLogger(LogLevel minLogLevel) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
@@ -48,14 +40,14 @@ public class LoggingTest
 		for (LogLevel logLevel : LogLevel.values()) {
 			boolean logLevelEncountered = logLevels.contains(logLevel);
 			if (logLevel == LogLevel.INTERNAL_ERROR) {
-				Assert.assertFalse("Encountered an internal error", logLevelEncountered);
+				Assertions.assertFalse(logLevelEncountered, "Encountered an internal error");
 				continue;
 			}
 			boolean logLevelExpected = logLevel.compareTo(minLogLevel) <= 0;
 			if (logLevelExpected) {
-				Assert.assertTrue("Log message of level '" + logLevel + "' has been swallowed", logLevelEncountered);
+				Assertions.assertTrue(logLevelEncountered, "Log message of level '" + logLevel + "' has been swallowed");
 			} else {
-				Assert.assertFalse("Encountered a log message of level '" + logLevel + "' which should have been ignored", logLevelEncountered);
+				Assertions.assertFalse(logLevelEncountered, "Encountered a log message of level '" + logLevel + "' which should have been ignored");
 			}
 		}
 	}

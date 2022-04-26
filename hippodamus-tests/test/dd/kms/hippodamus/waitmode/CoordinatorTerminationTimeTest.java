@@ -7,11 +7,10 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br>
@@ -32,8 +31,7 @@ import org.junit.runners.Parameterized;
  *     </li>
  * </ul>
  */
-@RunWith(Parameterized.class)
-public class CoordinatorTerminationTimeTest
+class CoordinatorTerminationTimeTest
 {
 	private static final int	PARALLELISM					= 3;
 	private static final long	TASK_TIME_MS				= 1000;
@@ -44,20 +42,14 @@ public class CoordinatorTerminationTimeTest
 
 	private static final long	PRECISION_MS				= 300;
 
-	@Parameterized.Parameters(name = "wait mode: {0}")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return WaitMode.values();
 	}
 
-	private final WaitMode	waitMode;
-
-	public CoordinatorTerminationTimeTest(WaitMode waitMode) {
-		this.waitMode = waitMode;
-	}
-
-	@Test
-	public void testCoordinatorTerminationTime() {
-		Assume.assumeTrue("Insufficient number of processors for this test", TestUtils.getDefaultParallelism() >= PARALLELISM);
+	@ParameterizedTest(name = "wait mode: {0}")
+	@MethodSource("getParameters")
+	void testCoordinatorTerminationTime(WaitMode waitMode) {
+		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= PARALLELISM, "Insufficient number of processors for this test");
 
 		TaskCounter counter = new TaskCounter();
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
@@ -76,7 +68,7 @@ public class CoordinatorTerminationTimeTest
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long poolTimeMs = stopWatch.getElapsedTimeMs();
 
-		Assert.assertTrue("An exception has been swallowed", caughtException);
+		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
 		long expectedCoordinatorTimeMs = waitMode == WaitMode.UNTIL_TERMINATION
 								? (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS
