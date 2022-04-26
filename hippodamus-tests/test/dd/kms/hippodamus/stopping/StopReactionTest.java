@@ -3,8 +3,6 @@ package dd.kms.hippodamus.stopping;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
-import dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assert;
@@ -13,18 +11,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
-import java.util.function.Supplier;
-
 /**
- * By default, the {@link ExecutionCoordinator} uses the common
- * {@link ForkJoinPool} to execute tasks. Since this {@link ExecutorService}
- * cannot be shut down, submitted tasks cannot be stopped, but run until end. The interfaces
- * {@link StoppableExceptionalRunnable} and {@link StoppableExceptionalCallable}
- * allow implementers of a task to query whether the task should be stopped.<br>
- * <br>
- * This test verifies that reacting to a stop request indeed has an effect.
+ * This test verifies that the interrupted flag is set correctly by the {@link ExecutionCoordinator} by
+ * showing that by considering the interrupted flag tasks will terminate earlier than without.
  */
 @RunWith(Parameterized.class)
 public class StopReactionTest
@@ -98,9 +87,9 @@ public class StopReactionTest
 		throw new ExpectedException();
 	}
 
-	private void run2(Supplier<Boolean> stopFlag) {
+	private void run2() {
 		for (int i = 0; i < TASK_2_SLEEP_REPETITION; i++) {
-			if (reactToStop && stopFlag.get()) {
+			if (reactToStop && Thread.currentThread().isInterrupted()) {
 				return;
 			}
 			TestUtils.simulateWork(TASK_2_SLEEP_INTERVAL);

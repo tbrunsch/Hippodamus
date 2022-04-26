@@ -3,7 +3,8 @@ package dd.kms.hippodamus.impl.execution.configuration;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import dd.kms.hippodamus.api.coordinator.TaskType;
-import dd.kms.hippodamus.api.exceptions.*;
+import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -70,21 +71,11 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 
 	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
-		return execute(Exceptions.asStoppable(runnable));
-	}
-
-	@Override
-	public <T extends Throwable> Handle execute(StoppableExceptionalRunnable<T> runnable) {
 		return execute(Exceptions.asCallable(runnable));
 	}
 
 	@Override
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) {
-		return execute(Exceptions.asStoppable(callable));
-	}
-
-	@Override
-	public <V, T extends Throwable> ResultHandle<V> execute(StoppableExceptionalCallable<V, T> callable) {
 		return coordinator.execute(callable, createConfiguration());
 	}
 

@@ -358,7 +358,7 @@ The first point is especially important because you can configure how the coordi
 * With `WaitMode.UNTIL_TERMINATION` (default) the coordinator will wait until the tasks that are still being executed terminate.
 * With `WaitMode.UNTIL_TERMINATION_REQUESTED` the coordinator will terminate even if some tasks are still running (provided that they have been stopped). In this mode, the coordinator is not a strict nursery.
 
-Hippodamus offers a way for tasks to query whether they have been stopped or not giving them a chance to react to a stop request. For this, the tasks have to implement one of the functional interfaces `dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable` or `dd.kms.hippodamus.api.exceptions.StoppableExceptionalRunnable`. The method of both interfaces gets the stop flag as a `Supplier<Boolean>`. This flag can be polled by the task. 
+A task can check whether it has been requested to stop by calling `Thread.isInterrupted()` or `Thread.interrupted()`. Alternatively, you can call any blocking method and stop the task when an `InterruptedException` occurs.
 
 ## Stopping Coordinators
 

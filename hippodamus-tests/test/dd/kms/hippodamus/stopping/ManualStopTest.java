@@ -7,8 +7,6 @@ import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.Assume;
 import org.junit.Test;
 
-import java.util.function.Supplier;
-
 /**
  * This test verifies that manually stopping the coordinator works correctly.
  */
@@ -40,9 +38,9 @@ public class ManualStopTest
 		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
 	}
 
-	private void runWithStopReaction(Supplier<Boolean> stopFlag) {
+	private void runWithStopReaction() {
 		for (int i = 0; i < TASK_SLEEP_REPETITION; i++) {
-			if (stopFlag.get()) {
+			if (Thread.currentThread().isInterrupted()) {
 				return;
 			}
 			TestUtils.simulateWork(TASK_SLEEP_INTERVAL);

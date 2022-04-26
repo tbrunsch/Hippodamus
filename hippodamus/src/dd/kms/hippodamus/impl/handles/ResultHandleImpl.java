@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
-import dd.kms.hippodamus.api.exceptions.StoppableExceptionalCallable;
+import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
@@ -21,21 +21,36 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
-	private final ExecutionCoordinatorImpl				coordinator;
-	private final String								taskName;
-	private final int									id;
-	private final ExecutorServiceWrapper				executorServiceWrapper;
-	private final StoppableExceptionalCallable<T, ?>	callable;
-	private final boolean								verifyDependencies;
+	private final ExecutionCoordinatorImpl	coordinator;
+	private final String					taskName;
+	private final int						id;
+	private final ExecutorServiceWrapper	executorServiceWrapper;
+	private final ExceptionalCallable<T, ?> callable;
+	private final boolean					verifyDependencies;
 
-	private final List<Runnable>						completionListeners					= new ArrayList<>();
-	private final List<Runnable>						exceptionListeners					= new ArrayList<>();
+	private final List<Runnable>			completionListeners					= new ArrayList<>();
+	private final List<Runnable>			exceptionListeners					= new ArrayList<>();
 
-	private final TaskStateController<T>				stateController;
+	private final TaskStateController<T>	stateController;
 
-	private Future<?>									future;
+	/**
+	 * Only used for stopping the task. Since it is only accessed when the coordinator is locked,
+	 * it is not necessary to make it {@code volatile}.
+	 */
+	private Future<?>						future;
 
-	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, StoppableExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
+	/**
+	 * Used to request the interrupting of the current task. This is necessary because common implementations
+	 * of {@link Future#cancel(boolean)} ignore the Boolean flag. This is particularly the case for {@link java.util.concurrent.ForkJoinTask}
+	 * that is returned by {@link java.util.concurrent.ForkJoinPool}, which is used by default for computational
+	 * tasks. This is why we interrupt the executing thread ourselves if the task is requested to be stopped and
+	 * finally clear the interruption flag of the thread again.<br>
+	 * <br>
+	 * Since the field is only accessed when the coordinator is locked, it is not necessary to make it {@code volatile}.
+	 */
+	private Thread							executingThread;
+
+	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies, boolean stopped) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -65,6 +80,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private boolean startExecution() {
 		synchronized (coordinator) {
+			executingThread = Thread.currentThread();
 			return !stateController.hasStopped() && stateController.transitionTo(TaskStage.EXECUTING);
 		}
 	}
@@ -78,6 +94,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				executorServiceWrapper.onTaskCompleted();
 			} finally {
 				stateController.transitionTo(TaskStage.TERMINATED);
+				executingThread = null;
 			}
 		}
 	}
@@ -90,6 +107,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				}
 			} finally {
 				stateController.transitionTo(TaskStage.TERMINATED);
+				executingThread = null;
 			}
 		}
 	}
@@ -104,6 +122,8 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 				}
 				if (isExecuting) {
 					// since we stop the task, the current result type won't change anymore
+					executingThread.interrupt();
+					executingThread = null;
 					stateController.onTerminated();
 				} else {
 					stateController.transitionTo(TaskStage.TERMINATED);
@@ -167,11 +187,12 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 * Ensure that this method is called with locking the coordinator.
 	 */
 	public void executeCallable() {
-		if (!startExecution()) {
-			return;
-		}
+		clearInterruptionFlag();
 		try {
-			T result = callable.call(this::hasStopped);
+			if (!startExecution()) {
+				return;
+			}
+			T result = callable.call();
 			complete(result);
 		} catch (TaskStoppedException e) {
 
@@ -181,7 +202,13 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 			stop();
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
+		} finally {
+			clearInterruptionFlag();
 		}
+	}
+
+	private void clearInterruptionFlag() {
+		Thread.interrupted();
 	}
 
 	/***********************
