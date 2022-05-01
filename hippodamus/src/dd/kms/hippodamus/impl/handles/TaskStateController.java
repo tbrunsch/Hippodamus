@@ -12,16 +12,16 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  * <br>
  * <b>When a task Finishes</b> (either exceptionally or regularly), the following things happen in the given order:
  * <ol>
- *     <li>The result/exception is stored (see {@link #setResult(Object)} and {@link #setException(Throwable)}, respectively)</li>
+ *     <li>The result/exception is stored (see {@link #_setResult(Object)} and {@link #_setException(Throwable)}, respectively)</li>
  *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#EXECUTION_FINISHED}</li>
- *     <li>The lock that makes callers of {@link ResultHandle#get()} wait is released (see {@link #transitionTo(TaskStage)})</li>
+ *     <li>The lock that makes callers of {@link ResultHandle#get()} wait is released (see {@link #_transitionTo(TaskStage)})</li>
  *     <li>Completion/exception listeners are informed and</li>
  *     <li>
  *         the stage changes from {@code TaskStage.EXECUTION_FINISHED} to {@link TaskStage#TERMINATED}
  *         (see {@code ResultHandleImpl.complete(Object)} and {@code ResultHandleImpl.terminateExceptionally(Throwable)}, respectively)
  *     </li>
  *     <li>
- *         The lock that forces the {@link ExecutionCoordinator} to wait is released (see {@link #transitionTo(TaskStage)})
+ *         The lock that forces the {@link ExecutionCoordinator} to wait is released (see {@link #_transitionTo(TaskStage)})
  *     </li>
  * </ol>
  *
@@ -56,7 +56,7 @@ class TaskStateController<T>
 		this.handle = handle;
 		this.coordinator = coordinator;
 		this.state = new TaskState<>(stopped);
-		checkState();
+		_checkState();
 
 		terminatedFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
@@ -71,35 +71,26 @@ class TaskStateController<T>
 		}
 	}
 
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	boolean setResult(T result) {
+	boolean _setResult(T result) {
 		return !state.hasStopped()
 			&& checkCondition(state.setResult(result), "Cannot set result due to inconsistent state")
-			&& log(LogLevel.STATE, "result = " + result)
-			&& transitionTo(TaskStage.EXECUTION_FINISHED);
+			&& _log(LogLevel.STATE, "result = " + result)
+			&& _transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	boolean setException(Throwable exception) {
+	boolean _setException(Throwable exception) {
 		return !state.hasStopped()
 			&& checkCondition(state.setException(exception), "Cannot set exception due to inconsistent state")
-			&& log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
-			&& transitionTo(TaskStage.EXECUTION_FINISHED);
+			&& _log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
+			&& _transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	boolean stop() {
+	boolean _stop() {
 		if (!state.stop()) {
 			return false;
 		}
-		log(LogLevel.STATE, "stopped");
-		checkState();
+		_log(LogLevel.STATE, "stopped");
+		_checkState();
 		return true;
 	}
 
@@ -129,33 +120,28 @@ class TaskStateController<T>
 	}
 
 	/**
-	 * Ensure that this method is only called when the coordinator is locked.<br>
-	 * <br>
 	 * The return value is always {@code true} such that this method can be used
 	 * within Boolean expressions.
 	 */
-	private boolean log(LogLevel logLevel, String message) {
-		coordinator.log(logLevel, handle, message);
+	private boolean _log(LogLevel logLevel, String message) {
+		coordinator._log(logLevel, handle, message);
 		return true;
 	}
 
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	boolean transitionTo(TaskStage newStage) {
+	boolean _transitionTo(TaskStage newStage) {
 		boolean wasInTerminalStage = state.hasTerminated();
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
 			return false;
 		}
 		if (!wasInTerminalStage && newStage.isTerminalStage()) {
-			onTerminated();
+			_onTerminated();
 		}
 		if (newStage == TaskStage.TERMINATED) {
-			releaseCoordinator();
+			_releaseCoordinator();
 		}
-		log(LogLevel.STATE, newStage.toString());
-		return checkState();
+		_log(LogLevel.STATE, newStage.toString());
+		return _checkState();
 	}
 
 	void waitUntilTerminated(String taskName, boolean verifyDependencies) {
@@ -164,7 +150,7 @@ class TaskStateController<T>
 		}
 		if (verifyDependencies) {
 			synchronized (coordinator) {
-				log(LogLevel.INTERNAL_ERROR, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
+				_log(LogLevel.INTERNAL_ERROR, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
 				throw new TaskStoppedException(taskName);
 			}
 		}
@@ -186,27 +172,15 @@ class TaskStateController<T>
 	/***********
 	 * Locking *
 	 **********/
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	void onTerminated() {
+	void _onTerminated() {
 		terminatedFlag.set();
 	}
 
-	/**
-	 * Ensure that this method is called with locking the coordinator.
-	 */
-	void releaseCoordinator() {
+	void _releaseCoordinator() {
 		releaseCoordinatorFlag.set();
 	}
 
-	/***************************************************************
-	 * Consistency Checks                                          *
-	 *                                                             *
-	 * Ensure that they are called before any concurrency problems *
-	 * may occur or with locking the coordinator.                  *
-	 **************************************************************/
-	private boolean checkState() {
+	private boolean _checkState() {
 		return checkCondition(
 			!state.hasFinished() || state.hasTerminated(),
 			"The task should have terminated"
@@ -216,7 +190,7 @@ class TaskStateController<T>
 	private boolean checkCondition(boolean condition, String message) {
 		if (!condition) {
 			synchronized (coordinator) {
-				coordinator.log(LogLevel.INTERNAL_ERROR, handle, message);
+				coordinator._log(LogLevel.INTERNAL_ERROR, handle, message);
 			}
 		}
 		return condition;

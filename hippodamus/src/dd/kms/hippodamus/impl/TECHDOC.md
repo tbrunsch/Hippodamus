@@ -1,5 +1,14 @@
 # Technical Notes
 
+## Underscore Notation / Reentrant Locking
+
+There are several nested method calls that require a lock on the underlying `ExecutionCoordinator`. Reentrant locking, e.g. via `synchronized`, would lead to a significant overhead. We have tested several alternatives that optimize nested reentrant locking with some success. However, for large number of calls of such methods JVM seems to optimize nested `synchronized` method calls much stronger than it does with our optimizations, making the optimizations counterproductive in these cases. This is why we decided to neither rely on `synchronized` nor on custom optimizations, but on a convention: Instead of synchronizing a nested method, we mark it by using the prefix "_" (underscore) in the method name. Callers of these methods must
+
+1. either be `synchronized` or call such methods within a `synchronized` block or method that use the underlying `ExecutionCoordinator` as lock
+1. or by methods with an underscore prefix.
+
+The same rule applies for accessors of fields whose names are prepended by an underscore.  
+
 ## How Tasks Are Executed
 
 1. A runnable task is submitted to the `ExecutionCoordinator` via `ExecutionCoordinator.execute()`. The task is wrapped into a callable task that returns `null` and sent to the other overload of `ExecutionCoordinator.execute()`.

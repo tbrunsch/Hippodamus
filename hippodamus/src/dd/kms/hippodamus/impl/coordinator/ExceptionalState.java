@@ -2,8 +2,6 @@ package dd.kms.hippodamus.impl.coordinator;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
-import dd.kms.hippodamus.api.handles.Handle;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.exceptions.Exceptions;
 
 class ExceptionalState
@@ -17,14 +15,11 @@ class ExceptionalState
 	 *     <li>when the coordinator is closing</li>
 	 * </ul>
 	 */
-	private volatile Throwable	exception;
+	private Throwable			exception;
 
 	/**
 	 * Flag used to decide whether the stored {@link #exception} is internal or not. Since internal exceptions
-	 * are prioritized, the current exception will be overwritten if it is not internal, but the new one is.<br>
-	 * <br>
-	 * Since this flag is only accessed within the method {@link #setException(Throwable, boolean)} that is meant
-	 * to be called while locking the coordinator, cache coherence is guaranteed.
+	 * are prioritized, the current exception will be overwritten if it is not internal, but the new one is.
 	 */
 	private boolean				isInternalException;
 
@@ -38,25 +33,16 @@ class ExceptionalState
 	 * {@code checkException()}. If this method would throw the stored exception again, then we had two exceptions
 	 * to be thrown. Such conflicts are automatically resolved by Java by calling {@link Throwable#addSuppressed(Throwable)}.
 	 * However, this method fails if both exceptions are identical. In that case, we would obtain an
-	 * {@link IllegalArgumentException} "Self-suppression not permitted" instead, which is not what we want.<br>
-	 * <br>
-	 * Since this flag is only used within the synchronized method {@code checkException()}, cache coherence is
-	 * guaranteed.
+	 * {@link IllegalArgumentException} "Self-suppression not permitted" instead, which is not what we want.
 	 */
-	private boolean				hasThrownException;
+	private boolean 			hasThrownException;
 
 	/**
 	 * This field is true if at any point one of the loggers threw an exception when logging. In that case,
-	 * we do not try to log further messages to avoid further exceptions.<br>
-	 * <br>
-	 * Since this flag is only used within the method {@link ExecutionCoordinatorImpl#log(LogLevel, Handle, String)} and this
-	 * method must be called while locking the coordinator, cache coherence is guaranteed.
+	 * we do not try to log further messages to avoid further exceptions.
 	 */
 	private boolean				loggerFaulty;
 
-	/*
-	 * Ensure that this method is called when the coordinator is locked.
-	 */
 	void checkException() {
 		if (exception != null && !hasThrownException) {
 			hasThrownException = true;
@@ -64,9 +50,6 @@ class ExceptionalState
 		}
 	}
 
-	/*
-	 * Ensure that this method is called when the coordinator is locked.
-	 */
 	boolean setException(Throwable exception, boolean isInternalException) {
 		boolean overwriteException = this.exception == null || !this.isInternalException && isInternalException;
 		if (overwriteException) {
@@ -76,16 +59,10 @@ class ExceptionalState
 		return overwriteException;
 	}
 
-	/*
-	 * Ensure that this method is called when the coordinator is locked.
-	 */
 	boolean isLoggerFaulty() {
 		return loggerFaulty;
 	}
 
-	/*
-	 * Ensure that this method is called when the coordinator is locked.
-	 */
 	void onLoggerException(Throwable loggerException) {
 		loggerFaulty = true;
 		Throwable internalException = new CoordinatorException("Exception in logger: " + loggerException, loggerException);

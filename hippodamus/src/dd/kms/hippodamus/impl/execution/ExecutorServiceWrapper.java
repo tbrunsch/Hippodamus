@@ -35,13 +35,13 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	 * on tasks with higher ids because the ids reflect the tasks' creation order. So this order is save even if one
 	 * forgets to specify certain dependencies.
 	 */
-	private final Queue<ResultHandleImpl<?> >	unsubmittedTasks 			= new PriorityQueue<>(Comparator.comparingInt(ResultHandleImpl::getId));
+	private final Queue<ResultHandleImpl<?> > 	_unsubmittedTasks			= new PriorityQueue<>(Comparator.comparingInt(ResultHandleImpl::getId));
 
 	/**
 	 * Number of tasks that have been submitted to the wrapped {@link ExecutorService} and
 	 * that have not finished yet.
 	 */
-	private int 								numPendingSubmittedTasks;
+	private int									_numPendingSubmittedTasks;
 
 	public ExecutorServiceWrapper(ExecutorService executorService, boolean shutdownRequired, int maxParallelism) {
 		this.executorService = executorService;
@@ -49,44 +49,32 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		this.maxParallelism = maxParallelism;
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	public void submit(ResultHandleImpl<?> handle) {
-		if (canSubmitTask()) {
-			submitNow(handle);
+	public void _submit(ResultHandleImpl<?> handle) {
+		if (_canSubmitTask()) {
+			_submitNow(handle);
 		} else {
-			unsubmittedTasks.add(handle);
+			_unsubmittedTasks.add(handle);
 		}
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	public void onTaskCompleted() {
-		numPendingSubmittedTasks--;
-		if (canSubmitTask()) {
-			ResultHandleImpl<?> handle = unsubmittedTasks.poll();
+	public void _onTaskCompleted() {
+		_numPendingSubmittedTasks--;
+		if (_canSubmitTask()) {
+			ResultHandleImpl<?> handle = _unsubmittedTasks.poll();
 			if (handle != null) {
-				submitNow(handle);
+				_submitNow(handle);
 			}
 		}
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private boolean canSubmitTask() {
-		return numPendingSubmittedTasks < maxParallelism;
+	private boolean _canSubmitTask() {
+		return _numPendingSubmittedTasks < maxParallelism;
 	}
 
-	/**
-	 * Ensure that this method is only called with locking the coordinator.
-	 */
-	private void submitNow(ResultHandleImpl<?> handle) {
-		numPendingSubmittedTasks++;
-		Future<?> future = executorService.submit(handle::executeCallable);
-		handle.setFuture(future);
+	private void _submitNow(ResultHandleImpl<?> handle) {
+		_numPendingSubmittedTasks++;
+		Future<?> future = executorService.submit(handle::_executeCallable);
+		handle._setFuture(future);
 	}
 
 	@Override

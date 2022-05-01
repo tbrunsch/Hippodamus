@@ -31,47 +31,32 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	private final WaitMode								waitMode;
 
 	/**
-	 * Handles the dependencies between handles.<br>
-	 * <br>
-	 * The state of the dependency manager will only be changed by calls to {@link #execute(ExceptionalCallable, TaskConfiguration)},
-	 * which is only called in the coordinator's thread. Hence, the state of the dependency manager
-	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is required to
-	 * access the dependency manager in methods that are only called in the coordinator's thread.
+	 * Handles the dependencies between handles.
 	 */
-	private final HandleDependencyManager	handleDependencyManager			= new HandleDependencyManager();
+	private final HandleDependencyManager	_handleDependencyManager		= new HandleDependencyManager();
 
 	/**
-	 * Contains human-friendly, by default generic task names.<br>
-	 * <br>
-	 * The state of that set will only be changed by calls to {@link #execute(ExceptionalCallable, TaskConfiguration)},
-	 * which is only called in the coordinator's thread. Hence, the state of the set
-	 * will always be coherent in the coordinator's thread. No {@code synchronized}-block is
-	 * required to access the map in methods that are only called in the coordinator's thread.
+	 * Contains human-friendly, by default generic task names.
 	 */
-	private final Set<String>				taskNames						= new HashSet<>();
+	private final Set<String>				_taskNames						= new HashSet<>();
 
 	/**
 	 * Describes whether tasks that are eligible for execution may be submitted to an {@link ExecutorService}.
-	 * If not, the handles of these tasks will be collected in {@link #pendingHandles}.<br>
-	 * <br>
-	 * The flag will only be changed by calls to {@link #permitTaskSubmission(boolean)}, which is only called
-	 * in the coordinator's thread. Hence, the cached value will always be coherent in the coordinator's thread.
-	 * No {@code synchronized}-block is required to access the value in methods that are only called in the
-	 * coordinator's thread.
+	 * If not, the handles of these tasks will be collected in {@link #_pendingHandles}.
 	 */
-	private boolean							permitTaskSubmission			= true;
+	private boolean							_permitTaskSubmission			= true;
 
 	/**
 	 * This field contains all handles that can already be submitted, but whose submission is denied
-	 * because {@link #permitTaskSubmission} is {@code false}. These handles will be submitted as
+	 * because {@link #_permitTaskSubmission} is {@code false}. These handles will be submitted as
 	 * soon as {@code permitTaskSubmission} is set to {@code true}.
 	 */
-	private final List<ResultHandleImpl<?>>	pendingHandles					= new ArrayList<>();
+	private final List<ResultHandleImpl<?>>	_pendingHandles					= new ArrayList<>();
 
 	/**
 	 * In this field all information about exceptional situations is collected.
 	 */
-	private final ExceptionalState			exceptionalState				= new ExceptionalState();
+	private final ExceptionalState			_exceptionalState				= new ExceptionalState();
 
 	/**
 	 * This lock is held by all managed tasks. The coordinator will wait in its {@link #close()} method until
@@ -98,12 +83,12 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			checkException();
 			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
-			int taskIndex = handleDependencyManager.getNumberOfManagedHandles();
-			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, taskNames);
+			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
+			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
 			ResultHandleImpl<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies, stopped);
-			handleDependencyManager.addDependencies(resultHandle, dependencies);
+			_handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!stopped && dependencies.stream().allMatch(Handle::hasCompleted)) {
-				scheduleForSubmission(resultHandle);
+				_scheduleForSubmission(resultHandle);
 			}
 			return resultHandle;
 		}
@@ -125,23 +110,22 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	@Override
 	public void permitTaskSubmission(boolean permit) {
 		synchronized (this) {
-			permitTaskSubmission = permit;
+			_permitTaskSubmission = permit;
 			if (permit) {
-				pendingHandles.forEach(ResultHandleImpl::submit);
-				pendingHandles.clear();
+				_pendingHandles.forEach(ResultHandleImpl::submit);
+				_pendingHandles.clear();
 			}
 		}
 	}
 
 	/**
-	 * Must be called with a lock on {@code this}. Submits the handle if {@link #permitTaskSubmission}
-	 * is {@code true} or collects it for later submission otherwise.
+	 * Submits the handle if {@link #_permitTaskSubmission} is {@code true} or collects it for later submission otherwise.
 	 */
-	private void scheduleForSubmission(ResultHandleImpl<?> handle) {
-		if (permitTaskSubmission) {
+	private void _scheduleForSubmission(ResultHandleImpl<?> handle) {
+		if (_permitTaskSubmission) {
 			handle.submit();
 		} else {
-			pendingHandles.add(handle);
+			_pendingHandles.add(handle);
 		}
 	}
 
@@ -160,30 +144,29 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	@Override
-	public synchronized void checkException() {
-		exceptionalState.checkException();
+	public void checkException() {
+		synchronized (this) {
+			_exceptionalState.checkException();
+		}
 	}
 
 	public void onCompletion(Handle handle) {
 		synchronized (this) {
-			List<Handle> executableHandles = handleDependencyManager.getExecutableHandles(handle);
+			List<Handle> executableHandles = _handleDependencyManager.getExecutableHandles(handle);
 			for (Handle executableHandle : executableHandles) {
-				scheduleForSubmission((ResultHandleImpl<?>) executableHandle);
+				_scheduleForSubmission((ResultHandleImpl<?>) executableHandle);
 			}
 		}
 	}
 
 	public void onException(Handle handle) {
 		synchronized (this) {
-			onException(handle.getException(), false);
+			_onException(handle.getException(), false);
 		}
 	}
 
-	/*
-	 * Ensure that this method is called when the coordinator is locked.
-	 */
-	private void onException(Throwable exception, boolean isInternalException) {
-		if (exceptionalState.setException(exception, isInternalException)) {
+	private void _onException(Throwable exception, boolean isInternalException) {
+		if (_exceptionalState.setException(exception, isInternalException)) {
 			stop();
 		}
 	}
@@ -191,7 +174,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	@Override
 	public void stop() {
 		synchronized (this) {
-			Collection<Handle> managedHandles = handleDependencyManager.getManagedHandles();
+			Collection<Handle> managedHandles = _handleDependencyManager.getManagedHandles();
 			managedHandles.forEach(Handle::stop);
 		}
 	}
@@ -201,21 +184,19 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 */
 	public void stopDependentHandles(Handle handle) {
 		synchronized (this) {
-			List<Handle> dependentHandles = handleDependencyManager.getDependentHandles(handle);
+			List<Handle> dependentHandles = _handleDependencyManager.getDependentHandles(handle);
 			dependentHandles.forEach(Handle::stop);
 		}
 	}
 
 	/**
-	 * Logs a message for a certain handle at a certain log message.<br>
-	 * <br>
-	 * Ensure that this method is only called with locking the coordinator.
+	 * Logs a message for a certain handle at a certain log message.
 	 */
-	public void log(LogLevel logLevel, Handle handle, String message) {
+	public void _log(LogLevel logLevel, Handle handle, String message) {
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
-		if (exceptionalState.isLoggerFaulty()) {
+		if (_exceptionalState.isLoggerFaulty()) {
 			return;
 		}
 
@@ -223,10 +204,10 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		try {
 			logger.log(logLevel, name, message);
 			if (logLevel == LogLevel.INTERNAL_ERROR){
-				onException(new CoordinatorException(message), true);
+				_onException(new CoordinatorException(message), true);
 			}
 		} catch (Throwable t) {
-			exceptionalState.onLoggerException(t);
+			_exceptionalState.onLoggerException(t);
 		}
 	}
 
@@ -234,7 +215,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	public void close() {
 		Throwable throwable = null;
 		try {
-			if (!permitTaskSubmission) {
+			if (!_permitTaskSubmission) {
 				stop();
 			}
 			try {
