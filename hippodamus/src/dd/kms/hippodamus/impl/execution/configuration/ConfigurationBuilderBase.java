@@ -9,7 +9,6 @@ import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuild
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
-import dd.kms.hippodamus.impl.exceptions.Exceptions;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -71,7 +70,11 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 
 	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
-		return execute(Exceptions.asCallable(runnable));
+		ExceptionalCallable<Void, T> callable = () -> {
+			runnable.run();
+			return null;
+		};
+		return execute(callable);
 	}
 
 	@Override

@@ -2,7 +2,6 @@ package dd.kms.hippodamus.impl.coordinator;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
-import dd.kms.hippodamus.impl.exceptions.Exceptions;
 
 class ExceptionalState
 {
@@ -46,7 +45,7 @@ class ExceptionalState
 	void checkException() {
 		if (exception != null && !hasThrownException) {
 			hasThrownException = true;
-			Exceptions.throwUnchecked(exception);
+			throwUnchecked(exception);
 		}
 	}
 
@@ -67,5 +66,10 @@ class ExceptionalState
 		loggerFaulty = true;
 		Throwable internalException = new CoordinatorException("Exception in logger: " + loggerException, loggerException);
 		setException(internalException, true);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T extends Throwable> void throwUnchecked(Throwable t) throws T {
+		throw (T) t;
 	}
 }
