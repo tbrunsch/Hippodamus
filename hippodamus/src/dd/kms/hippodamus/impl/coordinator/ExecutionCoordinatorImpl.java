@@ -2,7 +2,6 @@ package dd.kms.hippodamus.impl.coordinator;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
@@ -28,7 +27,6 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	private final Logger								logger;
 	private final LogLevel								minimumLogLevel;
 	private final boolean								verifyDependencies;
-	private final WaitMode								waitMode;
 
 	/**
 	 * Handles the dependencies between handles.
@@ -60,17 +58,15 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 
 	/**
 	 * This lock is held by all managed tasks. The coordinator will wait in its {@link #close()} method until
-	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally,
-	 * or when being stopped if the coordinator is configured with {@link WaitMode#UNTIL_TERMINATION_REQUESTED}.
+	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally.
 	 */
 	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
 
-	public ExecutionCoordinatorImpl(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
+	public ExecutionCoordinatorImpl(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies) {
 		this.executorServiceWrappersByTaskType = executorServiceWrappersByTaskType;
 		this.logger = logger;
 		this.minimumLogLevel = minimumLogLevel;
 		this.verifyDependencies = verifyDependencies;
-		this.waitMode = waitMode;
 	}
 
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
@@ -137,10 +133,6 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 */
 	public Semaphore getTerminationLock() {
 		return terminationLock;
-	}
-
-	public WaitMode getWaitMode() {
-		return waitMode;
 	}
 
 	@Override

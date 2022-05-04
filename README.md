@@ -353,11 +353,6 @@ You can stop a task by calling `Handle.stop()` on its handle. Although it seems 
 
 1. If a task is stopped, then all of its dependencies will be stopped as well. This is even the case for dependent tasks that have not been executed (submitted to the coordinator) at the point of stopping the task. In particular, this means that stopping a completed task still has an effect on tasks that depend on that task.  
 
-The first point is especially important because you can configure how the coordinator behaves when all tasks have terminated or have been stopped, but some tasks are still running (see Section [Configuring Coordinators](#configuring-coordinators)). You do this by specifying the `WaitMode`:
-
-* With `WaitMode.UNTIL_TERMINATION` (default) the coordinator will wait until the tasks that are still being executed terminate.
-* With `WaitMode.UNTIL_TERMINATION_REQUESTED` the coordinator will terminate even if some tasks are still running (provided that they have been stopped). In this mode, the coordinator is not a strict nursery.
-
 A task can check whether it has been requested to stop by calling `Thread.isInterrupted()` or `Thread.interrupted()`. Alternatively, you can call any blocking method and stop the task when an `InterruptedException` occurs.
 
 ## Stopping Coordinators

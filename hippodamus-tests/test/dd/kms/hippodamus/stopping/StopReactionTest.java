@@ -2,7 +2,6 @@ package dd.kms.hippodamus.stopping;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
@@ -21,21 +20,16 @@ class StopReactionTest
 	private static final long	PRECISION_MS			= 300;
 
 	static Object getParameters() {
-		return new Object[]{
-			new Object[]{WaitMode.UNTIL_TERMINATION, false},
-			new Object[]{WaitMode.UNTIL_TERMINATION, true},
-			new Object[]{WaitMode.UNTIL_TERMINATION_REQUESTED, false},
-			new Object[]{WaitMode.UNTIL_TERMINATION_REQUESTED, true}
-		};
+		return new Object[]{false, true};
 	}
 
-	@ParameterizedTest(name = "wait mode: {0}, react to stop: {1}")
+	@ParameterizedTest(name = "react to stop: {0}")
 	@MethodSource("getParameters")
-	void testStopWithoutStopReaction(WaitMode waitMode, boolean reactToStop) {
+	void testStopWithoutStopReaction(boolean reactToStop) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
 		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = Coordinators.configureExecutionCoordinator().waitMode(waitMode).build()) {
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(this::run1);
 			coordinator.execute(() -> run2(reactToStop));
 		} catch (ExpectedException e) {
@@ -58,7 +52,7 @@ class StopReactionTest
 		 * it does not wait for them to stop. If submitted tasks themselves to not check
 		 * whether they should stop, then they will run until end.
 		 */
-		long expectedTimeCoordinatorMs = waitMode == WaitMode.UNTIL_TERMINATION && !reactToStop
+		long expectedTimeCoordinatorMs = !reactToStop
 			? TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL
 			: TIME_UNTIL_EXCEPTION_MS;
 		TestUtils.assertTimeLowerBound(expectedTimeCoordinatorMs, elapsedTimeCoordinatorMs);

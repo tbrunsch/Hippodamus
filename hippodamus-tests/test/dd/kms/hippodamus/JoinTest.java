@@ -2,8 +2,6 @@ package dd.kms.hippodamus;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.StopWatch;
@@ -33,10 +31,8 @@ class JoinTest
 
 	@Test
 	void testTaskAccessingValueOfExceptionalTask() {
-		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.waitMode(WaitMode.UNTIL_TERMINATION);
 		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = builder.build()) {
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			ResultHandle<String> task1 = coordinator.execute(this::runExceptionally);
 			/*
 			 * Accessing the value of a task that terminates exceptionally causes a TaskStoppedException.

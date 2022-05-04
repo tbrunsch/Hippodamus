@@ -4,32 +4,19 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.Test;
 
 /**
- * This class tests the behavior of the {@link ExecutionCoordinator} for different values of {@link WaitMode}.<br>
+ * This class tests the behavior of the {@link ExecutionCoordinator}.<br>
  * <br>
  * The test executes equally sized tasks on {@link #PARALLELISM} threads. In each round, {@code NUM_THREADS} tasks
  * are executed in parallel. After {@link #NUM_ROUNDS_UNTIL_EXCEPTION} rounds, there will be a task that throws
  * an exception after {@link #HALF_TASK_TIME_MS} milliseconds causing the coordinator to stop all tasks. The
- * behavior now depends on the {@code WaitMode}:
- * <ul>
- *     <li>
- *         {@link WaitMode#UNTIL_TERMINATION}: The coordinator will let the other tasks of the current round
- *         finish their execution. The total time will therefore be ({@code NUM_ROUNDS_UNTIL_EXCEPTION}+1)*{@link #TASK_TIME_MS}.
- *     </li>
- *     <li>
- *         {@link WaitMode#UNTIL_TERMINATION_REQUESTED}: The coordinator will immediately stop and not wait
- *         for the other tasks of the current round to terminate. The total time will therefore be
- *         {@code NUM_ROUNDS_UNTIL_EXCEPTION}*{@code TASK_TIME_MS} + {@code HALF_TASK_TIME_MS}.
- *     </li>
- * </ul>
+ * coordinator will let the other tasks of the current round finish their execution. The total time will therefore be ({@code NUM_ROUNDS_UNTIL_EXCEPTION}+1)*{@link #TASK_TIME_MS}.
  */
 class CoordinatorTerminationTimeTest
 {
@@ -42,18 +29,12 @@ class CoordinatorTerminationTimeTest
 
 	private static final long	PRECISION_MS				= 300;
 
-	static Object getParameters() {
-		return WaitMode.values();
-	}
-
-	@ParameterizedTest(name = "wait mode: {0}")
-	@MethodSource("getParameters")
-	void testCoordinatorTerminationTime(WaitMode waitMode) {
+	@Test
+	void testCoordinatorTerminationTime() {
 		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= PARALLELISM, "Insufficient number of processors for this test");
 
 		TaskCounter counter = new TaskCounter();
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.waitMode(waitMode)
 			.maximumParallelism(TaskType.COMPUTATIONAL, PARALLELISM);
 		StopWatch stopWatch = new StopWatch();
 		boolean caughtException = false;
@@ -70,9 +51,7 @@ class CoordinatorTerminationTimeTest
 
 		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
-		long expectedCoordinatorTimeMs = waitMode == WaitMode.UNTIL_TERMINATION
-								? (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS
-								: NUM_ROUNDS_UNTIL_EXCEPTION*TASK_TIME_MS + HALF_TASK_TIME_MS;
+		long expectedCoordinatorTimeMs = (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS;
 		TestUtils.assertTimeLowerBound(expectedCoordinatorTimeMs, coordinatorTimeMs);
 		TestUtils.assertTimeUpperBound(expectedCoordinatorTimeMs + PRECISION_MS, coordinatorTimeMs);
 

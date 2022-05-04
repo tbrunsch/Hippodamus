@@ -3,7 +3,6 @@ package dd.kms.hippodamus.impl.coordinator;
 import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -19,8 +18,8 @@ public class AggregationCoordinatorImpl<S, R> extends ExecutionCoordinatorImpl i
 {
 	private final Aggregator<S, R>	aggregator;
 
-	public AggregationCoordinatorImpl(Aggregator<S, R> aggregator, Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode) {
-		super(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
+	public AggregationCoordinatorImpl(Aggregator<S, R> aggregator, Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies) {
+		super(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies);
 		this.aggregator = aggregator;
 	}
 

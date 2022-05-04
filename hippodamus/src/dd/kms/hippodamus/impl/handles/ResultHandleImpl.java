@@ -1,6 +1,5 @@
 package dd.kms.hippodamus.impl.handles;
 
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -113,26 +112,20 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	public final void stop() {
 		synchronized (coordinator) {
 			boolean isExecuting = stateController.isExecuting();
-			try {
-				if (!stateController._stop()) {
-					return;
-				}
-				if (isExecuting) {
-					// since we stop the task, the current result type won't change anymore
-					_executingThread.interrupt();
-					_executingThread = null;
-					stateController._onTerminated();
-				} else {
-					stateController._transitionTo(TaskStage.TERMINATED);
-				}
-				coordinator.stopDependentHandles(this);
-				if (_future != null) {
-					_future.cancel(true);
-				}
-			} finally {
-				if (isExecuting && coordinator.getWaitMode() != WaitMode.UNTIL_TERMINATION) {
-					stateController._releaseCoordinator();
-				}
+			if (!stateController._stop()) {
+				return;
+			}
+			if (isExecuting) {
+				// since we stop the task, the current result type won't change anymore
+				_executingThread.interrupt();
+				_executingThread = null;
+				stateController._onTerminated();
+			} else {
+				stateController._transitionTo(TaskStage.TERMINATED);
+			}
+			coordinator.stopDependentHandles(this);
+			if (_future != null) {
+				_future.cancel(true);
 			}
 		}
 	}

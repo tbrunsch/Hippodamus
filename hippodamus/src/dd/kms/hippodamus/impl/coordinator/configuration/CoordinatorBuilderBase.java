@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.coordinator.configuration.WaitMode;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
@@ -31,7 +30,6 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	private Logger										logger								= NoLogger.LOGGER;
 	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
-	private WaitMode									waitMode							= WaitMode.UNTIL_TERMINATION;
 
 	CoordinatorBuilderBase() {
 		maximumParallelism(TaskType.COMPUTATIONAL, Integer.MAX_VALUE);
@@ -39,7 +37,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	}
 
 	abstract B getBuilder();
-	abstract C createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies, WaitMode waitMode);
+	abstract C createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies);
 
 	@Override
 	public B executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired) {
@@ -76,11 +74,6 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 		this.verifyDependencies = verifyDependencies;
 		return getBuilder();
 	}
-	@Override
-	public B waitMode(WaitMode waitMode) {
-		this.waitMode = waitMode;
-		return getBuilder();
-	}
 
 	@Override
 	public C build() {
@@ -97,7 +90,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 			executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
 		}
 
-		return createCoordinator(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies, waitMode);
+		return createCoordinator(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies);
 	}
 
 	private Set<TaskType> getConfiguredTaskTypes() {

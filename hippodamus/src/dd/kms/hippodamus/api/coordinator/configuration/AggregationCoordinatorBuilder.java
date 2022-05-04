@@ -35,8 +35,5 @@ public interface AggregationCoordinatorBuilder<S, R> extends ExecutionCoordinato
 	AggregationCoordinatorBuilder<S, R> verifyDependencies(boolean verifyDependencies);
 
 	@Override
-	AggregationCoordinatorBuilder<S, R> waitMode(WaitMode waitMode);
-
-	@Override
 	AggregationCoordinator<S, R> build();
 }
