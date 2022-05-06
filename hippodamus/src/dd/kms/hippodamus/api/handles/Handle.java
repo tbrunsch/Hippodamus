@@ -53,35 +53,6 @@ public interface Handle
 	String getTaskName();
 
 	/**
-	 * Waits until the task associated with this handle completes or is stopped form some reason (e.g., stopped
-	 * manually, stopped due to short circuit evaluation, or stopped due to an exception).<br>
-	 * <br>
-	 * The behavior of that method depends on whether dependencies are verified or not (cf.
-	 * {@link ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
-	 * <ul>
-	 *     <li>
-	 *         If dependencies are verified, then the call throws a {@link CoordinatorException} in the
-	 *         {@link ExecutionCoordinator}'s thread if the handle has not already
-	 *         completed. The reason for this is that in this mode it is assumed that tasks are never executed
-	 *         before their dependencies have been resolved. If a task calls {@code #join()} of a handle,
-	 *         then that handle should be listed as dependency of that task. Only if this is not the case,
-	 *         which we consider an error in this mode, calling {@code join()} before the handle has completed
-	 *         is possible. This justifies an exception to inform the user about a missing dependency.
-	 *     </li>
-	 *     <li>
-	 *         If dependencies are not verified, then the call blocks until the task completes or is stopped.
-	 *         In any case, the method <b>does not</b> throw an exception, but simply returns. The reason for
-	 *         this is that handling exceptional behavior due to parallelism is not the tasks' responsibility,
-	 *         but the {@link ExecutionCoordinator}'s. In these cases, the coordinator
-	 *         will send an exception, if adequate, to the coordinator's thread.
-	 *     </li>
-	 * </ul>
-	 *
-	 * @throws TaskStoppedException if the handle has been stopped
-	 */
-	void join();
-
-	/**
 	 * @return The {@link ExecutionCoordinator} this handle was created by.
 	 */
 	ExecutionCoordinator getExecutionCoordinator();

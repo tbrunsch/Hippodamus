@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 /**
  * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and
  * dependencies. In this test we benchmark the framework against {@link CompletableFuture}
- * in different scenarios, once with specified dependencies and once without.<br>
+ * in different scenarios.<br>
  * <br>
  * We use parallelization to speed up recursive MergeSort steps.
  */
@@ -47,15 +47,8 @@ class DependencyBenchmark
 		System.out.println("futures with dependencies:        " + timeFutureWithDependenciesMs);
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		long timeCoordinatorWithoutDependenciesMs = runGenericMergeSort(arrayToSort, storage, this::mergeSortWithCoordinatorWithoutDependencies);
-		System.out.println("coordinator without dependencies: " + timeCoordinatorWithoutDependenciesMs);
-
-		TestUtils.waitForEmptyCommonForkJoinPool();
 		long timeCoordinatorWithDependenciesMs = runGenericMergeSort(arrayToSort, storage, this::mergeSortWithCoordinatorWithDependencies);
 		System.out.println("coordinator with dependencies:    " + timeCoordinatorWithDependenciesMs);
-
-		long maxAllowedTimeWithoutDependenciesMs = Math.round(TOLERANCE*timeFutureWithoutDependenciesMs + PRECISION_MS);
-		TestUtils.assertTimeUpperBound(maxAllowedTimeWithoutDependenciesMs, timeCoordinatorWithoutDependenciesMs, "Coordinator without dependencies");
 
 		long maxAllowedTimeWithDependenciesMs = Math.round(TOLERANCE*timeFutureWithDependenciesMs + PRECISION_MS);
 		TestUtils.assertTimeUpperBound(maxAllowedTimeWithDependenciesMs, timeCoordinatorWithDependenciesMs, "Coordinator with dependencies");
@@ -146,32 +139,6 @@ class DependencyBenchmark
 				.runAfterBoth(sortLeft, () -> {
 					System.arraycopy(arrayToSort, first, storage, first, size);
 					merge(storage, arrayToSort, first, mid, last);
-			});
-		}
-	}
-
-	private double[] mergeSortWithCoordinatorWithoutDependencies(double[] arrayToSort, double[] storage, int first, int last) {
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			mergeSortWithCoordinatorWithoutDependencies(coordinator, arrayToSort, storage, first, last);
-		}
-		return arrayToSort;
-	}
-
-	private Handle mergeSortWithCoordinatorWithoutDependencies(ExecutionCoordinator coordinator, double[] arrayToSort, double[] storage, int first, int last) {
-		int size = last - first;
-		if (size <= RECURSION_THRESHOLD || size * PARALLELISM < arrayToSort.length) {
-			// use single-threaded merge sort for mid-size arrays portions
-			return coordinator.execute(() -> mergeSort(arrayToSort, storage, first, last));
-		} else {
-			// only parallelize until certain size
-			int mid = (first + last) / 2;
-			Handle sortLeft = mergeSortWithCoordinatorWithoutDependencies(coordinator, arrayToSort, storage, first, mid);
-			Handle sortRight = mergeSortWithCoordinatorWithoutDependencies(coordinator, arrayToSort, storage, mid, last);
-			return coordinator.execute(() -> {
-				sortLeft.join();
-				sortRight.join();
-				System.arraycopy(arrayToSort, first, storage, first, size);
-				merge(storage, arrayToSort, first, mid, last);
 			});
 		}
 	}

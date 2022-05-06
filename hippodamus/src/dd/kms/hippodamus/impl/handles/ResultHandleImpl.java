@@ -131,11 +131,6 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	}
 
 	@Override
-	public void join() {
-		stateController.waitUntilTerminated(taskName, verifyDependencies);
-	}
-
-	@Override
 	public boolean hasCompleted() {
 		return stateController.hasCompleted();
 	}
@@ -162,7 +157,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 
 	@Override
 	public T get() {
-		join();
+		stateController.waitUntilTerminated(taskName, verifyDependencies);
 		return stateController.getResult();
 	}
 
