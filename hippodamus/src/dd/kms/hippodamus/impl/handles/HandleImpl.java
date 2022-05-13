@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
-public class ResultHandleImpl<T> implements ResultHandle<T>
+public class HandleImpl<T> implements ResultHandle<T>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -46,7 +46,7 @@ public class ResultHandleImpl<T> implements ResultHandle<T>
 	 */
 	private Thread							_executingThread;
 
-	public ResultHandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;

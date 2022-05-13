@@ -1,7 +1,7 @@
 package dd.kms.hippodamus.impl.execution;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.impl.handles.ResultHandleImpl;
+import dd.kms.hippodamus.impl.handles.HandleImpl;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
@@ -35,7 +35,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	 * on tasks with higher ids because the ids reflect the tasks' creation order. So this order is save even if one
 	 * forgets to specify certain dependencies.
 	 */
-	private final Queue<ResultHandleImpl<?> > 	_unsubmittedTasks			= new PriorityQueue<>(Comparator.comparingInt(ResultHandleImpl::getId));
+	private final Queue<HandleImpl<?>>			_unsubmittedTasks			= new PriorityQueue<>(Comparator.comparingInt(HandleImpl::getId));
 
 	/**
 	 * Number of tasks that have been submitted to the wrapped {@link ExecutorService} and
@@ -49,7 +49,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		this.maxParallelism = maxParallelism;
 	}
 
-	public void _submit(ResultHandleImpl<?> handle) {
+	public void _submit(HandleImpl<?> handle) {
 		if (_canSubmitTask()) {
 			_submitNow(handle);
 		} else {
@@ -60,7 +60,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 	public void _onTaskCompleted() {
 		_numPendingSubmittedTasks--;
 		if (_canSubmitTask()) {
-			ResultHandleImpl<?> handle = _unsubmittedTasks.poll();
+			HandleImpl<?> handle = _unsubmittedTasks.poll();
 			if (handle != null) {
 				_submitNow(handle);
 			}
@@ -71,7 +71,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		return _numPendingSubmittedTasks < maxParallelism;
 	}
 
-	private void _submitNow(ResultHandleImpl<?> handle) {
+	private void _submitNow(HandleImpl<?> handle) {
 		_numPendingSubmittedTasks++;
 		Future<?> future = executorService.submit(handle::_executeCallable);
 		handle._setFuture(future);

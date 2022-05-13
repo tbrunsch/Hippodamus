@@ -13,7 +13,7 @@ import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
-import dd.kms.hippodamus.impl.handles.ResultHandleImpl;
+import dd.kms.hippodamus.impl.handles.HandleImpl;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -49,7 +49,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 * because {@link #_permitTaskSubmission} is {@code false}. These handles will be submitted as
 	 * soon as {@code permitTaskSubmission} is set to {@code true}.
 	 */
-	private final List<ResultHandleImpl<?>>	_pendingHandles					= new ArrayList<>();
+	private final List<HandleImpl<?>>		_pendingHandles					= new ArrayList<>();
 
 	/**
 	 * In this field all information about exceptional situations is collected.
@@ -86,7 +86,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 			checkException();
 			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
-			ResultHandleImpl<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies);
+			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies);
 			_handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!_hasStopped() && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				_scheduleForSubmission(resultHandle);
@@ -113,7 +113,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			_permitTaskSubmission = permit;
 			if (permit) {
-				_pendingHandles.forEach(ResultHandleImpl::submit);
+				_pendingHandles.forEach(HandleImpl::submit);
 				_pendingHandles.clear();
 			}
 		}
@@ -122,7 +122,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	/**
 	 * Submits the handle if {@link #_permitTaskSubmission} is {@code true} or collects it for later submission otherwise.
 	 */
-	private void _scheduleForSubmission(ResultHandleImpl<?> handle) {
+	private void _scheduleForSubmission(HandleImpl<?> handle) {
 		if (_permitTaskSubmission) {
 			handle.submit();
 		} else {
@@ -151,7 +151,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			List<Handle> executableHandles = _handleDependencyManager.getExecutableHandles(handle);
 			for (Handle executableHandle : executableHandles) {
-				_scheduleForSubmission((ResultHandleImpl<?>) executableHandle);
+				_scheduleForSubmission((HandleImpl<?>) executableHandle);
 			}
 		}
 	}
@@ -173,7 +173,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			Collection<Handle> managedHandles = _handleDependencyManager.getManagedHandles();
 			for (Handle managedHandle : managedHandles) {
-				((ResultHandleImpl<?>) managedHandle).stop();
+				((HandleImpl<?>) managedHandle).stop();
 			}
 			_stopped = true;
 		}

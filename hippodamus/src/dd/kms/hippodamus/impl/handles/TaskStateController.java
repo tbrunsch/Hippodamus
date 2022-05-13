@@ -17,7 +17,7 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  *     <li>Completion/exception listeners are informed and</li>
  *     <li>
  *         the stage changes from {@code TaskStage.EXECUTION_FINISHED} to {@link TaskStage#TERMINATED}
- *         (see {@code ResultHandleImpl.complete(Object)} and {@code ResultHandleImpl.terminateExceptionally(Throwable)}, respectively)
+ *         (see {@code HandleImpl.complete(Object)} and {@code HandleImpl.terminateExceptionally(Throwable)}, respectively)
  *     </li>
  *     <li>
  *         The lock that forces the {@link ExecutionCoordinator} to wait is released (see {@link #_transitionTo(TaskStage)})
@@ -27,7 +27,7 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  */
 class TaskStateController<T>
 {
-	private final ResultHandleImpl<?>		handle;
+	private final HandleImpl<?>				handle;
 	private final ExecutionCoordinatorImpl	coordinator;
 
 	private final TaskState<T>				state;
@@ -38,7 +38,7 @@ class TaskStateController<T>
 	 * <br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
 	 * Listeners, in particular completion listeners, might indirectly call {@code waitUntilTerminated()},
-	 * e.g., by calling {@link ResultHandleImpl#get()}.
+	 * e.g., by calling {@link HandleImpl#get()}.
 	 */
 	private final AwaitableFlag				terminatedFlag;
 
@@ -51,7 +51,7 @@ class TaskStateController<T>
 	 */
 	private final AwaitableFlag				releaseCoordinatorFlag;
 
-	TaskStateController(ResultHandleImpl<?> handle, ExecutionCoordinatorImpl coordinator) {
+	TaskStateController(HandleImpl<?> handle, ExecutionCoordinatorImpl coordinator) {
 		this.handle = handle;
 		this.coordinator = coordinator;
 		this.state = new TaskState<>();

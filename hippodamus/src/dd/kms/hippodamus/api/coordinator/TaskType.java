@@ -2,7 +2,6 @@ package dd.kms.hippodamus.api.coordinator;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * This class contains 2 predefined task types.
