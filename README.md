@@ -347,13 +347,7 @@ The `Aggregator` interface provides a method `hasAggregationCompleted()` that is
 
 ## Stopping Tasks
 
-You can stop a task by calling `Handle.stop()` on its handle. Although it seems relatively clear what stopping a task means, we will discuss two important points that may be a bit surprising at first glance:
-
-1. After calling `stop()`, the method `hasStopped()` will always return `true`. However, this does not mean that the task has really stopped. It has only been *requested* to stop, like `Future.cancel(boolean)` only *attempts* to cancel the execution of the underlying task.
-
-1. If a task is stopped, then all of its dependencies will be stopped as well. This is even the case for dependent tasks that have not been executed (submitted to the coordinator) at the point of stopping the task. In particular, this means that stopping a completed task still has an effect on tasks that depend on that task.  
-
-A task can check whether it has been requested to stop by calling `Thread.isInterrupted()` or `Thread.interrupted()`. Alternatively, you can call any blocking method and stop the task when an `InterruptedException` occurs.
+It is not possible to stop individual tasks manually. Since all tasks are part of a super task that is meant to be processed parallely by the coordinator, stopping some tasks but not all does not make sense. You can only stop the whole coordinator (see Section [Stopping Coordinators](#stopping-coordinators)), which internally stops all tasks individually. If a task is stopped and it has not yet been executed, then it will never be executed at all. If a task is executing when it is requested to stop, then the interrupt flag of the thread that executes the task is set. It is the task's responsibility to check the interrupted flag by, e.g., calling  `Thread.isInterrupted()` or `Thread.interrupted()`.
 
 ## Stopping Coordinators
 

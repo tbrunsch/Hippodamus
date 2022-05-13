@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
@@ -28,18 +27,18 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  */
 class TaskStateController<T>
 {
-	private final Handle 					handle;
+	private final ResultHandleImpl<?>		handle;
 	private final ExecutionCoordinatorImpl	coordinator;
 
 	private final TaskState<T>				state;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
-	 * is stopped. It is meant to be waited for in the {@link Handle#join()}-method.<br>
+	 * is stopped. It is meant to be waited for in {@link #waitUntilTerminated(String, boolean)}.<br>
 	 * <br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
-	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
-	 * {@link ResultHandleImpl#get()}.
+	 * Listeners, in particular completion listeners, might indirectly call {@code waitUntilTerminated()},
+	 * e.g., by calling {@link ResultHandleImpl#get()}.
 	 */
 	private final AwaitableFlag				terminatedFlag;
 
@@ -52,16 +51,16 @@ class TaskStateController<T>
 	 */
 	private final AwaitableFlag				releaseCoordinatorFlag;
 
-	TaskStateController(Handle handle, ExecutionCoordinatorImpl coordinator, boolean stopped) {
+	TaskStateController(ResultHandleImpl<?> handle, ExecutionCoordinatorImpl coordinator) {
 		this.handle = handle;
 		this.coordinator = coordinator;
-		this.state = new TaskState<>(stopped);
+		this.state = new TaskState<>();
 		_checkState();
 
 		terminatedFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
 
-		if (!stopped) {
+		if (!coordinator._hasStopped()) {
 			try {
 				terminatedFlag.unset();
 				releaseCoordinatorFlag.unset();
@@ -71,31 +70,16 @@ class TaskStateController<T>
 		}
 	}
 
-	boolean _setResult(T result) {
-		return !state.hasStopped()
-			&& checkCondition(state.setResult(result), "Cannot set result due to inconsistent state")
-			&& _log(LogLevel.STATE, "result = " + result)
-			&& _transitionTo(TaskStage.EXECUTION_FINISHED);
+	void _setResult(T result) {
+		state.setResult(result);
+		_log(LogLevel.STATE, "result = " + result);
+		_transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
-	boolean _setException(Throwable exception) {
-		return !state.hasStopped()
-			&& checkCondition(state.setException(exception), "Cannot set exception due to inconsistent state")
-			&& _log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage())
-			&& _transitionTo(TaskStage.EXECUTION_FINISHED);
-	}
-
-	boolean _stop() {
-		if (!state.stop()) {
-			return false;
-		}
-		_log(LogLevel.STATE, "stopped");
-		_checkState();
-		return true;
-	}
-
-	boolean hasStopped() {
-		return state.hasStopped();
+	void _setException(Throwable exception) {
+		state.setException(exception);
+		_log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
+		_transitionTo(TaskStage.EXECUTION_FINISHED);
 	}
 
 	boolean hasCompleted() {
@@ -119,13 +103,8 @@ class TaskStateController<T>
 		return state.isExecuting();
 	}
 
-	/**
-	 * The return value is always {@code true} such that this method can be used
-	 * within Boolean expressions.
-	 */
-	private boolean _log(LogLevel logLevel, String message) {
+	private void _log(LogLevel logLevel, String message) {
 		coordinator._log(logLevel, handle, message);
-		return true;
 	}
 
 	boolean _transitionTo(TaskStage newStage) {
@@ -154,7 +133,7 @@ class TaskStateController<T>
 				throw new TaskStoppedException(taskName);
 			}
 		}
-		if (state.hasStopped() || state.hasTerminatedExceptionally()) {
+		if (state.hasTerminatedExceptionally()) {
 			throw new TaskStoppedException(taskName);
 		}
 		boolean completed;

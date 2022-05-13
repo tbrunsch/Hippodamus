@@ -6,31 +6,13 @@ package dd.kms.hippodamus.impl.handles;
  */
 class TaskState<T>
 {
-	/**
-	 * Describes whether the task has been stopped or not. The flag is set while the coordinator
-	 * is locked.
-	 */
-	private volatile boolean	stopped;
 	private volatile boolean	finished;
 	private volatile T			result;
 	private volatile Throwable	exception;
 	private volatile TaskStage	taskStage;
 
-	TaskState(boolean stopped) {
-		this.stopped = stopped;
+	TaskState() {
 		taskStage = TaskStage.INITIAL;
-	}
-
-	boolean hasStopped() {
-		return stopped;
-	}
-
-	boolean stop() {
-		if (stopped) {
-			return false;
-		}
-		stopped = true;
-		return true;
 	}
 
 	boolean isExecuting() {

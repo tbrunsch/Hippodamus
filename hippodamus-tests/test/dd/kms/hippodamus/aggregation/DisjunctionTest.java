@@ -15,10 +15,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
+import java.util.Set;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
@@ -53,55 +51,59 @@ class DisjunctionTest
 		Aggregator<Boolean, Boolean> disjunctionAggregator = Aggregators.disjunction();
 		Handle h1;
 		Handle h2;
+		Set<Integer> stoppedTaskIds = ConcurrentHashMap.newKeySet();
 		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
 			.configureAggregationCoordinator(disjunctionAggregator)
 			.executorService(TaskType.COMPUTATIONAL, executorService, true);
 		try (AggregationCoordinator<Boolean, Boolean> coordinator = coordinatorBuilder.build()) {
-			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1));
-			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2));
+			h1 = coordinator.aggregate(() -> simulateBooleanCallable(operand1, () -> stoppedTaskIds.add(1)));
+			h2 = coordinator.aggregate(() -> simulateBooleanCallable(operand2, () -> stoppedTaskIds.add(2)));
 		}
 		boolean expectedResult = operand1 || operand2;
-
-		/*
-		 * Check completion and stop state
-		 */
-		if (operand1) {
-			if (operand2) {
-				Assertions.assertTrue(h1.hasCompleted() || h2.hasCompleted(), "At least one of the tasks should have completed");
-			} else {
-				Assertions.assertTrue(h1.hasCompleted(), "Task 1 should have completed");
-				Assertions.assertFalse(h2.hasCompleted(), "Task 2 should not have completed (short circuit evaluation)");
-
-				Assertions.assertTrue(h2.hasStopped(), "Task 2 should have been stopped (short circuit evaluation)");
-			}
-		} else {
-			if (operand2) {
-				Assertions.assertFalse(h1.hasCompleted(), "Task 1 should not have completed (short circuit evaluation)");
-				Assertions.assertTrue(h2.hasCompleted(), "Task 2 should have completed");
-
-				Assertions.assertTrue(h1.hasStopped(), "Task 1 should have been stopped (short circuit evaluation)");
-			} else {
-				Assertions.assertTrue(h1.hasCompleted(), "Task 1 should have completed");
-				Assertions.assertTrue(h2.hasCompleted(), "Task 2 should have completed");
-
-				Assertions.assertFalse(h1.hasStopped(), "Task 1 must not have stopped");
-				Assertions.assertFalse(h2.hasStopped(), "Task 2 must not have stopped");
-			}
-		}
 
 		/*
 		 * Check result
 		 */
 		Assertions.assertEquals(expectedResult, disjunctionAggregator.getAggregatedValue(), "Wrong aggregated result");
+
+		/*
+		 * Check completion and stop state
+		 */
+		Assertions.assertTrue(h1.hasCompleted() && h2.hasCompleted(), "Both tasks should have completed");
+		Assertions.assertFalse(stoppedTaskIds.contains(1) && stoppedTaskIds.contains(2), "Not both tasks should have stopped");
+
+		if (operand1 && operand2) {
+			return;
+		}
+
+		if (operand1) {
+			Assertions.assertFalse(stoppedTaskIds.contains(1), "Task 1 should not have stopped");
+			Assertions.assertTrue(stoppedTaskIds.contains(2), "Task 2 should have stopped (short circuit evaluation)");
+		} else if (operand2) {
+			Assertions.assertTrue(stoppedTaskIds.contains(1), "Task 1 should have stopped (short circuit evaluation)");
+			Assertions.assertFalse(stoppedTaskIds.contains(2), "Task 2 should not have stopped");
+		} else {
+			Assertions.assertFalse(stoppedTaskIds.contains(1), "Task 1 should not have stopped");
+			Assertions.assertFalse(stoppedTaskIds.contains(2), "Task 2 should not have stopped");
+		}
 	}
 
 	/*
 	 * Stand-in for an arbitrarily complex Boolean callable
 	 */
-	private boolean simulateBooleanCallable(boolean result) {
+	private boolean simulateBooleanCallable(boolean result, Runnable stoppedListener) {
+		// give other tasks a chance to start
+		TestUtils.simulateWork(500);
 		if (!result) {
 			// give other task chance to return true
-			TestUtils.simulateWork(500);
+			for (int i = 0; i < 5; i++) {
+				TestUtils.simulateWork(100);
+				if (Thread.interrupted()) {
+					stoppedListener.run();
+					// stop => return default value
+					return false;
+				}
+			}
 		}
 		return result;
 	}

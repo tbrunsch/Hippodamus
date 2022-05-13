@@ -40,9 +40,7 @@ class NoDeadlockTest
 				} catch (InterruptedException e) {
 					// expected
 				}
-				if (!task4.hasStopped()) {
-					coordinator.stop();
-				}
+				coordinator.stop();
 			});
 			stoppingThread.start();
 		}

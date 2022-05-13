@@ -57,6 +57,12 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	private final ExceptionalState			_exceptionalState				= new ExceptionalState();
 
 	/**
+	 * Stores whether the coordinator has been requested to stop. This does not mean that it has already
+	 * stopped, but it means that tasks that are not yet executing won't execute anymore.
+	 */
+	private boolean							_stopped						= false;
+
+	/**
 	 * This lock is held by all managed tasks. The coordinator will wait in its {@link #close()} method until
 	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally.
 	 */
@@ -78,12 +84,11 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
 		synchronized (this) {
 			checkException();
-			boolean stopped = initiallyStopped || dependencies.stream().anyMatch(Handle::hasStopped);
 			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
-			ResultHandleImpl<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies, stopped);
+			ResultHandleImpl<V> resultHandle = new ResultHandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies);
 			_handleDependencyManager.addDependencies(resultHandle, dependencies);
-			if (!stopped && dependencies.stream().allMatch(Handle::hasCompleted)) {
+			if (!_hasStopped() && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				_scheduleForSubmission(resultHandle);
 			}
 			return resultHandle;
@@ -167,18 +172,15 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	public void stop() {
 		synchronized (this) {
 			Collection<Handle> managedHandles = _handleDependencyManager.getManagedHandles();
-			managedHandles.forEach(Handle::stop);
+			for (Handle managedHandle : managedHandles) {
+				((ResultHandleImpl<?>) managedHandle).stop();
+			}
+			_stopped = true;
 		}
 	}
 
-	/**
-	 * Stops all dependent handles of the specified handle if the handle has been created by this service.
-	 */
-	public void stopDependentHandles(Handle handle) {
-		synchronized (this) {
-			List<Handle> dependentHandles = _handleDependencyManager.getDependentHandles(handle);
-			dependentHandles.forEach(Handle::stop);
-		}
+	public final boolean _hasStopped() {
+		return _stopped;
 	}
 
 	/**

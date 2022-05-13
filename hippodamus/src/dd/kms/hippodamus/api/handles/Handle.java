@@ -1,8 +1,6 @@
 package dd.kms.hippodamus.api.handles;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 
 import javax.annotation.Nullable;
@@ -22,23 +20,6 @@ public interface Handle
 	 * @return {@code true} iff the task has already been processed
 	 */
 	boolean hasCompleted();
-
-	/**
-	 * @return {@code true} iff the task has been stopped manually, either manually or because of an exception<br>
-	 * <br>
-	 * If a task has completed before it had been stopped manually, then {@link #hasCompleted()} and {@code hasStopped()}
-	 * both return {@code true}.<br>
-	 * <br>
-	 * Note that stopping a task is just a request. A running task does not have to react to that request and may
-	 * decide to keep running. Nevertheless, it is considered stopped.
-	 */
-	boolean hasStopped();
-
-	/**
-	 * Stop the task manually. This will also stop dependent tasks. If tasks, that depend on this task, will
-	 * be added later to a service, then they will be assigned a handle that is already stopped and will never run.
-	 */
-	void stop();
 
 	/**
 	 * @return the exception, if the task associated has thrown one, or null otherwise.

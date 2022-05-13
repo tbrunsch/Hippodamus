@@ -4,7 +4,7 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -21,10 +21,11 @@ import java.util.concurrent.*;
  */
 class StopCorrectTasksTest
 {
-	private static final int	NUM_TASKS		= 100;
-	private static final int	TASK_TIME_MS	= 300;
+	private static final int	NUM_TASKS								= 20;
+	private static final int	TASK_TIME_MS							= 3000;
+	private static final int	WAIT_TIME_UNTIL_NEXT_TASK_SUBMISSION_MS	= 100;
 
-	private final Map<Integer, Handle>	handlesById			= new ConcurrentHashMap<>();
+	private final Map<Integer, Long>	startTimesById		= new ConcurrentHashMap<>();
 	private final Set<Integer>			completedTaskIds	= ConcurrentHashMap.newKeySet();
 	private final Set<Integer>			stoppedTaskIds		= ConcurrentHashMap.newKeySet();
 
@@ -32,22 +33,27 @@ class StopCorrectTasksTest
 	void testStopCorrectTasks() throws ExecutionException, InterruptedException {
 		List<Future<?>> additionalTasks = new ArrayList<>();
 
-		ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+		ExecutorService executorService = Executors.newFixedThreadPool(TestUtils.getPotentialParallelism());
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.executorService(TaskType.COMPUTATIONAL, forkJoinPool, false);
+			.executorService(TaskType.COMPUTATIONAL, executorService, false);
+		long stopTime;
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			for (int i = 1; i <= NUM_TASKS; i++) {
 				int taskId = i;
-				if (taskId % 2 == 0 && taskId != 2) {
-					// even non-primes => start task that is not managed by the coordinator
-					ForkJoinTask<?> future = forkJoinPool.submit(() -> run(taskId));
-					additionalTasks.add(future);
+				if (isTaskManagedByCoordinator(taskId)) {
+					coordinator.execute(() -> run(taskId));
 				} else {
-					// non-even numbers or 2
-					Handle handle = coordinator.execute(() -> run(taskId));
-					handlesById.put(taskId, handle);
+					Future<?> future = executorService.submit(() -> run(taskId));
+					additionalTasks.add(future);
+				}
+				try {
+					Thread.sleep(WAIT_TIME_UNTIL_NEXT_TASK_SUBMISSION_MS);
+				} catch (InterruptedException e) {
+					Assertions.fail(e);
 				}
 			}
+			stopTime = System.currentTimeMillis();
+			coordinator.stop();
 		}
 
 		for (Future<?> future : additionalTasks) {
@@ -61,16 +67,34 @@ class StopCorrectTasksTest
 		for (int taskId = 1; taskId <= NUM_TASKS; taskId++) {
 			boolean taskCompleted = completedTaskIds.contains(taskId);
 			boolean taskStopped = stoppedTaskIds.contains(taskId);
-			boolean taskIdIsPrime = isPrime(taskId);
-			Assertions.assertTrue(taskCompleted ^ taskStopped, "Task " + taskId + " should either have completed or stopped");
-			Assertions.assertEquals(taskIdIsPrime, taskStopped, "Task " + taskCompleted + " should " + (taskIdIsPrime ? "have " : "not have ") + "stopped");
+
+			if (taskCompleted && taskStopped) {
+				throw new IllegalStateException("Error in test: A task cannot have completed and stopped");
+			}
+
+			if (!startTimesById.containsKey(taskId)) {
+				if (taskCompleted || taskStopped) {
+					throw new IllegalStateException("Error in test: A task that has not been started cannot have completed or stopped");
+				}
+				continue;
+			}
+
+			long taskStartTime = startTimesById.get(taskId);
+
+			if (isTaskManagedByCoordinator(taskId)) {
+				Assertions.assertTrue(taskStartTime <= stopTime, "The task has been started after the coordinator had been stopped");
+				Assertions.assertTrue(taskStopped, "The task should have been stopped");
+			} else {
+				Assertions.assertFalse(taskStopped, "Foreign tasks should not be stopped");
+			}
 		}
 	}
 
 	private void run(int taskId) {
+		long startTime = System.currentTimeMillis();
+		startTimesById.put(taskId, startTime);
 		Thread thread = Thread.currentThread();
-		onTaskStarted(taskId);
-		long endTime = System.currentTimeMillis() + TASK_TIME_MS;
+		long endTime = startTime + TASK_TIME_MS;
 		while (System.currentTimeMillis() < endTime) {
 			if (thread.isInterrupted()) {
 				onTaskStopped(taskId);
@@ -80,47 +104,16 @@ class StopCorrectTasksTest
 		onTaskCompleted(taskId);
 	}
 
-	private void onTaskStarted(int taskId) {
-		if (isPrime(taskId)) {
-			stop(taskId);
-		}
-	}
-
 	private void onTaskCompleted(int taskId) {
 		completedTaskIds.add(taskId);
-		// we must also support stopping a task after its execution
-		stop(taskId);
 	}
 
 	private void onTaskStopped(int taskId) {
 		stoppedTaskIds.add(taskId);
-		// we must also support stopping a task after its execution
-		stop(taskId);
 	}
 
-	/*
-	 * Stopping a task after its execution
-	 */
-	private void stop(int taskId) {
-		Handle handle = handlesById.get(taskId);
-		if (handle != null) {
-			handle.stop();
-		}
-	}
-
-	private boolean isPrime(int n) {
-		if (n == 1) {
-			return false;
-		} else if (n == 2) {
-			return true;
-		}
-		int sqrt = (int) Math.sqrt(n);
-		for (int i = 2; i <= sqrt; i++) {
-			if (n % i == 0) {
-				return false;
-			}
-		}
-		return true;
+	private boolean isTaskManagedByCoordinator(int taskId) {
+		// manage tasks with even id
+		return taskId % 2 == 0;
 	}
 }
-

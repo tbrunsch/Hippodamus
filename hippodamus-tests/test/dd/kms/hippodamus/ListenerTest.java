@@ -82,33 +82,20 @@ class ListenerTest
 	void testExceptionAndCompletionListenerStillRunning() {
 		OrderVerifier orderVerifier = new OrderVerifier();
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 1000, false));
+			ResultHandle<Integer> result = coordinator.execute(() -> {
+				int value = getValue(VALUE, 1000, false);
+				if (Thread.currentThread().isInterrupted()) {
+					throw new InterruptedException();
+				}
+				return value;
+			});
 			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
 			TestUtils.simulateWork(500);
 			/*
-			 * - exception should already be thrown => will be thrown in close, before task finishes
+			 * - exception should already be thrown => will be thrown in close(), before task finishes
 			 * - task should still be running when completion listener is added
-			 */
-			result.onCompletion(() -> {
-				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
-				orderVerifier.register(ID_TASK);
-			});
-		} catch (TestException e) {
-			orderVerifier.register(ID_COORDINATOR);
-		}
-		orderVerifier.checkIdOrder(Collections.singletonList(ID_COORDINATOR));
-	}
-
-	@Test
-	void testExceptionAndCompletionListenerAlreadyFinished() {
-		OrderVerifier orderVerifier = new OrderVerifier();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 500, false));
-			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
-			TestUtils.simulateWork(1000);
-			/*
-			 * exception is throw before task can complete
-			 * => task is stopped and, although it finishes without exception, its result is not considered anymore
+			 * => task is stopped
+			 * => task throws an InterruptedException which is not considered anymore
 			 * => completion listener will not be notified
 			 */
 			result.onCompletion(() -> {
@@ -117,6 +104,40 @@ class ListenerTest
 			});
 		} catch (TestException e) {
 			orderVerifier.register(ID_COORDINATOR);
+		} catch (InterruptedException e) {
+			Assertions.fail("Unexpected exception: " + e);
+		}
+		orderVerifier.checkIdOrder(Collections.singletonList(ID_COORDINATOR));
+	}
+
+	@Test
+	void testExceptionAndCompletionListenerAlreadyFinished() {
+		OrderVerifier orderVerifier = new OrderVerifier();
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+			ResultHandle<Integer> result = coordinator.execute(() -> {
+				int value = getValue(VALUE, 500, false);
+				if(Thread.interrupted()) {
+					throw new InterruptedException();
+				}
+				return value;
+			});
+			coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
+			TestUtils.simulateWork(1000);
+			/*
+			 * exception is throw before task can complete
+			 * => task is stopped
+			 * => task throws an InterruptedException which is not considered anymore
+			 * => completion listener will not be notified
+			 */
+			result.onCompletion(() -> {
+				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
+				orderVerifier.register(ID_TASK);
+			});
+		} catch (TestException e) {
+			orderVerifier.register(ID_COORDINATOR);
+		} catch (InterruptedException e) {
+			// TestException is thrown earlier and will be preferred
+			Assertions.fail("Unexpected exception: " + e);
 		}
 		orderVerifier.checkIdOrder(Collections.singletonList(ID_COORDINATOR));
 	}
