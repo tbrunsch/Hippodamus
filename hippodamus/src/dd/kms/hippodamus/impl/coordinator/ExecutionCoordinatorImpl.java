@@ -66,7 +66,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	 * This lock is held by all managed tasks. The coordinator will wait in its {@link #close()} method until
 	 * all tasks have released it. Handles will release it when terminating, either successfully or exceptionally.
 	 */
-	private final Semaphore					terminationLock			= new Semaphore(MAX_NUM_TASKS);
+	private final Semaphore					terminationLock					= new Semaphore(MAX_NUM_TASKS);
 
 	public ExecutionCoordinatorImpl(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies) {
 		this.executorServiceWrappersByTaskType = executorServiceWrappersByTaskType;
@@ -76,10 +76,6 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
-		return execute(callable, taskConfiguration, false);
-	}
-
-	<V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration, boolean initiallyStopped) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
 		synchronized (this) {
