@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
-public class HandleImpl<T> implements ResultHandle<T>
+public class HandleImpl<V> implements ResultHandle<V>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -24,13 +24,13 @@ public class HandleImpl<T> implements ResultHandle<T>
 	private final String					taskName;
 	private final int						id;
 	private final ExecutorServiceWrapper	executorServiceWrapper;
-	private final ExceptionalCallable<T, ?> callable;
+	private final ExceptionalCallable<V, ?> callable;
 	private final boolean					verifyDependencies;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
 	private final List<Runnable>			exceptionListeners					= new ArrayList<>();
 
-	private final TaskStateController<T>	stateController;
+	private final TaskStateController<V>	stateController;
 
 	/**
 	 * Only used for stopping the task.
@@ -46,7 +46,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 	 */
 	private Thread							_executingThread;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -81,7 +81,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 		}
 	}
 
-	private void complete(T result) {
+	private void complete(V result) {
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
@@ -140,7 +140,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 	}
 
 	@Override
-	public T get() {
+	public V get() {
 		stateController.waitUntilTerminated(taskName, verifyDependencies);
 		return stateController.getResult();
 	}
@@ -155,7 +155,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 			if (!startExecution()) {
 				return;
 			}
-			T result = callable.call();
+			V result = callable.call();
 			complete(result);
 		} catch (TaskStoppedException e) {
 

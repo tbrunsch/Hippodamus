@@ -4,10 +4,10 @@ package dd.kms.hippodamus.impl.handles;
  * Stores information about whether a task has finished regularly or exceptionally and,
  * if so, what the result was or which exception had been thrown, respectively.
  */
-class TaskState<T>
+class TaskState<V>
 {
 	private volatile boolean	finished;
-	private volatile T			result;
+	private volatile V			result;
 	private volatile Throwable	exception;
 	private volatile TaskStage	taskStage;
 
@@ -44,7 +44,7 @@ class TaskState<T>
 		return finished && exception != null;
 	}
 
-	boolean setResult(T result) {
+	boolean setResult(V result) {
 		if (finished) {
 			return false;
 		}
@@ -53,7 +53,7 @@ class TaskState<T>
 		return true;
 	}
 
-	T getResult() {
+	V getResult() {
 		return result;
 	}
 

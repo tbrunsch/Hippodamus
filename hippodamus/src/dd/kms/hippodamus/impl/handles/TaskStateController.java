@@ -25,12 +25,12 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  * </ol>
  *
  */
-class TaskStateController<T>
+class TaskStateController<V>
 {
 	private final HandleImpl<?>				handle;
 	private final ExecutionCoordinatorImpl	coordinator;
 
-	private final TaskState<T>				state;
+	private final TaskState<V>				state;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -70,7 +70,7 @@ class TaskStateController<T>
 		}
 	}
 
-	void _setResult(T result) {
+	void _setResult(V result) {
 		state.setResult(result);
 		_log(LogLevel.STATE, "result = " + result);
 		_transitionTo(TaskStage.EXECUTION_FINISHED);
@@ -86,7 +86,7 @@ class TaskStateController<T>
 		return state.hasCompleted();
 	}
 
-	T getResult() {
+	V getResult() {
 		checkCondition(state.hasCompleted(), "Trying to access unavailable result");
 		return state.getResult();
 	}

@@ -8,7 +8,7 @@ import dd.kms.hippodamus.api.exceptions.CoordinatorException;
  * A {@code ResultHandle} is a special {@link Handle} for tasks that return a value. It provides
  * a method {@link #get()} to access this value.
  */
-public interface ResultHandle<T> extends Handle
+public interface ResultHandle<V> extends Handle
 {
 	/**
 	 * Returns the value of the callable associated with that handle.
@@ -39,5 +39,5 @@ public interface ResultHandle<T> extends Handle
 	 *
 	 * @throws TaskStoppedException if the handle has been stopped
 	 */
-	T get();
+	V get();
 }
