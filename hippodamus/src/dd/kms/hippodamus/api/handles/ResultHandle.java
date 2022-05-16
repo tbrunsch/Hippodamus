@@ -4,13 +4,11 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 
-import java.util.function.Supplier;
-
 /**
  * A {@code ResultHandle} is a special {@link Handle} for tasks that return a value. It provides
  * a method {@link #get()} to access this value.
  */
-public interface ResultHandle<T> extends Handle, Supplier<T>
+public interface ResultHandle<T> extends Handle
 {
 	/**
 	 * Returns the value of the callable associated with that handle.
@@ -41,6 +39,5 @@ public interface ResultHandle<T> extends Handle, Supplier<T>
 	 *
 	 * @throws TaskStoppedException if the handle has been stopped
 	 */
-	@Override
 	T get();
 }
