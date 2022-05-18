@@ -17,41 +17,39 @@ enum TaskStage
 	/**
 	 * The task has not yet been submitted.
 	 */
-	INITIAL("initial state", false),
+	INITIAL("initial state"),
 
 	/**
 	 * The task is submitted to the {@link ExecutorServiceWrapper}. It is either
 	 * queued by the wrapper or directly submitted to the underlying {@link ExecutorService}.
 	 */
-	SUBMITTED("submitted", false),
+	SUBMITTED("submitted"),
 
 	/**
 	 * The tasks code is being processed by a thread.
 	 */
-	EXECUTING("started execution", false),
+	EXECUTING("started execution"),
 
 	/**
 	 * The task has finished, either regularly or exceptionally, but we still have to notify listeners.
 	 */
-	FINISHED("execution finished", true),
+	FINISHED("execution finished"),
 
 	/**
 	 * The task has terminated and we have notified all listeners (if required). The coordinator's {@code close()}
 	 * method will not return unless all tasks have terminated. This guarantees that all listeners
 	 * will be informed before the coordinator shuts down.
 	 */
-	TERMINATED("terminated", true);
+	TERMINATED("terminated");
 
 	private final String	description;
-	private final boolean	terminalStage;
 
-	TaskStage(String description, boolean terminalStage) {
+	TaskStage(String description) {
 		this.description = description;
-		this.terminalStage = terminalStage;
 	}
 
 	public boolean isReadyToJoin() {
-		return terminalStage;
+		return compareTo(FINISHED) >= 0;
 	}
 
 	@Override
