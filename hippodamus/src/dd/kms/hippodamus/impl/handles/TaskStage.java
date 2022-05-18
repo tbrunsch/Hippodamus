@@ -7,9 +7,9 @@ import java.util.concurrent.ExecutorService;
 /**
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
- *     INITIAL -> SUBMITTED -> EXECUTING -> EXECUTION_FINISHED
- *       |            |            |               |
- *       ------------------------------------------------------> TERMINATED
+ *     INITIAL -> SUBMITTED -> EXECUTING -> FINISHED
+ *       |            |            |           |
+ *       ----------------------------------------------> TERMINATED
  * </pre>
  */
 enum TaskStage
@@ -33,10 +33,12 @@ enum TaskStage
 	/**
 	 * The task has finished, either regularly or exceptionally, but we still have to notify listeners.
 	 */
-	EXECUTION_FINISHED("execution finished", true),
+	FINISHED("execution finished", true),
 
 	/**
-	 * The task has terminated and we have notified all listeners (if required).
+	 * The task has terminated and we have notified all listeners (if required). The coordinator's {@code close()}
+	 * method will not return unless all tasks have terminated. This guarantees that all listeners
+	 * will be informed before the coordinator shuts down.
 	 */
 	TERMINATED("terminated", true);
 
@@ -48,7 +50,7 @@ enum TaskStage
 		this.terminalStage = terminalStage;
 	}
 
-	public boolean isTerminalStage() {
+	public boolean isReadyToJoin() {
 		return terminalStage;
 	}
 

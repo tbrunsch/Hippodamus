@@ -12,7 +12,7 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  * <b>When a task Finishes</b> (either exceptionally or regularly), the following things happen in the given order:
  * <ol>
  *     <li>The result/exception is stored (see {@link #_setResult(Object)} and {@link #_setException(Throwable)}, respectively)</li>
- *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#EXECUTION_FINISHED}</li>
+ *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#FINISHED}</li>
  *     <li>The lock that makes callers of {@link ResultHandle#get()} wait is released (see {@link #_transitionTo(TaskStage)})</li>
  *     <li>Completion/exception listeners are informed and</li>
  *     <li>
@@ -34,13 +34,12 @@ class TaskStateController<V>
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
-	 * is stopped. It is meant to be waited for in {@link #waitUntilTerminated(String, boolean)}.<br>
-	 * <br>
+	 * when it is stopped before execution has started. It is meant to be waited for in {@link #join(String, boolean)}.<br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
-	 * Listeners, in particular completion listeners, might indirectly call {@code waitUntilTerminated()},
-	 * e.g., by calling {@link HandleImpl#get()}.
+	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
+	 * {@link HandleImpl#get()}.
 	 */
-	private final AwaitableFlag				terminatedFlag;
+	private final AwaitableFlag				joinFlag;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -57,12 +56,12 @@ class TaskStateController<V>
 		this.state = new TaskState<>();
 		_checkState();
 
-		terminatedFlag = new AwaitableFlag();
+		joinFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
 
 		if (!coordinator._hasStopped()) {
 			try {
-				terminatedFlag.unset();
+				joinFlag.unset();
 				releaseCoordinatorFlag.unset();
 			} catch (InterruptedException e) {
 				handle.stop();
@@ -73,13 +72,13 @@ class TaskStateController<V>
 	void _setResult(V result) {
 		state.setResult(result);
 		_log(LogLevel.STATE, "result = " + result);
-		_transitionTo(TaskStage.EXECUTION_FINISHED);
+		_transitionTo(TaskStage.FINISHED);
 	}
 
 	void _setException(Throwable exception) {
 		state.setException(exception);
 		_log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
-		_transitionTo(TaskStage.EXECUTION_FINISHED);
+		_transitionTo(TaskStage.FINISHED);
 	}
 
 	boolean hasCompleted() {
@@ -108,12 +107,12 @@ class TaskStateController<V>
 	}
 
 	boolean _transitionTo(TaskStage newStage) {
-		boolean wasInTerminalStage = state.hasTerminated();
+		boolean wasReadyToJoin = state.isReadyToJoin();
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
 			return false;
 		}
-		if (!wasInTerminalStage && newStage.isTerminalStage()) {
+		if (!wasReadyToJoin && newStage.isReadyToJoin()) {
 			_onTerminated();
 		}
 		if (newStage == TaskStage.TERMINATED) {
@@ -123,7 +122,7 @@ class TaskStateController<V>
 		return _checkState();
 	}
 
-	void waitUntilTerminated(String taskName, boolean verifyDependencies) {
+	void join(String taskName, boolean verifyDependencies) {
 		if (hasCompleted()) {
 			return;
 		}
@@ -138,7 +137,7 @@ class TaskStateController<V>
 		}
 		boolean completed;
 		try {
-			terminatedFlag.waitUntilTrue();
+			joinFlag.waitUntilTrue();
 			completed = state.hasCompleted();
 		} catch (InterruptedException e) {
 			completed = false;
@@ -152,7 +151,7 @@ class TaskStateController<V>
 	 * Locking *
 	 **********/
 	void _onTerminated() {
-		terminatedFlag.set();
+		joinFlag.set();
 	}
 
 	void _releaseCoordinator() {
@@ -161,7 +160,7 @@ class TaskStateController<V>
 
 	private boolean _checkState() {
 		return checkCondition(
-			!state.hasFinished() || state.hasTerminated(),
+			!state.hasFinished() || state.isReadyToJoin(),
 			"The task should have terminated"
 		);
 	}

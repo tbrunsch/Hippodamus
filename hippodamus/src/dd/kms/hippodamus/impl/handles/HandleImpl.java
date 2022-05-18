@@ -141,7 +141,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 
 	@Override
 	public V get() {
-		stateController.waitUntilTerminated(taskName, verifyDependencies);
+		stateController.join(taskName, verifyDependencies);
 		return stateController.getResult();
 	}
 

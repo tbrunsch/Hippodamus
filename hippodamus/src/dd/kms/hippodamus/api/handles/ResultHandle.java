@@ -16,9 +16,8 @@ public interface ResultHandle<V> extends Handle
 	/**
 	 * Returns the value of the callable associated with that handle.
 	 *
-	 * @return	The value of the callable associated with that handle.<br>
-	 * <br>
-	 * The behavior of that method depends on whether dependencies are verified or not (cf.
+	 * @return	The value of the callable associated with that handle. If the task has not terminated yet,
+	 * then the behavior depends on whether dependencies are verified or not (cf.
 	 * {@link ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
 	 * <ul>
 	 *     <li>

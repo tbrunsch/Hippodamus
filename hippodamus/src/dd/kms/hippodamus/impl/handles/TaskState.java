@@ -27,8 +27,8 @@ class TaskState<V>
 		return null;
 	}
 
-	boolean hasTerminated() {
-		return taskStage.isTerminalStage();
+	boolean isReadyToJoin() {
+		return taskStage.isReadyToJoin();
 	}
 
 	boolean hasFinished() {
