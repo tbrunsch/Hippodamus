@@ -41,29 +41,21 @@ class TaskState<V>
 	}
 
 	boolean hasTerminatedExceptionally() {
-		return finished && exception != null;
+		return exception != null;
 	}
 
-	boolean setResult(V result) {
-		if (finished) {
-			return false;
-		}
+	void setResult(V result) {
 		this.result = result;
 		finished = true;
-		return true;
 	}
 
 	V getResult() {
 		return result;
 	}
 
-	boolean setException(Throwable exception) {
-		if (finished) {
-			return false;
-		}
+	void setException(Throwable exception) {
 		this.exception = exception;
 		finished = true;
-		return true;
 	}
 
 	Throwable getException() {
