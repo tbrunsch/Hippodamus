@@ -4,6 +4,9 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
+
 /**
  * A {@code ResultHandle} is a special {@link Handle} for tasks that return a value. It provides
  * a method {@link #get()} to access this value.
@@ -19,25 +22,21 @@ public interface ResultHandle<V> extends Handle
 	 * {@link ExecutionCoordinatorBuilder#verifyDependencies(boolean)}):
 	 * <ul>
 	 *     <li>
-	 *         If dependencies are verified, then the call returns null and throws a {@link CoordinatorException}
-	 *         in the {@link ExecutionCoordinator}'s thread if the handle has not already
-	 *         completed. The reason for this is that in this mode it is assumed that tasks are never executed
-	 *         before their dependencies have been resolved. If a task calls {@code get()} of a result handle,
-	 *         then that result handle should be listed as dependency of that task. Only if this is not the case,
-	 *         which we consider an error in this mode, calling {@code get()} before the handle has completed
-	 *         is possible. This justifies an exception to inform the user about a missing dependency.
+	 *         If dependencies are verified, then a {@link CoordinatorException} is thrown, both in the caller's
+	 *         thread and in the {@link ExecutionCoordinator}'s thread. The reason is that in this mode it is
+	 *         assumed that tasks are never executed before their dependencies have been resolved. If a task calls
+	 *         {@code get()} of a result handle, then this result handle should be listed as dependency of
+	 *         that task.
 	 *     </li>
 	 *     <li>
 	 *         If dependencies are not verified, then the call blocks until the result is available or the task
-	 *         has been stopped for whatever reason (e.g., stopped manually, stopped due to short circuit evaluation,
-	 *         or stopped due to an exception). In any case, the method <b>does not</b> throw an exception, but
-	 *         returns the result, if available, or null otherwise. The reason for this is that handling exceptional
-	 *         behavior due to parallelism is not the tasks' responsibility, but the {@link ExecutionCoordinator}'s.
-	 *         In these cases, the coordinator will send an exception, if adequate, to the coordinator's thread.
+	 *         has terminated exceptionally.
 	 *     </li>
 	 * </ul>
 	 *
-	 * @throws TaskStoppedException if the handle has been stopped
+	 * @throws CoordinatorException if dependency verification is activated and the task has not yet terminated
+	 * @throws CompletionException if the task has terminated exceptionally.
+	 * @throws CancellationException if the task has been stopped and has not been executed until then
 	 */
-	V get();
+	V get() throws CoordinatorException, CompletionException, CancellationException;
 }

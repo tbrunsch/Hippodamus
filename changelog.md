@@ -14,6 +14,10 @@ API changes:
   * The interfaces `StoppableExceptionalRunnable` and `StoppableExceptionalCallable` have been removed. A task now simply has to check `Thread.isInterrupted()` or `Thread.interrupted()` to determine whether it should stop instead of checking the Boolean supplier `stopFlag`.
   * The enum `WaitMode` has been removed. You cannot specify anymore how long the `ExecutionCoordinator` waits when all tasks have terminated or been stopped. Now, the coordinator's `close()` method will not return as long as any of its tasks is being executed. This behavior has formerly been described by `WaitMode.UNTIL_TERMINATION`.
 
+Behavioral changes:
+  * When trying to retrieve the value of task that has thrown an exception, then a `CompletionException` will be thrown that wraps that exception.
+  * A task that is in execution and is stopped is not considered terminated anymore. Instead, the task is informed about the stop request via the thread's interrupted flag. It is the task's responsibility whether to react to it or not. This task will not be considered terminated unless it really terminates, either successfully or exceptionally. 
+  
 ## v0.1.0
 
 First Hippodamus release

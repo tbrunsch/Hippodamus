@@ -164,6 +164,83 @@ The previous example creates 10 computational tasks and 10 blocking tasks. When 
 - As already mentioned in Section [Exception Handling](#exception-handling), it is no problem if tasks throw checked exceptions. The framework forces you to handle these exceptions. For more details see Section [Exception Handling Magic](#exception-handling-magic).
 - In many of the samples in this documentation we have to catch an `InterruptedException`. This is only due to the fact that we use the method `Thread.sleep()` to simulate the execution of a real task that requires a certain amount of time.   
 
+## Getting Task Values
+
+Some tasks return values. To access their values, you do not simply reference this task via a `Handle`, but by `ResultHandle`. There are different situations in which the value of a task X may be retrieved:
+
+1. Another task Y needs the value of X:
+
+    We strongly encourage users to specify X as dependency of Y (see Section [Task Dependencies](#task-dependencies)) in this case. This ensures that task Y is not executed before X terminates regularly and, hence, guarantees that task Y does not block a thread and that no exception is thrown when retrieving the value of X.
+     
+1. A completion listener needs the value of X.
+
+    Completion listeners of task X will be called if and only if task X terminates regularly. This is why completion listeners can access the result without having to wait and no exception will be thrown when retrieving the value of X. 
+    
+1. The user (the creator of the coordinator) needs the value of X.
+
+    The most common example for this is when the user wants to know the final outcome of his computation after the coordinator has terminated. It is also possible to retrieve the value of X while the coordinator is still running, but we currently do not see a reason why this should be necessary.
+
+Task X can be in different states when someone tries to receive its value:
+
+1. It might not yet have been executed.
+
+    In this case, the retrieval of the value of X will block until one of the states 3, 4, or 5 is reached.
+
+1. It might be in execution.
+
+    In this case, the retrieval of the value of X will block until one of the states 4 or 5 is reached.
+
+1. It might have been stopped before its execution could even start.
+
+    In this case, a `CancellationException` is thrown. There are several reasons why we decided not to throw an `InterruptedException` instead:
+    
+    * If Hippodamus is used as intended, then this scenario should not occur (see also table below): If the task has been stopped because the user has stopped the whole coordinator, then it is the user's responsibility not to access task values afterwards. If the task has been stopped because of an exception, then depending tasks should not be executed at all. Additionally, this exception will be thrown in the coordinator's thread. In this case, the user should not try to access any task's value at all.
+    
+    * An `InterruptedException` is a checked exception. We did not want to force users to write a handler for an exception that will not be thrown if they use Hippodamus as intended.
+    
+    * Hippodamus was designed as a parallelization framework that allows writing code that is close to sequential code. Having to handle `InterruptedException`s forces users to think about technical details of parallelization. 
+
+1. It might have completed/terminated regularly.
+
+    In this case, the value of X is returned immediately without blocking.
+
+1. It might have terminated exceptionally. 
+
+    In this case, the exception that has been thrown within task X is wrapped within a `CompletionException`, which is thrown when retrieving the value of X. When using Hippodamus as intended, then this case should not occur (see table below).
+
+The following table shows which combinations of who tries to retrieve the value of a task and in which state task is are possible:
+
+| |not yet executed|executing|stopped before execution|terminated regularly|terminated exceptionally|
+|---|:---:|:---:|:---:|:---:|:---:|
+|**another task**|(x)|(x)|(x)|**x**|(x)|
+|**completion listener**|-|-|-|**x**|-|
+|**user**|?|?|!|**x**|!|
+
+The following legend explains the symbols:
+
+|Symbol|Explanation|
+|:---:|---|
+|x|This combination is possible and intended.|
+|-|This combination is not possible.|
+|(x)|This combination is not possible when the task is specified as dependency of the other task.|
+|?|This combination occurs when the user tries to access a task's value within the coordinator's try block. We support it although we do not see its necessity.| 
+|!|This combination is not intended and supported suboptimally: A `CancellationException` or a `CompletionException` is thrown, respectively, although it would be better to throw an `InterruptedException` or the real exception instead, respectively. However, this would complicate using Hippodamus the intended way. 
+
+## Handles vs. CompletableFutures
+
+A `ResultHandle` is similar to a `CompletableFuture`, but with much less functionality. The reason is that most of the functionality of `CompletableFuture` is not required when using Hippodamus.
+
+Unlike `CompletableFuture`, Hippodamus has a class `Handle` for representing tasks that do not return a value. This slightly simplifies parallelizing such tasks because we do not have to wrap them within a task that returns `Void`.
+
+The class `Handle` does not provide a `join()` method because there is no need to join on a handle: When the coordinator terminates, then it guarantees that no task is running anymore (nursery). When a task requires that another task has completed before it can run, then you have to specify that the former depends on the latter. This also avoids that a task blocks a thread by waiting for another task. See Section [Task Dependencies](#task-dependencies) for details.
+
+`CompletableFuture` has two similar methods: `join()` and `get()`. There are only two differences between both:
+
+1. `join()` throws an unchecked `CompletionException` whereas `get()` throws a checked `ExecutionException` if the task has terminated exceptionally and
+1. `get()` is interruptible (i.e. it could throw an `InterruptedException`) while `join()` is not.
+
+Unlike the name suggests, `ResultHandle.get()` behaves like `CompletableFuture.join()` and not `CompletableFuture.get()`. This makes `ResultHandle.get()` more convenient when used the intended way. See Section [Getting Task Values](#getting-task-values) for more details about this decision.
+
 ## Task Dependencies
 
 Specifying dependencies prevents a task from being executed before tasks it depends on have completed. There are two situations in which this is important:
