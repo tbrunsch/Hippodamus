@@ -3,7 +3,6 @@ package dd.kms.hippodamus.impl.handles;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
@@ -157,12 +156,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 			}
 			V result = callable.call();
 			complete(result);
-		} catch (TaskStoppedException e) {
-
-			// TODO: Do we have to manually transition the state here or can we rely on stop()?
-			stateController._transitionTo(TaskStage.TERMINATED);
-
-			stop();
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
 		} finally {
