@@ -8,7 +8,7 @@ import java.util.concurrent.ExecutorService;
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
  *     INITIAL -> SUBMITTED -> EXECUTING -> FINISHED
- *       |            |            |           |
+ *       |            |                        |
  *       ----------------------------------------------> TERMINATED
  * </pre>
  */
@@ -48,8 +48,17 @@ enum TaskStage
 		this.description = description;
 	}
 
-	public boolean isReadyToJoin() {
+	boolean isReadyToJoin() {
 		return compareTo(FINISHED) >= 0;
+	}
+
+	boolean canTransitionTo(TaskStage nextStage) {
+		if (nextStage == TaskStage.TERMINATED) {
+			// this transition is always allowed except when the task is executing
+			return this != TaskStage.EXECUTING;
+		}
+		// other stages can only be reached from its predecessor
+		return nextStage.ordinal() == ordinal() + 1;
 	}
 
 	@Override

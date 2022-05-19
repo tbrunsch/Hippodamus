@@ -20,7 +20,7 @@ class TaskState<V>
 	}
 
 	String transitionTo(TaskStage newStage) {
-		if (newStage != TaskStage.TERMINATED && newStage.ordinal() != taskStage.ordinal() + 1) {
+		if (!taskStage.canTransitionTo(newStage)) {
 			return "Trying to transition state from '" + taskStage + "' to '" + newStage + "'";
 		}
 		taskStage = newStage;
