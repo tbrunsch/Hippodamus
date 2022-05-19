@@ -64,7 +64,7 @@ class TaskStateController<V>
 				joinFlag.unset();
 				releaseCoordinatorFlag.unset();
 			} catch (InterruptedException e) {
-				handle.stop();
+				coordinator.stop();
 			}
 		}
 	}
