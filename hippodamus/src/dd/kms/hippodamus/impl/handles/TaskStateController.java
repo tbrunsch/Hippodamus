@@ -107,13 +107,12 @@ class TaskStateController<V>
 	}
 
 	boolean _transitionTo(TaskStage newStage) {
-		boolean wasReadyToJoin = state.isReadyToJoin();
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
 			return false;
 		}
-		if (!wasReadyToJoin && newStage.isReadyToJoin()) {
-			_onTerminated();
+		if (newStage.isReadyToJoin()) {
+			_makeReadyToJoin();
 		}
 		if (newStage == TaskStage.TERMINATED) {
 			_releaseCoordinator();
@@ -168,7 +167,7 @@ class TaskStateController<V>
 	/***********
 	 * Locking *
 	 **********/
-	void _onTerminated() {
+	void _makeReadyToJoin() {
 		joinFlag.set();
 	}
 

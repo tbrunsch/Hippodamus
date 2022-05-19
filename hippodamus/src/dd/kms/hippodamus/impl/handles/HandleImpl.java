@@ -108,7 +108,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 				// since we stop the task, the current result type won't change anymore
 				_executingThread.interrupt();
 				_executingThread = null;
-				stateController._onTerminated();
+				stateController._makeReadyToJoin();
 			} else {
 				stateController._transitionTo(TaskStage.TERMINATED);
 			}
