@@ -1,8 +1,8 @@
 package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
@@ -123,27 +123,45 @@ class TaskStateController<V>
 	}
 
 	void join(String taskName, boolean verifyDependencies) {
-		if (hasCompleted()) {
+		if (state.isReadyToJoin()) {
+			// handle has terminated regularly or exceptionally or has been stopped before executing started
 			return;
 		}
+
+		/*
+		 * We have to wait. This is not the intended way to use Hippodamus:
+		 *
+		 * (1) Completion and exception listener won't be called unless the task has terminated. I.e., if they call
+		 *     get(), then the task is ready to join.
+		 * (2) If this method is called from another task, then this task should have been specified as dependency of
+		 *     the calling task. In that case, the calling task would not execute unless this task has terminated.
+		 * (3) We do not see why anymore else should try to retrieve the task's value unless the whole coordinator has
+		 *     terminated. If this is really required, then the caller must not activate dependency verification.
+		 */
 		if (verifyDependencies) {
 			synchronized (coordinator) {
-				_log(LogLevel.INTERNAL_ERROR, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
-				throw new TaskStoppedException(taskName);
+				String error = "Waiting for task '" + taskName + "' that has not yet finished. Did you forget to specify its handle as dependency?";
+				_log(LogLevel.INTERNAL_ERROR, error);
+				throw new CoordinatorException(error);
 			}
 		}
-		if (state.hasTerminatedExceptionally()) {
-			throw new TaskStoppedException(taskName);
+		/*
+		 * We provide limited support for interruptions: We do not swallow interruption requests, but we also do
+		 * not react to them here. The reason is that reacting to interrupts would only be possible by also throwing
+		 * an InterruptedException. However, this would complicate the usage of ResultHandle.get() just because of
+		 * scenarios we discourage.
+		 */
+		boolean interrupted = Thread.interrupted();
+		while (!state.isReadyToJoin()) {
+			try {
+				joinFlag.waitUntilTrue();
+				interrupted = interrupted || Thread.interrupted();
+			} catch (InterruptedException e) {
+				interrupted = true;
+			}
 		}
-		boolean completed;
-		try {
-			joinFlag.waitUntilTrue();
-			completed = state.hasCompleted();
-		} catch (InterruptedException e) {
-			completed = false;
-		}
-		if (!completed) {
-			throw new TaskStoppedException(taskName);
+		if (interrupted) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
