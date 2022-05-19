@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.handles;
 
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -12,6 +13,8 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -141,7 +144,20 @@ public class HandleImpl<V> implements ResultHandle<V>
 	@Override
 	public V get() {
 		stateController.join(taskName, verifyDependencies);
-		return stateController.getResult();
+		if (stateController.hasCompleted()) {
+			return stateController.getResult();
+		} else if (stateController.hasTerminatedExceptionally()) {
+			Throwable exception = stateController.getException();
+			throw new CompletionException(exception);
+		}
+		synchronized (coordinator) {
+			if (coordinator._hasStopped()) {
+				throw new CancellationException("Trying to access value of task '" + taskName + "' that has been stopped");
+			}
+			String error = "The task has not been stopped nor did it terminate, but has been considered joinable.";
+			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+			throw new CoordinatorException(error);
+		}
 	}
 
 	public void _setFuture(Future<?> future) {
