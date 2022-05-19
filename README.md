@@ -190,7 +190,7 @@ Task X can be in different states when someone tries to receive its value:
 
     In this case, the retrieval of the value of X will block until one of the states 4 or 5 is reached.
 
-1. It might have been stopped before its execution could even start.
+1. It might have been stopped before it has terminated.
 
     In this case, a `CancellationException` is thrown. There are several reasons why we decided not to throw an `InterruptedException` instead:
     
@@ -210,7 +210,7 @@ Task X can be in different states when someone tries to receive its value:
 
 The following table shows which combinations of who tries to retrieve the value of a task and in which state task is are possible:
 
-| |not yet executed|executing|stopped before execution|terminated regularly|terminated exceptionally|
+| |not yet executed|executing|stopped before termination|terminated regularly|terminated exceptionally|
 |---|:---:|:---:|:---:|:---:|:---:|
 |**another task**|(x)|(x)|(x)|**x**|(x)|
 |**completion listener**|-|-|-|**x**|-|

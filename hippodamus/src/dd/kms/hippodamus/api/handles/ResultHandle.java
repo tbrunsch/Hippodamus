@@ -35,7 +35,7 @@ public interface ResultHandle<V> extends Handle
 	 *
 	 * @throws CoordinatorException if dependency verification is activated and the task has not yet terminated
 	 * @throws CompletionException if the task has terminated exceptionally.
-	 * @throws CancellationException if the task has been stopped and has not been executed until then
+	 * @throws CancellationException if the task has been stopped and has not terminated yet
 	 */
 	V get() throws CoordinatorException, CompletionException, CancellationException;
 }

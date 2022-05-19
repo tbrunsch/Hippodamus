@@ -34,7 +34,7 @@ class TaskStateController<V>
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
-	 * when it is stopped before execution has started. It is meant to be waited for in {@link #join(String, boolean)}.<br>
+	 * when it is stopped. It is meant to be waited for in {@link #join(String, boolean)}.<br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
 	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
 	 * {@link HandleImpl#get()}.
@@ -123,7 +123,7 @@ class TaskStateController<V>
 
 	void join(String taskName, boolean verifyDependencies) {
 		if (state.isReadyToJoin()) {
-			// handle has terminated regularly or exceptionally or has been stopped before executing started
+			// handle has terminated regularly or exceptionally or has been stopped
 			return;
 		}
 
