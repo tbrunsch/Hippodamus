@@ -169,7 +169,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		synchronized (this) {
 			Collection<Handle> managedHandles = _handleDependencyManager.getManagedHandles();
 			for (Handle managedHandle : managedHandles) {
-				((HandleImpl<?>) managedHandle).stop();
+				((HandleImpl<?>) managedHandle)._stop();
 			}
 			_stopped = true;
 		}

@@ -102,22 +102,20 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 	}
 
-	public final void stop() {
-		synchronized (coordinator) {
-			if (coordinator._hasStopped()) {
-				return;
-			}
-			if (stateController.isExecuting()) {
-				// since we stop the task, the current result type won't change anymore
-				_executingThread.interrupt();
-				_executingThread = null;
-				stateController._makeReadyToJoin();
-			} else {
-				stateController._transitionTo(TaskStage.TERMINATED);
-			}
-			if (_future != null) {
-				_future.cancel(true);
-			}
+	public void _stop() {
+		if (coordinator._hasStopped()) {
+			return;
+		}
+		if (stateController.isExecuting()) {
+			// since we stop the task, the current result type won't change anymore
+			_executingThread.interrupt();
+			_executingThread = null;
+			stateController._makeReadyToJoin();
+		} else {
+			stateController._transitionTo(TaskStage.TERMINATED);
+		}
+		if (_future != null) {
+			_future.cancel(true);
 		}
 	}
 
