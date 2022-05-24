@@ -83,7 +83,6 @@ This returns a builder that allows you to configure:
 - The maximum number of tasks of a certain type that may be processed in parallel (see Section [Controlling Parallelism](#controlling-parallelism))
 - The minimum log level and which logger to use.
 - Whether to verify task dependencies (see sections [Task Dependencies](#task-dependencies) and [Dependency Verification](#dependency-verification)).
-- When the coordinator should terminate (see Section [Stopping Tasks](#stopping-tasks))
 
 **LoggingSample.java:**
 
