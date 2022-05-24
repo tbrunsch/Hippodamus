@@ -165,7 +165,7 @@ The previous example creates 10 computational tasks and 10 blocking tasks. When 
 
 ## Getting Task Values
 
-Some tasks return values. To access their values, you do not simply reference this task via a `Handle`, but by `ResultHandle`. There are different situations in which the value of a task X may be retrieved:
+Some tasks return values. To access their values, you do not simply reference this task via a `Handle`, but by `ResultHandle` and its method `get()`. There are different situations in which the value of a task X may be retrieved:
 
 1. Another task Y needs the value of X:
 
@@ -187,7 +187,7 @@ Task X can be in different states when someone tries to receive its value:
 
 1. It might be in execution.
 
-    In this case, the retrieval of the value of X will block until one of the states 4 or 5 is reached.
+    In this case, the retrieval of the value of X will block until one of the states 3, 4 or 5 is reached.
 
 1. It might have been stopped before it has terminated.
 
@@ -206,6 +206,8 @@ Task X can be in different states when someone tries to receive its value:
 1. It might have terminated exceptionally. 
 
     In this case, the exception that has been thrown within task X is wrapped within a `CompletionException`, which is thrown when retrieving the value of X. When using Hippodamus as intended, then this case should not occur (see table below).
+
+At first glance it does not seem to make any difference whether the task is stopped before or after starting execution as long as it has not yet terminated. This is only true for the behavior of `ResultHandle.get()`. Technically, there is a huge difference between both cases: In the first case we simply do not execute the task, while in the second case the task just gets informed about the stop request (see Section [Stopping Tasks](#stopping-tasks)). Whether it stops or not is the task's responsibility.
 
 The following table shows which combinations of who tries to retrieve the value of a task and in which state task is are possible:
 

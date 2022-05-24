@@ -54,7 +54,6 @@ class TaskStateController<V>
 		this.handle = handle;
 		this.coordinator = coordinator;
 		this.state = new TaskState<>();
-		_checkState();
 
 		joinFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
@@ -118,12 +117,12 @@ class TaskStateController<V>
 			_releaseCoordinator();
 		}
 		_log(LogLevel.STATE, newStage.toString());
-		return _checkState();
+		return true;
 	}
 
 	void join(String taskName, boolean verifyDependencies) {
-		if (state.isReadyToJoin()) {
-			// handle has terminated regularly or exceptionally or has been stopped
+		if (isReadyToJoin()) {
+			// handle has terminated regularly or exceptionally or has been stopped before being executed
 			return;
 		}
 
@@ -151,14 +150,14 @@ class TaskStateController<V>
 		 * scenarios we discourage.
 		 */
 		boolean interrupted = Thread.interrupted();
-		while (!state.isReadyToJoin()) {
+		do {
 			try {
 				joinFlag.waitUntilTrue();
 				interrupted = interrupted || Thread.interrupted();
 			} catch (InterruptedException e) {
 				interrupted = true;
 			}
-		}
+		} while (!isReadyToJoin());
 		if (interrupted) {
 			Thread.currentThread().interrupt();
 		}
@@ -171,15 +170,20 @@ class TaskStateController<V>
 		joinFlag.set();
 	}
 
-	void _releaseCoordinator() {
-		releaseCoordinatorFlag.set();
+	private boolean isReadyToJoin() {
+		if (state.isReadyToJoin()) {
+			return true;
+		}
+		synchronized (coordinator) {
+			if (coordinator._hasStopped()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
-	private boolean _checkState() {
-		return checkCondition(
-			!state.hasFinished() || state.isReadyToJoin(),
-			"The task should have terminated"
-		);
+	private void _releaseCoordinator() {
+		releaseCoordinatorFlag.set();
 	}
 
 	private boolean checkCondition(boolean condition, String message) {
