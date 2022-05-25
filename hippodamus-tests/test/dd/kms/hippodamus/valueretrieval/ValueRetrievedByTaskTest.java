@@ -10,7 +10,6 @@ import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
 import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
@@ -57,6 +56,9 @@ public class ValueRetrievedByTaskTest
 	void testValueRetrieval(ValueRetrievalTaskState retrievalStartState, ValueRetrievalTaskState retrievalEndState) {
 		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= 2);
 
+		boolean stopSupplier = retrievalEndState == ValueRetrievalTaskState.STOPPED_BEFORE_TERMINATION;
+		boolean supplierWithException = retrievalEndState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
+
 		// reference to supplier task; will be set when supplier task has been submitted to the coordinator
 		ValueReference<ResultHandle<Integer>> supplierTaskReference = new ValueReference<>();
 
@@ -75,9 +77,9 @@ public class ValueRetrievedByTaskTest
 		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
 			resultTask = coordinator.execute(() -> runResultTask(supplierTaskReference, startValueRetrievalFlag, eventManager));
 
-			dummyTask = coordinator.execute(() -> runDummyTask());
+			dummyTask = coordinator.execute(this::runDummyTask);
 
-			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> supplierTask(coordinator, retrievalEndState));
+			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> supplierTask(coordinator, stopSupplier, supplierWithException));
 			supplierTaskReference.set(supplierTask);
 
 			switch (retrievalStartState) {
@@ -141,16 +143,13 @@ public class ValueRetrievedByTaskTest
 				break;
 		}
 
-		boolean stopped = retrievalEndState == ValueRetrievalTaskState.STOPPED_BEFORE_TERMINATION;
-		boolean exceptionThrown = retrievalEndState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
-
-		Assertions.assertEquals(stopped, encounteredCancellationException);
-		Assertions.assertEquals(exceptionThrown, encounteredSupplierException);
+		Assertions.assertEquals(stopSupplier, encounteredCancellationException);
+		Assertions.assertEquals(supplierWithException, encounteredSupplierException);
 
 		Throwable resultTaskException = resultTask.getException();
-		if (stopped) {
+		if (stopSupplier) {
 			Assertions.assertTrue(resultTaskException instanceof CancellationException);
-		} else if (exceptionThrown) {
+		} else if (supplierWithException) {
 			Assertions.assertTrue(resultTaskException instanceof CompletionException);
 			Assertions.assertTrue(resultTaskException.getCause() instanceof SupplierException);
 		} else {
@@ -171,22 +170,13 @@ public class ValueRetrievedByTaskTest
 		TestUtils.simulateWork(DUMMY_TASK_TIME_MS);
 	}
 
-	private int supplierTask(ExecutionCoordinator coordinator, ValueRetrievalTaskState retrievalEndState) throws SupplierException {
+	private int supplierTask(ExecutionCoordinator coordinator, boolean stop, boolean throwException) throws SupplierException {
 		for (int i = 0; i < SUPPLIER_TASK_SLEEP_REPETITIONS; i++) {
 			TestUtils.simulateWork(SUPPLIER_TASK_SLEEP_TIME_MS);
-			switch (retrievalEndState) {
-				case NOT_YET_EXECUTED:
-				case EXECUTING:
-					throw new IllegalStateException("Invalid end state for value retrieval");
-				case STOPPED_BEFORE_TERMINATION:
-					coordinator.stop();
-					break;
-				case TERMINATED_REGULARLY:
-					break;
-				case TERMINATED_EXCEPTIONALLY:
-					throw new SupplierException();
-				default:
-					throw new UnsupportedOperationException("Unsupported retrieval task state: " + retrievalEndState);
+			if (stop) {
+				coordinator.stop();
+			} else if (throwException) {
+				throw new SupplierException();
 			}
 		}
 		return SUPPLIER_VALUE;
