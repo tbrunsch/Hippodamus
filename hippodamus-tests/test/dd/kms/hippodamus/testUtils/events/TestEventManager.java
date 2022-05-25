@@ -5,17 +5,17 @@ import com.google.common.collect.Multimap;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class TestEventManager
 {
-	private final List<TestEvent>				events			= new ArrayList<>();
+	private final Map<TestEvent, Long>			eventTimestamps	= new LinkedHashMap<>();
 	private final Multimap<TestEvent, Runnable> eventListeners	= ArrayListMultimap.create();
 
 	public synchronized void encounteredEvent(TestEvent event) {
-		events.add(event);
+		eventTimestamps.put(event, System.currentTimeMillis());
 		Collection<Runnable> listeners = eventListeners.get(event);
 		for (Runnable listener : listeners) {
 			listener.run();
@@ -26,7 +26,7 @@ public class TestEventManager
 		HandleEvent e = new HandleEvent(handle, state, null);
 		synchronized (this) {
 			// call listener once for every matching event that has already been encountered
-			for (TestEvent event : events) {
+			for (TestEvent event : eventTimestamps.keySet()) {
 				if (event.equals(e)) {
 					listener.run();
 				}
@@ -48,14 +48,14 @@ public class TestEventManager
 	}
 
 	public boolean before(TestEvent event1, TestEvent event2) {
-		int index1 = events.indexOf(event1);
-		if (index1 < 0) {
+		Long timestamp1 = eventTimestamps.get(event1);
+		if (timestamp1 == null) {
 			throw new IllegalArgumentException("First event has not been encountered");
 		}
-		int index2 = events.indexOf(event2);
-		if (index2 < 0) {
+		Long timestamp2 = eventTimestamps.get(event1);
+		if (timestamp2 == null) {
 			throw new IllegalArgumentException("Second event has not been encountered");
 		}
-		return index1 < index2 && events.get(index1).getTimestamp() <= events.get(index2).getTimestamp();
+		return timestamp1 <= timestamp2;
 	}
 }
