@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.valueretrieval;
 
+import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
@@ -107,23 +108,21 @@ public class ValueRetrievedByTaskTest
 			encounteredCancellationException = true;
 		}
 
-		if (resultTask == null) {
-			throw new IllegalStateException("Result task handle is null");
-		}
-		if (dummyTask == null) {
-			throw new IllegalStateException("Dummy task handle is null");
-		}
-		if (supplierTask == null) {
-			throw new IllegalStateException("Supplier task handle is null");
-		}
-
-		Assertions.assertTrue(eventManager.before(dummyTask, HandleState.COMPLETED, supplierTask, HandleState.STARTED));
+		Preconditions.checkState(resultTask != null, "Result task handle is null");
+		Preconditions.checkState(dummyTask != null, "Dummy task handle is null");
+		Preconditions.checkState(supplierTask != null, "Supplier task handle is null");
 
 		RetrievalStartedEvent retrievalEvent = new RetrievalStartedEvent();
-		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED, null);
-		HandleEvent supplierStoppedEvent = new HandleEvent(supplierTask, HandleState.STOPPED, null);
-		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED, null);
-		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, null);
+		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
+		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
+		HandleEvent supplierStoppedEvent = new HandleEvent(supplierTask, HandleState.STOPPED);
+		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
+		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY);
+
+		/*
+		 * Test that the test setup is as specified by the parameters
+		 */
+		Assertions.assertTrue(eventManager.before(dummyCompletedEvent, supplierStartedEvent));
 
 		switch (retrievalStartState) {
 			case NOT_YET_EXECUTED:
@@ -143,18 +142,32 @@ public class ValueRetrievedByTaskTest
 				break;
 		}
 
+		/*
+		 * Test that the tasks and the coordinator behave as expected
+		 */
 		Assertions.assertEquals(stopSupplier, encounteredCancellationException);
 		Assertions.assertEquals(supplierWithException, encounteredSupplierException);
 
+		Throwable supplierTaskException = supplierTask.getException();
 		Throwable resultTaskException = resultTask.getException();
-		if (stopSupplier) {
-			Assertions.assertTrue(resultTaskException instanceof CancellationException);
-		} else if (supplierWithException) {
+		Assertions.assertEquals(supplierTaskException, eventManager.getException(supplierTask));
+		Assertions.assertEquals(resultTaskException, eventManager.getException(resultTask));
+
+		if (supplierWithException) {
+			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+
 			Assertions.assertTrue(resultTaskException instanceof CompletionException);
-			Assertions.assertTrue(resultTaskException.getCause() instanceof SupplierException);
+			Assertions.assertTrue(resultTaskException.getCause() == supplierTaskException);
 		} else {
-			Assertions.assertNull(resultTaskException);
-			Assertions.assertEquals(SUPPLIER_VALUE, resultTask.get());
+			Assertions.assertNull(supplierTaskException);
+
+			if (stopSupplier) {
+				Assertions.assertTrue(resultTaskException instanceof CancellationException);
+				Assertions.assertTrue(eventManager.getException(resultTask) instanceof CancellationException);
+			} else {
+				Assertions.assertNull(resultTaskException);
+				Assertions.assertEquals(SUPPLIER_VALUE, resultTask.get());
+			}
 		}
 	}
 
