@@ -15,4 +15,7 @@ public abstract class TestEvent
 	 */
 	@Override
 	public abstract int hashCode();
+
+	@Override
+	public abstract String toString();
 }

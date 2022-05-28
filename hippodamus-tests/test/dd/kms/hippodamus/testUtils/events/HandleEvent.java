@@ -44,4 +44,9 @@ public class HandleEvent extends TestEvent
 		// do not consider exception and timestamp of super class
 		return Objects.hash(handle, state);
 	}
+
+	@Override
+	public String toString() {
+		return handle.getTaskName() + ": " + state;
+	}
 }

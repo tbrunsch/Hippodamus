@@ -212,6 +212,11 @@ public class ValueRetrievedByTaskTest
 		public int hashCode() {
 			return 0;
 		}
+
+		@Override
+		public String toString() {
+			return "Value retrieval started";
+		}
 	}
 
 	private static class SupplierException extends Exception {}
