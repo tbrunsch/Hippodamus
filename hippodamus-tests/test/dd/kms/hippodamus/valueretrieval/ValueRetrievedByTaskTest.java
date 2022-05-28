@@ -175,6 +175,7 @@ public class ValueRetrievedByTaskTest
 			TestUtils.simulateWork(SUPPLIER_TASK_SLEEP_TIME_MS);
 			if (stop) {
 				coordinator.stop();
+				stop = false;
 			} else if (throwException) {
 				throw new SupplierException();
 			}
