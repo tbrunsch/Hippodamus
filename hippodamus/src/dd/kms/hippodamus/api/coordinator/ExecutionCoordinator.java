@@ -4,6 +4,7 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -64,5 +65,9 @@ public interface ExecutionCoordinator extends ExecutionManager, AutoCloseable
 	void checkException();
 
 	@Override
-	void close();
+	/**
+	 * @throws CancellationException if the coordinator has been stopped and someone tries to access the value of a task
+	 * that has not yet completed yet.
+	 */
+	void close() throws CancellationException;
 }
