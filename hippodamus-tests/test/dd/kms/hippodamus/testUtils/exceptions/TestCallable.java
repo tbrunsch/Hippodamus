@@ -24,19 +24,20 @@ public class TestCallable<V, T extends Throwable> implements ExceptionalCallable
 	@Override
 	public V call() throws T {
 		while (handle == null);
-		coordinator.handleState(handle, HandleState.STARTED, null);
+		coordinator.handleState(handle, HandleState.STARTED);
 		V result;
 		try {
 			result = wrappedCallable.call();
 		} catch (Throwable t) {
-			coordinator.handleState(handle, HandleState.TERMINATED_EXCEPTIONALLY, t);
+			coordinator.handleState(handle, HandleState.TERMINATED_EXCEPTIONALLY);
+			coordinator.setException(handle, t);
 			throw t;
 		}
 		if (Thread.currentThread().isInterrupted()) {
 			// this will only work if the task did not clear the interrupted flag
-			coordinator.handleState(handle, HandleState.STOPPED, null);
+			coordinator.handleState(handle, HandleState.STOPPED);
 		}
-		coordinator.handleState(handle, HandleState.COMPLETED, null);
+		coordinator.handleState(handle, HandleState.COMPLETED);
 		return result;
 	}
 }

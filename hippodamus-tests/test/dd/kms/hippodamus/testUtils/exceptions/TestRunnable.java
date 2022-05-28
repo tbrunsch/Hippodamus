@@ -24,17 +24,18 @@ public class TestRunnable<T extends Throwable> implements ExceptionalRunnable<T>
 	@Override
 	public void run() throws T {
 		while (handle == null);
-		coordinator.handleState(handle, HandleState.STARTED, null);
+		coordinator.handleState(handle, HandleState.STARTED);
 		try {
 			wrappedRunnable.run();
 		} catch (Throwable t) {
-			coordinator.handleState(handle, HandleState.TERMINATED_EXCEPTIONALLY, t);
+			coordinator.handleState(handle, HandleState.TERMINATED_EXCEPTIONALLY);
+			coordinator.setException(handle, t);
 			throw t;
 		}
 		if (Thread.currentThread().isInterrupted()) {
 			// this will only work if the task did not clear the interrupted flag
-			coordinator.handleState(handle, HandleState.STOPPED, null);
+			coordinator.handleState(handle, HandleState.STOPPED);
 		}
-		coordinator.handleState(handle, HandleState.COMPLETED, null);
+		coordinator.handleState(handle, HandleState.COMPLETED);
 	}
 }

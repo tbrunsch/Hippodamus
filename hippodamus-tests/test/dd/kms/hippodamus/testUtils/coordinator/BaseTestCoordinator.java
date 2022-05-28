@@ -27,8 +27,12 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 		eventManager.encounteredEvent(event);
 	}
 
-	public void handleState(Handle handle, HandleState state, Throwable exception) {
-		encounteredEvent(new HandleEvent(handle, state, exception));
+	public void handleState(Handle handle, HandleState state) {
+		encounteredEvent(new HandleEvent(handle, state));
+	}
+
+	public void setException(Handle handle, Throwable t) {
+		eventManager.setException(handle, t);
 	}
 
 	@Override
