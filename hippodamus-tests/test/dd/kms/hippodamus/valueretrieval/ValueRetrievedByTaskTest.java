@@ -11,9 +11,11 @@ import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
 import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -91,7 +93,7 @@ public class ValueRetrievedByTaskTest
 					eventManager.onHandleEvent(supplierTask, HandleState.STARTED, startValueRetrievalRunnable);
 					break;
 				case STOPPED_BEFORE_TERMINATION:
-					eventManager.onHandleEvent(supplierTask, HandleState.STOPPED, startValueRetrievalRunnable);
+					eventManager.onCoordinatorEvent(CoordinatorState.STOPPED, startValueRetrievalRunnable);
 					break;
 				case TERMINATED_REGULARLY:
 					supplierTask.onCompletion(startValueRetrievalRunnable);
@@ -115,7 +117,7 @@ public class ValueRetrievedByTaskTest
 		RetrievalStartedEvent retrievalEvent = new RetrievalStartedEvent();
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
-		HandleEvent supplierStoppedEvent = new HandleEvent(supplierTask, HandleState.STOPPED);
+		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED);
 		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
 		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY);
 
@@ -132,7 +134,7 @@ public class ValueRetrievedByTaskTest
 				Assertions.assertTrue(eventManager.before(supplierStartedEvent, retrievalEvent));
 				break;
 			case STOPPED_BEFORE_TERMINATION:
-				Assertions.assertTrue(eventManager.before(supplierStoppedEvent, retrievalEvent));
+				Assertions.assertTrue(eventManager.before(coordinatorStoppedEvent, retrievalEvent));
 				break;
 			case TERMINATED_REGULARLY:
 				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, retrievalEvent));
