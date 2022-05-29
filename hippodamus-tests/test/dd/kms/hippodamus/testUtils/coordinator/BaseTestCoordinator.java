@@ -42,8 +42,8 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 
 	@Override
 	public void stop() {
-		encounteredEvent(new CoordinatorEvent(CoordinatorState.STOPPED));
 		wrappedCoordinator.stop();
+		encounteredEvent(new CoordinatorEvent(CoordinatorState.STOPPED));
 	}
 
 	@Override
