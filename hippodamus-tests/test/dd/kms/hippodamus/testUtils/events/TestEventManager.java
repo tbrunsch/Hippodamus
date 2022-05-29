@@ -3,6 +3,7 @@ package dd.kms.hippodamus.testUtils.events;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 
 import java.util.Collection;
@@ -30,6 +31,15 @@ public class TestEventManager
 
 	public void onHandleEvent(Handle handle, HandleState state, Runnable listener) {
 		HandleEvent e = new HandleEvent(handle, state);
+		onEvent(e, listener);
+	}
+
+	public void onCoordinatorEvent(CoordinatorState state, Runnable listener) {
+		CoordinatorEvent e = new CoordinatorEvent(state);
+		onEvent(e, listener);
+	}
+
+	private void onEvent(TestEvent e, Runnable listener) {
 		synchronized (this) {
 			// call listener once for every matching event that has already been encountered
 			for (TestEvent event : eventTimesMs.keySet()) {
