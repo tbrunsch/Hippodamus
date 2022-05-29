@@ -16,7 +16,6 @@ import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -26,53 +25,44 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 
 /**
- * This test checks that a task correctly retrieves a value from another task independent of the state of the
- * other task. We do this by submitting the following tasks in the specified order:
+ * This test checks that retrieving a value from a task from the coordinator's thread works correctly independent of the
+ * task's state. We do this by submitting the following tasks in the specified order:
  * <ol>
- *     <li>A retrieval task that tries to retrieve the value of the supplier task</li>
  *     <li>
- *         A dummy task that is run before the supplier task. We need this task such that we can submit
- *         the supplier task to the coordinator (because we have to hand its handle over to the retrieval task)
- *         and such that we can be sure that the supplier task is not submitted to the underlying {@code ExecutorService}
- *         immediately.
+ *         A dummy task that is run before the supplier task. We need this task such that we can submit the supplier
+ *         task to the coordinator and such that we can be sure that the supplier task is not submitted to the
+ *         underlying {@code ExecutorService} immediately.
  *     </li>
  *     <li>
- *         A supplier task whose value is retrieved by the retrieval task.
+ *         A supplier task whose value we retrieve from the coordinator's thread.
  *     </li>
  * </ol>
  */
-class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
+class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 {
-	@ParameterizedTest(name = "start/end state when retrieving value: {0}/{1}")
+	@ParameterizedTest(name = "start/end state when retrieving value: {0}/{1}, check exception before value retrieval: {2}")
 	@MethodSource("getParameters")
-	void testValueRetrieval(ValueRetrievalTaskState retrievalStartState, ValueRetrievalTaskState retrievalEndState) {
-		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= 2);
-
+	void testValueRetrieval(ValueRetrievalTaskState retrievalStartState, ValueRetrievalTaskState retrievalEndState, boolean checkExceptionBeforeValueRetrieval) {
 		boolean stopSupplier = retrievalEndState == ValueRetrievalTaskState.STOPPED_BEFORE_TERMINATION;
 		boolean supplierWithException = retrievalEndState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
 
-		// reference to supplier task; will be set when supplier task has been submitted to the coordinator
-		ValueReference<ResultHandle<Integer>> supplierTaskReference = new ValueReference<>();
-
-		// tells the retrieval task when to start retrieving the value of the supplier task
+		// set to true when we may start retrieving the value of the supplier task
 		ValueReference<Boolean> startValueRetrievalFlag = new ValueReference<>(false);
 		Runnable startValueRetrievalRunnable = () -> startValueRetrievalFlag.set(true);
 
-		ResultHandle<Integer> resultTask = null;
 		Handle dummyTask = null;
 		ResultHandle<Integer> supplierTask = null;
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
-			.maximumParallelism(TaskType.COMPUTATIONAL, 2);
+			.maximumParallelism(TaskType.COMPUTATIONAL, 1);
 		boolean encounteredSupplierException = false;
 		boolean encounteredCancellationException = false;
+		boolean encounteredCompletionException = false;
 		TestEventManager eventManager = new TestEventManager();
+		int result = 0;
 		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
-			resultTask = coordinator.execute(() -> runResultTask(supplierTaskReference, startValueRetrievalFlag, eventManager));
-
 			dummyTask = coordinator.execute(this::runDummyTask);
 
 			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> runSupplierTask(coordinator, stopSupplier, supplierWithException));
-			supplierTaskReference.set(supplierTask);
 
 			switch (retrievalStartState) {
 				case NOT_YET_EXECUTED:
@@ -93,13 +83,21 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 				default:
 					throw new UnsupportedOperationException("Unsupported retrieval task state: " + retrievalStartState);
 			}
+
+			while (!startValueRetrievalFlag.get());
+			eventManager.encounteredEvent(new RetrievalStartedEvent());
+			if (checkExceptionBeforeValueRetrieval) {
+				coordinator.checkException();
+			}
+			result = supplierTask.get();
 		} catch (SupplierException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {
 			encounteredCancellationException = true;
+		} catch (CompletionException e) {
+			encounteredCompletionException = true;
 		}
 
-		Preconditions.checkState(resultTask != null, "Result task handle is null");
 		Preconditions.checkState(dummyTask != null, "Dummy task handle is null");
 		Preconditions.checkState(supplierTask != null, "Supplier task handle is null");
 
@@ -137,47 +135,40 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		 * Test that the tasks and the coordinator behave as expected
 		 */
 		Assertions.assertEquals(stopSupplier, encounteredCancellationException);
-		Assertions.assertEquals(supplierWithException, encounteredSupplierException);
+		if (checkExceptionBeforeValueRetrieval && retrievalStartState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY) {
+			/*
+			 * Checking the coordinator's exception via ExecutionCoordinator.checkException() before retrieving the
+			 * supplier task's value lets the coordinator throw the already encountered SupplierException in this case.
+			 */
+			Assertions.assertTrue(encounteredSupplierException);
+		} else {
+			Assertions.assertEquals(supplierWithException, encounteredCompletionException);
+		}
 
 		Throwable supplierTaskException = supplierTask.getException();
-		Throwable resultTaskException = resultTask.getException();
 		Assertions.assertEquals(supplierTaskException, eventManager.getException(supplierTask));
-		Assertions.assertEquals(resultTaskException, eventManager.getException(resultTask));
 
 		if (supplierWithException) {
 			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
-
-			Assertions.assertTrue(resultTaskException instanceof CompletionException);
-			Assertions.assertTrue(resultTaskException.getCause() == supplierTaskException);
 		} else {
 			Assertions.assertNull(supplierTaskException);
 
-			if (stopSupplier) {
-				Assertions.assertTrue(resultTaskException instanceof CancellationException);
-				Assertions.assertTrue(eventManager.getException(resultTask) instanceof CancellationException);
-			} else {
-				Assertions.assertNull(resultTaskException);
-				Assertions.assertEquals(SUPPLIER_VALUE, resultTask.get());
+			if (!stopSupplier) {
+				Assertions.assertEquals(SUPPLIER_VALUE, result);
 			}
 		}
-	}
-
-	private int runResultTask(ValueReference<ResultHandle<Integer>> supplierTaskReference, ValueReference<Boolean> resultTaskStartFlag, TestEventManager eventManager) {
-		while (!resultTaskStartFlag.get());
-		ResultHandle<Integer> supplierTask;
-		while ((supplierTask = supplierTaskReference.get()) == null);
-		eventManager.encounteredEvent(new RetrievalStartedEvent());
-		return supplierTask.get();
 	}
 
 	static List<Object[]> getParameters() {
-		List<Object[]> retrievalStartEndStatePairs = new ArrayList<>();
+		List<Object[]> parameters = new ArrayList<>();
 		for (ValueRetrievalTaskState retrievalStartState : ValueRetrievalTaskState.values()) {
 			List<ValueRetrievalTaskState> retrievalEndStates = getPossibleRetrievalEndStates(retrievalStartState);
 			for (ValueRetrievalTaskState retrievalEndState : retrievalEndStates) {
-				retrievalStartEndStatePairs.add(new Object[]{retrievalStartState, retrievalEndState});
+				for (boolean checkExceptionBeforeValueRetrieval : TestUtils.BOOLEANS) {
+					parameters.add(new Object[]{retrievalStartState, retrievalEndState, checkExceptionBeforeValueRetrieval});
+				}
 			}
 		}
-		return retrievalStartEndStatePairs;
+		return parameters;
 	}
 }
