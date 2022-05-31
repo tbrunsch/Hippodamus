@@ -59,6 +59,10 @@ public class TestEventManager
 		return taskExceptions.get(handle);
 	}
 
+	public boolean encounteredEvent(TestEvent event) {
+		return eventTimesMs.containsKey(event);
+	}
+
 	public boolean before(Handle handle1, HandleState state1, Handle handle2, HandleState state2) {
 		return before(handle1, state1, new HandleEvent(handle2, state2));
 	}
