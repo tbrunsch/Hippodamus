@@ -2,6 +2,7 @@ package dd.kms.hippodamus.benchmark;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,8 @@ class NoSpecifiedDependenciesBenchmark
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 0; i < NUM_TASKS; i++) {
 				Supplier<Integer> prevSupplier = countSupplier;
-				countSupplier = coordinator.execute(() -> plusOne(prevSupplier.get()));
+				ResultHandle<Integer> handle = coordinator.execute(() -> plusOne(prevSupplier.get()));
+				countSupplier = () -> handle.get();
 			}
 		}
 		int count = countSupplier.get();

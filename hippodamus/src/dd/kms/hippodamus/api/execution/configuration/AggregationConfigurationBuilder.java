@@ -24,5 +24,5 @@ public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigur
 	AggregationConfigurationBuilder<S, R> dependencies(Handle... dependencies);
 
 	@Override
-	AggregationConfigurationBuilder<S, R> dependencies(Collection<Handle> dependencies);
+	AggregationConfigurationBuilder<S, R> dependencies(Collection<? extends Handle> dependencies);
 }

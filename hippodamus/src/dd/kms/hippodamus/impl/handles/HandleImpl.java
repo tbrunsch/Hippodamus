@@ -1,9 +1,9 @@
 package dd.kms.hippodamus.impl.handles;
 
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
@@ -13,10 +13,12 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
-public class HandleImpl<T> implements ResultHandle<T>
+public class HandleImpl<V> implements ResultHandle<V>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
@@ -24,13 +26,13 @@ public class HandleImpl<T> implements ResultHandle<T>
 	private final String					taskName;
 	private final int						id;
 	private final ExecutorServiceWrapper	executorServiceWrapper;
-	private final ExceptionalCallable<T, ?> callable;
+	private final ExceptionalCallable<V, ?> callable;
 	private final boolean					verifyDependencies;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
 	private final List<Runnable>			exceptionListeners					= new ArrayList<>();
 
-	private final TaskStateController<T>	stateController;
+	private final TaskStateController<V>	stateController;
 
 	/**
 	 * Only used for stopping the task.
@@ -46,7 +48,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 	 */
 	private Thread							_executingThread;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<T, ?> callable, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -81,7 +83,7 @@ public class HandleImpl<T> implements ResultHandle<T>
 		}
 	}
 
-	private void complete(T result) {
+	private void complete(V result) {
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
@@ -100,22 +102,20 @@ public class HandleImpl<T> implements ResultHandle<T>
 		}
 	}
 
-	public final void stop() {
-		synchronized (coordinator) {
-			if (coordinator._hasStopped()) {
-				return;
-			}
-			if (stateController.isExecuting()) {
-				// since we stop the task, the current result type won't change anymore
-				_executingThread.interrupt();
-				_executingThread = null;
-				stateController._onTerminated();
-			} else {
-				stateController._transitionTo(TaskStage.TERMINATED);
-			}
-			if (_future != null) {
-				_future.cancel(true);
-			}
+	public void _stop() {
+		if (coordinator._hasStopped()) {
+			return;
+		}
+		if (stateController.isExecuting()) {
+			// since we stop the task, the current result type won't change anymore
+			_executingThread.interrupt();
+			_executingThread = null;
+			stateController._makeReadyToJoin();
+		} else {
+			stateController._transitionTo(TaskStage.TERMINATED);
+		}
+		if (_future != null) {
+			_future.cancel(true);
 		}
 	}
 
@@ -140,9 +140,22 @@ public class HandleImpl<T> implements ResultHandle<T>
 	}
 
 	@Override
-	public T get() {
-		stateController.waitUntilTerminated(taskName, verifyDependencies);
-		return stateController.getResult();
+	public V get() {
+		stateController.join(taskName, verifyDependencies);
+		if (stateController.hasCompleted()) {
+			return stateController.getResult();
+		} else if (stateController.hasTerminatedExceptionally()) {
+			Throwable exception = stateController.getException();
+			throw new CompletionException(exception);
+		}
+		synchronized (coordinator) {
+			if (coordinator._hasStopped()) {
+				throw new CancellationException("Trying to access value of task '" + taskName + "' that has been stopped");
+			}
+			String error = "The task has not been stopped nor did it terminate, but has been considered joinable.";
+			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+			throw new CoordinatorException(error);
+		}
 	}
 
 	public void _setFuture(Future<?> future) {
@@ -155,14 +168,8 @@ public class HandleImpl<T> implements ResultHandle<T>
 			if (!startExecution()) {
 				return;
 			}
-			T result = callable.call();
+			V result = callable.call();
 			complete(result);
-		} catch (TaskStoppedException e) {
-
-			// TODO: Do we have to manually transition the state here or can we rely on stop()?
-			stateController._transitionTo(TaskStage.TERMINATED);
-
-			stop();
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
 		} finally {

@@ -1,8 +1,8 @@
 package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.handles.TaskStoppedException;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
@@ -12,7 +12,7 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  * <b>When a task Finishes</b> (either exceptionally or regularly), the following things happen in the given order:
  * <ol>
  *     <li>The result/exception is stored (see {@link #_setResult(Object)} and {@link #_setException(Throwable)}, respectively)</li>
- *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#EXECUTION_FINISHED}</li>
+ *     <li>The stage changes from {@link TaskStage#EXECUTING} to {@link TaskStage#FINISHED}</li>
  *     <li>The lock that makes callers of {@link ResultHandle#get()} wait is released (see {@link #_transitionTo(TaskStage)})</li>
  *     <li>Completion/exception listeners are informed and</li>
  *     <li>
@@ -25,22 +25,21 @@ import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
  * </ol>
  *
  */
-class TaskStateController<T>
+class TaskStateController<V>
 {
 	private final HandleImpl<?>				handle;
 	private final ExecutionCoordinatorImpl	coordinator;
 
-	private final TaskState<T>				state;
+	private final TaskState<V>				state;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
-	 * is stopped. It is meant to be waited for in {@link #waitUntilTerminated(String, boolean)}.<br>
-	 * <br>
+	 * when it is stopped. It is meant to be waited for in {@link #join(String, boolean)}.<br>
 	 * Note that the value must be set to true <b>before</b> calling any listener to avoid deadlocks:
-	 * Listeners, in particular completion listeners, might indirectly call {@code waitUntilTerminated()},
-	 * e.g., by calling {@link HandleImpl#get()}.
+	 * Listeners, in particular completion listeners, might indirectly call {@code join()}, e.g., by calling
+	 * {@link HandleImpl#get()}.
 	 */
-	private final AwaitableFlag				terminatedFlag;
+	private final AwaitableFlag				joinFlag;
 
 	/**
 	 * This value is set to true when the task terminates, either successfully or exceptionally, or
@@ -55,38 +54,37 @@ class TaskStateController<T>
 		this.handle = handle;
 		this.coordinator = coordinator;
 		this.state = new TaskState<>();
-		_checkState();
 
-		terminatedFlag = new AwaitableFlag();
+		joinFlag = new AwaitableFlag();
 		releaseCoordinatorFlag = new AwaitableFlag(coordinator.getTerminationLock());
 
 		if (!coordinator._hasStopped()) {
 			try {
-				terminatedFlag.unset();
+				joinFlag.unset();
 				releaseCoordinatorFlag.unset();
 			} catch (InterruptedException e) {
-				handle.stop();
+				coordinator.stop();
 			}
 		}
 	}
 
-	void _setResult(T result) {
+	void _setResult(V result) {
 		state.setResult(result);
 		_log(LogLevel.STATE, "result = " + result);
-		_transitionTo(TaskStage.EXECUTION_FINISHED);
+		_transitionTo(TaskStage.FINISHED);
 	}
 
 	void _setException(Throwable exception) {
 		state.setException(exception);
 		_log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
-		_transitionTo(TaskStage.EXECUTION_FINISHED);
+		_transitionTo(TaskStage.FINISHED);
 	}
 
 	boolean hasCompleted() {
 		return state.hasCompleted();
 	}
 
-	T getResult() {
+	V getResult() {
 		checkCondition(state.hasCompleted(), "Trying to access unavailable result");
 		return state.getResult();
 	}
@@ -108,62 +106,84 @@ class TaskStateController<T>
 	}
 
 	boolean _transitionTo(TaskStage newStage) {
-		boolean wasInTerminalStage = state.hasTerminated();
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
 			return false;
 		}
-		if (!wasInTerminalStage && newStage.isTerminalStage()) {
-			_onTerminated();
+		if (newStage.isReadyToJoin()) {
+			_makeReadyToJoin();
 		}
 		if (newStage == TaskStage.TERMINATED) {
 			_releaseCoordinator();
 		}
 		_log(LogLevel.STATE, newStage.toString());
-		return _checkState();
+		return true;
 	}
 
-	void waitUntilTerminated(String taskName, boolean verifyDependencies) {
-		if (hasCompleted()) {
+	void join(String taskName, boolean verifyDependencies) {
+		if (isReadyToJoin()) {
+			// handle has terminated regularly or exceptionally or has been stopped before being executed
 			return;
 		}
+
+		/*
+		 * We have to wait. This is not the intended way to use Hippodamus:
+		 *
+		 * (1) Completion and exception listener won't be called unless the task has terminated. I.e., if they call
+		 *     get(), then the task is ready to join.
+		 * (2) If this method is called from another task, then this task should have been specified as dependency of
+		 *     the calling task. In that case, the calling task would not execute unless this task has terminated.
+		 * (3) We do not see why anymore else should try to retrieve the task's value unless the whole coordinator has
+		 *     terminated. If this is really required, then the caller must not activate dependency verification.
+		 */
 		if (verifyDependencies) {
 			synchronized (coordinator) {
-				_log(LogLevel.INTERNAL_ERROR, "Waiting for a handle that has not yet completed. Did you forget to specify that handle as dependency?");
-				throw new TaskStoppedException(taskName);
+				String error = "Waiting for task '" + taskName + "' that has not yet finished. Did you forget to specify its handle as dependency?";
+				_log(LogLevel.INTERNAL_ERROR, error);
+				throw new CoordinatorException(error);
 			}
 		}
-		if (state.hasTerminatedExceptionally()) {
-			throw new TaskStoppedException(taskName);
-		}
-		boolean completed;
-		try {
-			terminatedFlag.waitUntilTrue();
-			completed = state.hasCompleted();
-		} catch (InterruptedException e) {
-			completed = false;
-		}
-		if (!completed) {
-			throw new TaskStoppedException(taskName);
+		/*
+		 * We provide limited support for interruptions: We do not swallow interruption requests, but we also do
+		 * not react to them here. The reason is that reacting to interrupts would only be possible by also throwing
+		 * an InterruptedException. However, this would complicate the usage of ResultHandle.get() just because of
+		 * scenarios we discourage.
+		 */
+		boolean interrupted = Thread.interrupted();
+		do {
+			try {
+				joinFlag.waitUntilTrue();
+				interrupted = interrupted || Thread.interrupted();
+			} catch (InterruptedException e) {
+				interrupted = true;
+			}
+		} while (!isReadyToJoin());
+		if (interrupted) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
 	/***********
 	 * Locking *
 	 **********/
-	void _onTerminated() {
-		terminatedFlag.set();
+	void _makeReadyToJoin() {
+		joinFlag.set();
 	}
 
-	void _releaseCoordinator() {
+	private boolean isReadyToJoin() {
+		if (state.isReadyToJoin()) {
+			return true;
+		}
+		synchronized (coordinator) {
+			if (coordinator._hasStopped()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void _releaseCoordinator() {
 		releaseCoordinatorFlag.set();
-	}
-
-	private boolean _checkState() {
-		return checkCondition(
-			!state.hasFinished() || state.hasTerminated(),
-			"The task should have terminated"
-		);
 	}
 
 	private boolean checkCondition(boolean condition, String message) {

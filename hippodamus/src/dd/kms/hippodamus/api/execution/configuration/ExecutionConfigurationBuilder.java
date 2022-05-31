@@ -53,5 +53,5 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	 *
 	 * @see ExecutionConfigurationBuilder#dependencies(Handle...)
 	 */
-	ExecutionConfigurationBuilder dependencies(Collection<Handle> dependencies);
+	ExecutionConfigurationBuilder dependencies(Collection<? extends Handle> dependencies);
 }

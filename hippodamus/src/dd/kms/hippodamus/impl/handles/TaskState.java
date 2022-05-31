@@ -4,10 +4,10 @@ package dd.kms.hippodamus.impl.handles;
  * Stores information about whether a task has finished regularly or exceptionally and,
  * if so, what the result was or which exception had been thrown, respectively.
  */
-class TaskState<T>
+class TaskState<V>
 {
 	private volatile boolean	finished;
-	private volatile T			result;
+	private volatile V			result;
 	private volatile Throwable	exception;
 	private volatile TaskStage	taskStage;
 
@@ -20,15 +20,15 @@ class TaskState<T>
 	}
 
 	String transitionTo(TaskStage newStage) {
-		if (newStage != TaskStage.TERMINATED && newStage.ordinal() != taskStage.ordinal() + 1) {
+		if (!taskStage.canTransitionTo(newStage)) {
 			return "Trying to transition state from '" + taskStage + "' to '" + newStage + "'";
 		}
 		taskStage = newStage;
 		return null;
 	}
 
-	boolean hasTerminated() {
-		return taskStage.isTerminalStage();
+	boolean isReadyToJoin() {
+		return taskStage.isReadyToJoin();
 	}
 
 	boolean hasFinished() {
@@ -41,29 +41,21 @@ class TaskState<T>
 	}
 
 	boolean hasTerminatedExceptionally() {
-		return finished && exception != null;
+		return exception != null;
 	}
 
-	boolean setResult(T result) {
-		if (finished) {
-			return false;
-		}
+	void setResult(V result) {
 		this.result = result;
 		finished = true;
-		return true;
 	}
 
-	T getResult() {
+	V getResult() {
 		return result;
 	}
 
-	boolean setException(Throwable exception) {
-		if (finished) {
-			return false;
-		}
+	void setException(Throwable exception) {
 		this.exception = exception;
 		finished = true;
-		return true;
 	}
 
 	Throwable getException() {

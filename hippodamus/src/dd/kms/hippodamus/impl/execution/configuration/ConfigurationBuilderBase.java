@@ -52,7 +52,7 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	@Override
-	public B dependencies(Collection<Handle> dependencies) {
+	public B dependencies(Collection<? extends Handle> dependencies) {
 		this.dependencies = ImmutableList.copyOf(dependencies);
 		Handle dependencyWithWrongCoordinator = this.dependencies.stream()
 			.filter(dependency -> dependency.getExecutionCoordinator() != coordinator)

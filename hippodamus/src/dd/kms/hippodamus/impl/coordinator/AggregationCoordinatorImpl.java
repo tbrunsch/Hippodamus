@@ -25,9 +25,8 @@ public class AggregationCoordinatorImpl<S, R> extends ExecutionCoordinatorImpl i
 
 	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable, TaskConfiguration taskConfiguration) throws T {
 		synchronized (this) {
-			boolean initiallyStopped = aggregator.hasAggregationCompleted();
-			ResultHandle<S> handle = execute(callable, taskConfiguration, initiallyStopped);
-			if (!initiallyStopped) {
+			ResultHandle<S> handle = execute(callable, taskConfiguration);
+			if (!_hasStopped()) {
 				handle.onCompletion(() -> aggregate(handle));
 			}
 			return handle;
