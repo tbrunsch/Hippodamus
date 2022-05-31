@@ -15,6 +15,8 @@ abstract class AbstractValueRetrievedTest
 	private static final int	SUPPLIER_TASK_SLEEP_TIME_MS		= 100;
 	private static final int	SUPPLIER_TASK_SLEEP_REPETITIONS	= 10;
 
+	static final int			PRECISION_MS					= 100;
+
 	static final int			SUPPLIER_VALUE					= 42;
 
 	void runDummyTask() {

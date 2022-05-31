@@ -67,6 +67,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			});
 			finalSupplierTask.onException(() -> {
 				exceptionEncounteredByExceptionListener.set(finalSupplierTask.getException());
+				eventManager.fireEvent(RetrievalEvent.EXCEPTION);
 			});
 
 		} catch (SupplierException e) {
@@ -87,8 +88,12 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 
 		if (supplierWithException) {
 			Assertions.assertFalse(eventManager.encounteredEvent(RetrievalEvent.START));
+
+			Assertions.assertTrue(eventManager.getDurationMs(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
 		} else {
 			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
+
+			Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
 		}
 
 		/*

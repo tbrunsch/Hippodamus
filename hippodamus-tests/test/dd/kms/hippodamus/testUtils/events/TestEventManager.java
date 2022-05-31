@@ -76,6 +76,22 @@ public class TestEventManager
 	}
 
 	public boolean before(TestEvent event1, TestEvent event2) {
+		return getDurationMs(event1, event2) >= 0;
+	}
+
+	public long getDurationMs(Handle handle1, HandleState state1, Handle handle2, HandleState state2) {
+		return getDurationMs(handle1, state1, new HandleEvent(handle2, state2));
+	}
+
+	public long getDurationMs(Handle handle1, HandleState state1, TestEvent event2) {
+		return getDurationMs(new HandleEvent(handle1, state1), event2);
+	}
+
+	public long getDurationMs(TestEvent event1, Handle handle2, HandleState state2) {
+		return getDurationMs(event1, new HandleEvent(handle2, state2));
+	}
+
+	public long getDurationMs(TestEvent event1, TestEvent event2) {
 		Long timestamp1 = eventTimesMs.get(event1);
 		if (timestamp1 == null) {
 			throw new IllegalArgumentException("First event has not been encountered");
@@ -84,6 +100,6 @@ public class TestEventManager
 		if (timestamp2 == null) {
 			throw new IllegalArgumentException("Second event has not been encountered");
 		}
-		return timestamp1 <= timestamp2;
+		return timestamp2 - timestamp1;
 	}
 }

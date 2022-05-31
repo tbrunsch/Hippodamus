@@ -89,8 +89,16 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			if (checkExceptionBeforeValueRetrieval) {
 				coordinator.checkException();
 			}
-			result = supplierTask.get();
-			eventManager.fireEvent(RetrievalEvent.END);
+			boolean encounteredException = true;
+			try {
+				result = supplierTask.get();
+				encounteredException = false;
+				eventManager.fireEvent(RetrievalEvent.END);
+			} finally {
+				if (encounteredException) {
+					eventManager.fireEvent(RetrievalEvent.EXCEPTION);
+				}
+			}
 		} catch (SupplierException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {
@@ -135,7 +143,8 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 		 * Test that the tasks and the coordinator behave as expected
 		 */
 		Assertions.assertEquals(stopSupplier, encounteredCancellationException);
-		if (checkExceptionBeforeValueRetrieval && retrievalStartState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY) {
+		boolean checkExceptionThrows = checkExceptionBeforeValueRetrieval && retrievalStartState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
+		if (checkExceptionThrows) {
 			/*
 			 * Checking the coordinator's exception via ExecutionCoordinator.checkException() before retrieving the
 			 * supplier task's value lets the coordinator throw the already encountered SupplierException in this case.
@@ -150,11 +159,21 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 
 		if (supplierWithException) {
 			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+
+			if (checkExceptionThrows) {
+				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, new CoordinatorEvent(CoordinatorState.CLOSED)) <= PRECISION_MS);
+			} else {
+				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+			}
 		} else {
 			Assertions.assertNull(supplierTaskException);
 
-			if (!stopSupplier) {
+			if (stopSupplier) {
+				Assertions.assertTrue(eventManager.getDurationMs(coordinatorStoppedEvent, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+			} else {
 				Assertions.assertEquals(SUPPLIER_VALUE, result);
+
+				Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
 			}
 		}
 	}
