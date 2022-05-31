@@ -25,7 +25,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 
 /**
- * This test checks that retrieving a value from a task from the coordinator's thread works correctly independent of the
+ * This test checks that retrieving a task's value from the coordinator's thread works correctly independent of the
  * task's state. We do this by submitting the following tasks in the specified order:
  * <ol>
  *     <li>
@@ -85,7 +85,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			}
 
 			while (!startValueRetrievalFlag.get());
-			eventManager.encounteredEvent(new RetrievalStartedEvent());
+			eventManager.fireEvent(new RetrievalStartedEvent());
 			if (checkExceptionBeforeValueRetrieval) {
 				coordinator.checkException();
 			}

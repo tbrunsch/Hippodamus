@@ -20,11 +20,11 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 	BaseTestCoordinator(C wrappedCoordinator, TestEventManager eventManager) {
 		this.wrappedCoordinator = wrappedCoordinator;
 		this.eventManager = eventManager;
-		eventManager.encounteredEvent(new CoordinatorEvent(CoordinatorState.STARTED));
+		eventManager.fireEvent(new CoordinatorEvent(CoordinatorState.STARTED));
 	}
 
 	private void encounteredEvent(TestEvent event) {
-		eventManager.encounteredEvent(event);
+		eventManager.fireEvent(event);
 	}
 
 	public void handleState(Handle handle, HandleState state) {

@@ -18,7 +18,7 @@ public class TestEventManager
 	private final Map<Handle, Throwable>		taskExceptions		= new HashMap<>();
 	private final Multimap<TestEvent, Runnable> eventListeners		= ArrayListMultimap.create();
 
-	public synchronized void encounteredEvent(TestEvent event) {
+	public synchronized void fireEvent(TestEvent event) {
 		if (eventTimesMs.containsKey(event)) {
 			throw new IllegalStateException("Encountered event '" + event + "' twice");
 		}
