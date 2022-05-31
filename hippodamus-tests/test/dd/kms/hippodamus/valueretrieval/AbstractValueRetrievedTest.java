@@ -42,8 +42,9 @@ abstract class AbstractValueRetrievedTest
 
 	static class RetrievalEvent extends TestEvent
 	{
-		static final RetrievalEvent	START	= new RetrievalEvent();
-		static final RetrievalEvent	END		= new RetrievalEvent();
+		static final RetrievalEvent	START		= new RetrievalEvent();
+		static final RetrievalEvent	END			= new RetrievalEvent();
+		static final RetrievalEvent	EXCEPTION	= new RetrievalEvent();
 
 		private RetrievalEvent() {}
 
@@ -59,7 +60,10 @@ abstract class AbstractValueRetrievedTest
 
 		@Override
 		public String toString() {
-			return this == START ? "Value retrieval started" : "Value retrieval ended";
+			return	this == START 		? "Value retrieval started" :
+					this == END			? "Value retrieval ended" :
+					this == EXCEPTION	? "Value retrieval with exception"
+										: null;
 		}
 	}
 
