@@ -16,9 +16,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * This test checks that retrieving a task's value a completion listener works correctly independent of the
  * task's state. We do this by submitting the following tasks in the specified order:
@@ -58,7 +55,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			final ResultHandle<Integer> finalSupplierTask = supplierTask;
 
 			finalSupplierTask.onCompletion(() -> {
-				eventManager.fireEvent(new RetrievalStartedEvent());
+				eventManager.fireEvent(RetrievalEvent.START);
 				try {
 					resultRetrievedByCompletionListener.set(finalSupplierTask.get());
 
@@ -77,7 +74,6 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Preconditions.checkState(dummyTask != null, "Dummy task handle is null");
 		Preconditions.checkState(supplierTask != null, "Supplier task handle is null");
 
-		RetrievalStartedEvent retrievalEvent = new RetrievalStartedEvent();
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
 		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
@@ -88,9 +84,9 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Assertions.assertTrue(eventManager.before(dummyCompletedEvent, supplierStartedEvent));
 
 		if (supplierWithException) {
-			Assertions.assertFalse(eventManager.encounteredEvent(retrievalEvent));
+			Assertions.assertFalse(eventManager.encounteredEvent(RetrievalEvent.START));
 		} else {
-			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, retrievalEvent));
+			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
 		}
 
 		/*

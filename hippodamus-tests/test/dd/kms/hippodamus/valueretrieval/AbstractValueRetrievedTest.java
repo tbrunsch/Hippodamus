@@ -40,23 +40,26 @@ abstract class AbstractValueRetrievedTest
 			: Arrays.stream(ValueRetrievalTaskState.values()).filter(ValueRetrievalTaskState::isReadyToJoin).collect(Collectors.toList());
 	}
 
-	static class RetrievalStartedEvent extends TestEvent
+	static class RetrievalEvent extends TestEvent
 	{
+		static final RetrievalEvent	START	= new RetrievalEvent();
+		static final RetrievalEvent	END		= new RetrievalEvent();
+
+		private RetrievalEvent() {}
+
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			return true;
+			return o == this;
 		}
 
 		@Override
 		public int hashCode() {
-			return 0;
+			return System.identityHashCode(this);
 		}
 
 		@Override
 		public String toString() {
-			return "Value retrieval started";
+			return this == START ? "Value retrieval started" : "Value retrieval ended";
 		}
 	}
 

@@ -85,7 +85,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			}
 
 			while (!startValueRetrievalFlag.get());
-			eventManager.fireEvent(new RetrievalStartedEvent());
+			eventManager.fireEvent(RetrievalEvent.START);
 			if (checkExceptionBeforeValueRetrieval) {
 				coordinator.checkException();
 			}
@@ -101,7 +101,6 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 		Preconditions.checkState(dummyTask != null, "Dummy task handle is null");
 		Preconditions.checkState(supplierTask != null, "Supplier task handle is null");
 
-		RetrievalStartedEvent retrievalEvent = new RetrievalStartedEvent();
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
 		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED);
@@ -115,19 +114,19 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 
 		switch (retrievalStartState) {
 			case NOT_YET_EXECUTED:
-				Assertions.assertTrue(eventManager.before(retrievalEvent, supplierStartedEvent));
+				Assertions.assertTrue(eventManager.before(RetrievalEvent.START, supplierStartedEvent));
 				break;
 			case EXECUTING:
-				Assertions.assertTrue(eventManager.before(supplierStartedEvent, retrievalEvent));
+				Assertions.assertTrue(eventManager.before(supplierStartedEvent, RetrievalEvent.START));
 				break;
 			case STOPPED_BEFORE_TERMINATION:
-				Assertions.assertTrue(eventManager.before(coordinatorStoppedEvent, retrievalEvent));
+				Assertions.assertTrue(eventManager.before(coordinatorStoppedEvent, RetrievalEvent.START));
 				break;
 			case TERMINATED_REGULARLY:
-				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, retrievalEvent));
+				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
 				break;
 			case TERMINATED_EXCEPTIONALLY:
-				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, retrievalEvent));
+				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, RetrievalEvent.START));
 				break;
 		}
 
