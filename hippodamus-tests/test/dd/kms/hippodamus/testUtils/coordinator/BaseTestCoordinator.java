@@ -55,9 +55,11 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 	public void close() {
 		encounteredEvent(new CoordinatorEvent(CoordinatorState.CLOSING));
 
-		wrappedCoordinator.close();
-
-		encounteredEvent(new CoordinatorEvent(CoordinatorState.CLOSED));
+		try {
+			wrappedCoordinator.close();
+		} finally {
+			encounteredEvent(new CoordinatorEvent(CoordinatorState.CLOSED));
+		}
 	}
 
 	@Override
