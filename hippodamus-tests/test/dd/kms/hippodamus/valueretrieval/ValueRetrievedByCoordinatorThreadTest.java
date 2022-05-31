@@ -90,6 +90,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 				coordinator.checkException();
 			}
 			result = supplierTask.get();
+			eventManager.fireEvent(RetrievalEvent.END);
 		} catch (SupplierException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {

@@ -57,7 +57,9 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			finalSupplierTask.onCompletion(() -> {
 				eventManager.fireEvent(RetrievalEvent.START);
 				try {
-					resultRetrievedByCompletionListener.set(finalSupplierTask.get());
+					int value = finalSupplierTask.get();
+					eventManager.fireEvent(RetrievalEvent.END);
+					resultRetrievedByCompletionListener.set(value);
 
 				} catch (Throwable t) {
 					exceptionEncounteredByCompletionListener.set(t);

@@ -166,7 +166,9 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		ResultHandle<Integer> supplierTask;
 		while ((supplierTask = supplierTaskReference.get()) == null);
 		eventManager.fireEvent(RetrievalEvent.START);
-		return supplierTask.get();
+		int value = supplierTask.get();
+		eventManager.fireEvent(RetrievalEvent.END);
+		return value;
 	}
 
 	static List<Object[]> getParameters() {
