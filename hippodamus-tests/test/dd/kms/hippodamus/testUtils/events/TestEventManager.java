@@ -76,7 +76,7 @@ public class TestEventManager
 		if (timestamp1 == null) {
 			throw new IllegalArgumentException("First event has not been encountered");
 		}
-		Long timestamp2 = eventTimesMs.get(event1);
+		Long timestamp2 = eventTimesMs.get(event2);
 		if (timestamp2 == null) {
 			throw new IllegalArgumentException("Second event has not been encountered");
 		}
