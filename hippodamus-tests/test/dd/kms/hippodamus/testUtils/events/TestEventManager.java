@@ -96,14 +96,20 @@ public class TestEventManager
 	}
 
 	public long getDurationMs(TestEvent event1, TestEvent event2) {
-		Long timestamp1 = eventTimesMs.get(event1);
-		if (timestamp1 == null) {
-			throw new IllegalArgumentException("First event has not been encountered");
-		}
-		Long timestamp2 = eventTimesMs.get(event2);
-		if (timestamp2 == null) {
-			throw new IllegalArgumentException("Second event has not been encountered");
-		}
+		long timestamp1 = getElapsedTimeMs(event1);
+		long timestamp2 = getElapsedTimeMs(event2);
 		return timestamp2 - timestamp1;
+	}
+
+	public long getElapsedTimeMs(Handle handle, HandleState state) {
+		return getElapsedTimeMs(new HandleEvent(handle, state));
+	}
+
+	public long getElapsedTimeMs(TestEvent event) {
+		Long timestamp = eventTimesMs.get(event);
+		if (timestamp == null) {
+			throw new IllegalArgumentException("Event '" + event + "' has not been encountered");
+		}
+		return timestamp;
 	}
 }
