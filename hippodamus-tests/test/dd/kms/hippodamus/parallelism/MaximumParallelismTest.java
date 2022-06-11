@@ -11,10 +11,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.IntStream;
 
+/**
+ * This test verifies that the {@link ExecutionCoordinator} takes the configured maximum parallelism into account. The
+ * test also verifies that the specified maximum parallelism can also be achieved under certain criteria that are met
+ * in this test.
+ */
 class MaximumParallelismTest
 {
-	private static final int	NUM_TASKS			= 100;
-	private static final long	TASK_TIME_MS		= 10;
+	private static final int	NUM_TASKS		= 100;
+	private static final long	TASK_TIME_MS	= 10;
 
 	static Object getParameters() {
 		int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
