@@ -43,7 +43,11 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 	@Override
 	public void stop() {
 		wrappedCoordinator.stop();
-		encounteredEvent(new CoordinatorEvent(CoordinatorState.STOPPED));
+		/*
+		 * Only external calls of stop() can be detected. If stop() is called on the wrapped coordinator, then we
+		 * have no chance to detect it.
+		 */
+		encounteredEvent(new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY));
 	}
 
 	@Override

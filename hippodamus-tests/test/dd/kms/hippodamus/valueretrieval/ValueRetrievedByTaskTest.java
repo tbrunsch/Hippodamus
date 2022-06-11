@@ -82,7 +82,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 					eventManager.onHandleEvent(supplierTask, HandleState.STARTED, startValueRetrievalRunnable);
 					break;
 				case STOPPED_BEFORE_TERMINATION:
-					eventManager.onCoordinatorEvent(CoordinatorState.STOPPED, startValueRetrievalRunnable);
+					eventManager.onCoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY, startValueRetrievalRunnable);
 					break;
 				case TERMINATED_REGULARLY:
 					supplierTask.onCompletion(startValueRetrievalRunnable);
@@ -105,7 +105,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
-		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED);
+		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY);
 		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
 		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY);
 
