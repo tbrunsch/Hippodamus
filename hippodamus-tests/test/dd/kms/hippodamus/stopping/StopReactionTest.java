@@ -51,14 +51,18 @@ class StopReactionTest
 		long expectedTimeCoordinatorMs = !reactToStop
 			? TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL
 			: TIME_UNTIL_EXCEPTION_MS;
-		TestUtils.assertTimeLowerBound(expectedTimeCoordinatorMs, elapsedTimeCoordinatorMs);
-		TestUtils.assertTimeUpperBound(expectedTimeCoordinatorMs + PRECISION_MS, elapsedTimeCoordinatorMs);
+		TestUtils.assertTimeBounds(expectedTimeCoordinatorMs, PRECISION_MS, elapsedTimeCoordinatorMs);
 
-		long expectedPoolLowerBoundMs = reactToStop ? TIME_UNTIL_EXCEPTION_MS : TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
-		long expectedPoolUpperBoundMs = (reactToStop ? TIME_UNTIL_EXCEPTION_MS + TASK_2_SLEEP_INTERVAL : TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL)
-										+ PRECISION_MS;
-		TestUtils.assertTimeLowerBound(expectedPoolLowerBoundMs, elapsedTimePoolMs);
-		TestUtils.assertTimeUpperBound(expectedPoolUpperBoundMs, elapsedTimePoolMs);
+		final long expectedPoolLowerBoundMs;
+		final long expectedIntervalLengthMs;
+		if (reactToStop) {
+			expectedPoolLowerBoundMs = TIME_UNTIL_EXCEPTION_MS;
+			expectedIntervalLengthMs = TASK_2_SLEEP_INTERVAL + PRECISION_MS;
+		} else {
+			expectedPoolLowerBoundMs = TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
+			expectedIntervalLengthMs = PRECISION_MS;
+		}
+		TestUtils.assertTimeBounds(expectedPoolLowerBoundMs, expectedIntervalLengthMs, elapsedTimePoolMs);
 	}
 
 	private void run1() throws ExpectedException {

@@ -49,8 +49,7 @@ class JoinTest
 			});
 		} catch (TestException e) {
 			long elapsedTimeMs = stopWatch.getElapsedTimeMs();
-			TestUtils.assertTimeLowerBound(TASK_TIME_MS, elapsedTimeMs);
-			TestUtils.assertTimeUpperBound(TASK_TIME_MS + PRECISION_MS, elapsedTimeMs);
+			TestUtils.assertTimeBounds(TASK_TIME_MS, PRECISION_MS, elapsedTimeMs);
 			return;
 		}
 		Assertions.fail("An exception has been swallowed");

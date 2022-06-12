@@ -52,12 +52,10 @@ class CoordinatorTerminationTimeTest
 		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
 		long expectedCoordinatorTimeMs = (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS;
-		TestUtils.assertTimeLowerBound(expectedCoordinatorTimeMs, coordinatorTimeMs);
-		TestUtils.assertTimeUpperBound(expectedCoordinatorTimeMs + PRECISION_MS, coordinatorTimeMs);
+		TestUtils.assertTimeBounds(expectedCoordinatorTimeMs, PRECISION_MS, coordinatorTimeMs);
 
 		long expectedPoolTimeMs = (NUM_ROUNDS_UNTIL_EXCEPTION+1)*TASK_TIME_MS;
-		TestUtils.assertTimeLowerBound(expectedPoolTimeMs, poolTimeMs);
-		TestUtils.assertTimeUpperBound(expectedPoolTimeMs + PRECISION_MS, poolTimeMs);
+		TestUtils.assertTimeBounds(expectedPoolTimeMs, PRECISION_MS, poolTimeMs);
 	}
 
 	private void run(TaskCounter counter) throws TestException {

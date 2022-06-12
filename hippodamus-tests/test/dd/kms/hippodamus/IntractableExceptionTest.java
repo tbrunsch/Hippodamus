@@ -40,8 +40,7 @@ class IntractableExceptionTest
 
 		Assertions.assertTrue(caughtIntractableException, "No exception has been thrown");
 
-		TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
-		TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
+		TestUtils.assertTimeBounds(TASK_DURATION_MS, PRECISION_MS, elapsedTimeMs);
 	}
 
 	/**
@@ -72,8 +71,7 @@ class IntractableExceptionTest
 			} else {
 				Assertions.assertFalse(caughtIntractableException, "An exception has been thrown");
 
-				TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
-				TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
+				TestUtils.assertTimeBounds(TASK_DURATION_MS, PRECISION_MS, elapsedTimeMs);
 			}
 		}
 	}

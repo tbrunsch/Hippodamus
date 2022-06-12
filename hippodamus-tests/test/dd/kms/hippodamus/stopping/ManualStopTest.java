@@ -33,9 +33,8 @@ class ManualStopTest
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
 		long lowerBoundMs = TIME_UNTIL_STOP_MS;
-		long upperBoundMs = lowerBoundMs + TASK_SLEEP_INTERVAL + PRECISION_MS;
-		TestUtils.assertTimeLowerBound(lowerBoundMs, elapsedTimeMs);
-		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
+		long intervalLengthMs = TASK_SLEEP_INTERVAL + PRECISION_MS;
+		TestUtils.assertTimeBounds(lowerBoundMs, intervalLengthMs, elapsedTimeMs);
 	}
 
 	private void runWithStopReaction() {

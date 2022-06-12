@@ -139,9 +139,7 @@ class ElementwiseComparisonTest
 			: deviatingElementIndex + 1;
 		long waitForFurtherLoadTimeMs = numRequiredTasksForComparison < numElements ? LOAD_TIME_MS : 0;
 		long lowerBoundMs = numRequiredTasksForComparison * LOAD_TIME_MS + COMPARISON_TIME_MS;
-		long upperBoundMs = lowerBoundMs + waitForFurtherLoadTimeMs + PRECISION_MS;
-		TestUtils.assertTimeLowerBound(lowerBoundMs, elapsedTimeMs);
-		TestUtils.assertTimeUpperBound(upperBoundMs, elapsedTimeMs);
+		TestUtils.assertTimeBounds(lowerBoundMs, waitForFurtherLoadTimeMs + PRECISION_MS, elapsedTimeMs);
 	}
 
 	static Object getParameters() {

@@ -33,11 +33,16 @@ public class TestUtils
 		return ForkJoinPool.commonPool().getParallelism();
 	}
 
-	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {
+	public static void assertTimeBounds(long expectedLowerBoundMs, long expectedIntervalLength, long elapsedTimeMs) {
+		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs);
+		assertTimeUpperBound(expectedLowerBoundMs + expectedIntervalLength, elapsedTimeMs);
+	}
+
+	private static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {
 		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs, "Coordinator");
 	}
 
-	public static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs, String description) {
+	private static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs, String description) {
 		Assertions.assertTrue(expectedLowerBoundMs <= elapsedTimeMs,
 			description + " required " + elapsedTimeMs + " ms, but it should have required at least " + expectedLowerBoundMs + " ms");
 	}
