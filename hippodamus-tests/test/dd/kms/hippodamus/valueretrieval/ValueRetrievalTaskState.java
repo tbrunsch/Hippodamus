@@ -1,7 +1,5 @@
 package dd.kms.hippodamus.valueretrieval;
 
-import java.util.List;
-
 /**
  * This enum describes the state a task is in when its value is retrieved. The five values
  * conform to the states discussed in the README.

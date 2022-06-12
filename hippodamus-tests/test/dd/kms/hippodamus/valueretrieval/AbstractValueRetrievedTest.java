@@ -36,10 +36,14 @@ abstract class AbstractValueRetrievedTest
 		return SUPPLIER_VALUE;
 	}
 
+	static List<ValueRetrievalTaskState> getPossibleRetrievalEndStates() {
+		return Arrays.stream(ValueRetrievalTaskState.values()).filter(ValueRetrievalTaskState::isReadyToJoin).collect(Collectors.toList());
+	}
+
 	static List<ValueRetrievalTaskState> getPossibleRetrievalEndStates(ValueRetrievalTaskState retrievalStartState) {
 		return retrievalStartState.isReadyToJoin()
 			? Collections.singletonList(retrievalStartState)
-			: Arrays.stream(ValueRetrievalTaskState.values()).filter(ValueRetrievalTaskState::isReadyToJoin).collect(Collectors.toList());
+			: getPossibleRetrievalEndStates();
 	}
 
 	static class RetrievalEvent extends TestEvent

@@ -21,16 +21,11 @@ class MaximumParallelismTest
 	private static final int	NUM_TASKS		= 100;
 	private static final long	TASK_TIME_MS	= 10;
 
-	static Object getParameters() {
-		int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
-		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
-	}
-
 	private int			numRunningTasks;
 	private int			maxNumRunningTasks;
 
 	@ParameterizedTest(name = "max parallelism: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getMaximumParallelismValues")
 	void testMaximumParallelism(int maxParallelism) {
 		maxNumRunningTasks = 0;
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
@@ -52,5 +47,10 @@ class MaximumParallelismTest
 		synchronized (this) {
 			numRunningTasks--;
 		}
+	}
+
+	static Object getMaximumParallelismValues() {
+		int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
+		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
 	}
 }

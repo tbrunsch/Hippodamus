@@ -31,12 +31,8 @@ import java.util.concurrent.ExecutorService;
  */
 class DependencyVerificationTest
 {
-	static Object getParameters() {
-		return new Object[]{ false, true };
-	}
-
 	@ParameterizedTest(name = "verify dependencies: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getVerifyDependencyValues")
 	void testNonSubmittedTaskDependency(boolean verifyDependencies) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
@@ -72,7 +68,7 @@ class DependencyVerificationTest
 	}
 
 	@ParameterizedTest(name = "verify dependencies: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getVerifyDependencyValues")
 	void testRunningTaskDependency(boolean verifyDependencies) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
@@ -107,6 +103,10 @@ class DependencyVerificationTest
 	private int generateNumber(int number, long simulatedTimeMs) {
 		TestUtils.simulateWork(simulatedTimeMs);
 		return number;
+	}
+
+	static Object getVerifyDependencyValues() {
+		return new Object[]{ false, true };
 	}
 
 	private static class TestLogger implements Logger

@@ -33,7 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 {
 	@ParameterizedTest(name = "end state of supplier task: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getPossibleRetrievalEndStates")
 	void testValueRetrieval(ValueRetrievalTaskState supplierTaskEndState) {
 		boolean stopSupplier = supplierTaskEndState == ValueRetrievalTaskState.STOPPED_BEFORE_TERMINATION;
 		boolean supplierWithException = supplierTaskEndState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
@@ -112,9 +112,5 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			Assertions.assertNull(supplierTaskException);
 			Assertions.assertEquals(SUPPLIER_VALUE, resultRetrievedByCompletionListener.get());
 		}
-	}
-
-	static Object[] getParameters() {
-		return ValueRetrievalTaskState.values();
 	}
 }

@@ -44,12 +44,8 @@ class TransactionTest
 	 */
 	private static final int[]	START_TIMES	= { 0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100 };
 
-	static Object getParameters() {
-		return ImmutableList.of(300, 1200, 1600, 2400, 3000);
-	}
-
 	@ParameterizedTest(name = "transaction timeout after {0} ms")
-	@MethodSource("getParameters")
+	@MethodSource("getFileSystemAvailabilityTimeValues")
 	void testCopyFiles(long fileSystemAvailabilityTimeMs) throws IOException {
 		/*
 		 * The file system will "shut down" after fileSystemAvailabilityTimeMs millis.
@@ -86,6 +82,10 @@ class TransactionTest
 			Assertions.assertTrue(fileSystem.getFiles().isEmpty(), "Undo of transaction failed");
 		}
 		Assertions.assertTrue(caughtException, "An exception has been swallowed");
+	}
+
+	static Object getFileSystemAvailabilityTimeValues() {
+		return ImmutableList.of(300, 1200, 1600, 2400, 3000);
 	}
 
 	private static class Transaction

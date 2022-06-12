@@ -17,13 +17,8 @@ class NoDeadlockTest
 	private static final long	LONG_TASK_TIME_MS	= 500;
 	private static final long	PRECISION_MS		= 200;
 
-	static Object getParameters() {
-		final int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
-		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
-	}
-
 	@ParameterizedTest(name = "max parallelism: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getMaximumParallelismValues")
 	void testNoDeadlock(int maxParallelism) {
 		Thread stoppingThread;	// used to stop coordinator in case of a dead lock
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
@@ -53,5 +48,10 @@ class NoDeadlockTest
 	private int returnWithDelay(int value) {
 		TestUtils.simulateWork(LONG_TASK_TIME_MS);
 		return value;
+	}
+
+	static Object getMaximumParallelismValues() {
+		final int maxParallelism = Math.min(TestUtils.getDefaultParallelism(), 4);
+		return IntStream.range(1, maxParallelism + 1).boxed().toArray();
 	}
 }

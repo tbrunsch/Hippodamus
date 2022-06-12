@@ -2,8 +2,8 @@ package dd.kms.hippodamus.testUtils.exceptions;
 
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
-import dd.kms.hippodamus.testUtils.states.HandleState;
 import dd.kms.hippodamus.testUtils.coordinator.BaseTestCoordinator;
+import dd.kms.hippodamus.testUtils.states.HandleState;
 
 public class TestCallable<V, T extends Throwable> implements ExceptionalCallable<V, T>
 {

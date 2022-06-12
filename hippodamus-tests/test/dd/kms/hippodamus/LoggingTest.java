@@ -19,12 +19,8 @@ import java.util.Set;
  */
 class LoggingTest
 {
-	static Object getParameters() {
-		return LogLevel.values();
-	}
-
-	@ParameterizedTest(name = "exception in tasks: {0}, {1}")
-	@MethodSource("getParameters")
+	@ParameterizedTest(name = "log level: {0}")
+	@MethodSource("getLogLevelValues")
 	void testLogger(LogLevel minLogLevel) {
 		TestLogger logger = new TestLogger();
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
@@ -50,6 +46,10 @@ class LoggingTest
 				Assertions.assertFalse(logLevelEncountered, "Encountered a log message of level '" + logLevel + "' which should have been ignored");
 			}
 		}
+	}
+
+	static Object getLogLevelValues() {
+		return LogLevel.values();
 	}
 
 	private static class TestLogger implements Logger

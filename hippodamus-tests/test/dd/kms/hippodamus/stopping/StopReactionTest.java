@@ -19,12 +19,8 @@ class StopReactionTest
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
 	private static final long	PRECISION_MS			= 300;
 
-	static Object getParameters() {
-		return new Object[]{false, true};
-	}
-
 	@ParameterizedTest(name = "react to stop: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getPossibleReactToStopValues")
 	void testStopWithoutStopReaction(boolean reactToStop) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
@@ -77,6 +73,10 @@ class StopReactionTest
 			}
 			TestUtils.simulateWork(TASK_2_SLEEP_INTERVAL);
 		}
+	}
+
+	static Object getPossibleReactToStopValues() {
+		return new Object[]{false, true};
 	}
 
 	private static class ExpectedException extends Exception {}

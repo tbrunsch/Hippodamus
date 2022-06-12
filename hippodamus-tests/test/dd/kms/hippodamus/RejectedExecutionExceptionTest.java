@@ -26,12 +26,8 @@ class RejectedExecutionExceptionTest
 	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= TestUtils.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
 	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= TestUtils.createNamedInstance(Supplier.class, () -> Executors.newFixedThreadPool(NUM_THREADS), "dedicated executor service");
 
-	static Object getParameters() {
-		return new Object[]{ COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER };
-	}
-
 	@ParameterizedTest(name = "executor service: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getExecutorServiceSuppliers")
 	void testRejectedExecutionException(Supplier<ExecutorService> executorServiceSupplier) {
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.executorService(TaskType.COMPUTATIONAL, executorServiceSupplier.get(), true);
@@ -40,5 +36,9 @@ class RejectedExecutionExceptionTest
 				coordinator.execute(() -> TestUtils.simulateWork(TASK_TIME_MS));
 			}
 		}
+	}
+
+	static Object getExecutorServiceSuppliers() {
+		return new Object[]{ COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER };
 	}
 }

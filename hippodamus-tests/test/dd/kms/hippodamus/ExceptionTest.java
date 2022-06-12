@@ -18,15 +18,6 @@ import java.util.Collection;
  */
 class ExceptionTest
 {
-	static Collection<Object> getParameters() {
-		return Arrays.asList(
-			new Object[]{ false, false },
-			new Object[]{ false, true },
-			new Object[]{ true, false },
-			new Object[]{ true, true }
-		);
-	}
-
 	@ParameterizedTest(name = "exception in tasks: {0}, {1}")
 	@MethodSource("getParameters")
 	void testExceptions(boolean throwExceptionInTask1, boolean throwExceptionInTask2) {
@@ -56,6 +47,15 @@ class ExceptionTest
 		if (throwException) {
 			throw new Exception2();
 		}
+	}
+
+	static Collection<Object> getParameters() {
+		return Arrays.asList(
+			new Object[]{ false, false },
+			new Object[]{ false, true },
+			new Object[]{ true, false },
+			new Object[]{ true, true }
+		);
 	}
 
 	private static class Exception1 extends Exception {}
