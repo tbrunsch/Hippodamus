@@ -80,8 +80,9 @@ class NoDeadlockTest
 			tasks.add(task4);
 
 			/*
-			 * We do not want tests to stuck in a deadlock, so we resolve them manually, but the test will fail due to
-			 * a CancellationException.
+			 * We do not want tests to stuck in a deadlock, so we stop the coordinator manually after a sufficiently
+			 * large amount of time. If there was a deadlock, then stopping the coordinator will lead to a
+			 * CancellationException which lets the test fail.
 			 */
 			new Thread(() -> {
 				TestUtils.simulateWork(expectedRuntimeMs + 2*PRECISION_MS);
@@ -118,8 +119,8 @@ class NoDeadlockTest
 	private int returnWithDelay(int value) {
 		try {
 			Thread.sleep(TASK_TIME_MS);
-		} catch (InterruptedException ignored) {
-			return -1;
+		} catch (InterruptedException e) {
+			throw new CancellationException();
 		}
 		return value;
 	}
