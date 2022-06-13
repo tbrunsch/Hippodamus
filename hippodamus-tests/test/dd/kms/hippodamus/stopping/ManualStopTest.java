@@ -2,8 +2,11 @@ package dd.kms.hippodamus.stopping;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
+import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
+import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -22,19 +25,20 @@ class ManualStopTest
 		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() > 1, "This test requires at least two tasks to be processed in parallel");
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+		TestEventManager eventManager = new TestEventManager();
+		try (ExecutionCoordinator coordinator = TestCoordinators.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
 			coordinator.execute(this::runWithStopReaction);
 			coordinator.execute(() -> {
 				TestUtils.simulateWork(TIME_UNTIL_STOP_MS);
 				coordinator.stop();
 			});
 		}
-		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
 
-		long lowerBoundMs = TIME_UNTIL_STOP_MS;
-		long intervalLengthMs = TASK_SLEEP_INTERVAL + PRECISION_MS;
-		TestUtils.assertTimeBounds(lowerBoundMs, intervalLengthMs, elapsedTimeMs);
+		CoordinatorEvent stoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY);
+		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
+
+		TestUtils.assertTimeBounds(TIME_UNTIL_STOP_MS, PRECISION_MS, eventManager.getElapsedTimeMs(stoppedEvent));
+		TestUtils.assertTimeBounds(0, TASK_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(stoppedEvent, closedEvent));
 	}
 
 	private void runWithStopReaction() {
