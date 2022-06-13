@@ -38,6 +38,12 @@ public class TestUtils
 		assertTimeUpperBound(expectedLowerBoundMs + expectedIntervalLength, elapsedTimeMs);
 	}
 
+
+	public static void assertTimeBounds(long expectedLowerBoundMs, long expectedIntervalLength, long elapsedTimeMs, String description) {
+		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs, description);
+		assertTimeUpperBound(expectedLowerBoundMs + expectedIntervalLength, elapsedTimeMs, description);
+	}
+
 	private static void assertTimeLowerBound(long expectedLowerBoundMs, long elapsedTimeMs) {
 		assertTimeLowerBound(expectedLowerBoundMs, elapsedTimeMs, "Coordinator");
 	}
