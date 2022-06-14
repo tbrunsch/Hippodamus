@@ -2,8 +2,15 @@ package dd.kms.hippodamus.stopping;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.StopWatch;
+import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
+import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
+import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
+import dd.kms.hippodamus.testUtils.events.HandleEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,45 +31,38 @@ class StopReactionTest
 	void testStopWithoutStopReaction(boolean reactToStop) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
-		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(this::run1);
-			coordinator.execute(() -> run2(reactToStop));
+		TestEventManager eventManager = new TestEventManager();
+		Handle task1 = null;
+		Handle task2 = null;
+		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+			/*
+			 * Task 1 throws an exception after TIME_UNTIL_EXCEPTION_MS milliseconds, which stops the coordinator, which
+			 * then stops task 2.
+			 */
+			task1 = coordinator.execute(this::run1);
+			task2 = coordinator.execute(() -> run2(reactToStop));
 		} catch (ExpectedException e) {
 			caughtException = true;
 		}
-		long elapsedTimeCoordinatorMs = stopWatch.getElapsedTimeMs();
-		TestUtils.waitForEmptyCommonForkJoinPool();
-		long elapsedTimePoolMs = stopWatch.getElapsedTimeMs();
+		Assertions.assertNotNull(task1);
+		Assertions.assertNotNull(task2);
 
 		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
-		if (TestUtils.getDefaultParallelism() < 2) {
-			// We do not require time constraints to be met with only 1 processor
-			System.out.println("Skipped checking time constraints");
-			return;
-		}
+		HandleEvent exceptionEvent = new HandleEvent(task1, HandleState.TERMINATED_EXCEPTIONALLY);
+		HandleEvent task2CompletedEvent = new HandleEvent(task2, HandleState.COMPLETED);
+		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
 
-		/*
-		 * The coordinator requests tasks to stop if it encounters an exception, but
-		 * it does not wait for them to stop. If submitted tasks themselves to not check
-		 * whether they should stop, then they will run until end.
-		 */
-		long expectedTimeCoordinatorMs = !reactToStop
-			? TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL
-			: TIME_UNTIL_EXCEPTION_MS;
-		TestUtils.assertTimeBounds(expectedTimeCoordinatorMs, PRECISION_MS, elapsedTimeCoordinatorMs);
+		long exceptionTimeMs = eventManager.getElapsedTimeMs(exceptionEvent);
+		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, exceptionTimeMs, "Throwing exception");
 
-		final long expectedPoolLowerBoundMs;
-		final long expectedIntervalLengthMs;
 		if (reactToStop) {
-			expectedPoolLowerBoundMs = TIME_UNTIL_EXCEPTION_MS;
-			expectedIntervalLengthMs = TASK_2_SLEEP_INTERVAL + PRECISION_MS;
+			TestUtils.assertTimeBounds(0, TASK_2_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(exceptionEvent, task2CompletedEvent), "Reaction to stop");
 		} else {
-			expectedPoolLowerBoundMs = TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
-			expectedIntervalLengthMs = PRECISION_MS;
+			TestUtils.assertTimeBounds(TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL, PRECISION_MS, eventManager.getElapsedTimeMs(task2CompletedEvent), "Completion of task 2");
 		}
-		TestUtils.assertTimeBounds(expectedPoolLowerBoundMs, expectedIntervalLengthMs, elapsedTimePoolMs);
+
+		TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, closedEvent), "Closing coordinator after task 2 has terminated");
 	}
 
 	private void run1() throws ExpectedException {
