@@ -56,13 +56,19 @@ class StopReactionTest
 		long exceptionTimeMs = eventManager.getElapsedTimeMs(exceptionEvent);
 		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, exceptionTimeMs, "Throwing exception");
 
-		if (reactToStop) {
-			TestUtils.assertTimeBounds(0, TASK_2_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(exceptionEvent, task2CompletedEvent), "Reaction to stop");
-		} else {
-			TestUtils.assertTimeBounds(TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL, PRECISION_MS, eventManager.getElapsedTimeMs(task2CompletedEvent), "Completion of task 2");
-		}
+		if (TestUtils.getDefaultParallelism() > 1) {
+			if (reactToStop) {
+				TestUtils.assertTimeBounds(0, TASK_2_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(exceptionEvent, task2CompletedEvent), "Reaction to stop");
+			} else {
+				TestUtils.assertTimeBounds(TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL, PRECISION_MS, eventManager.getElapsedTimeMs(task2CompletedEvent), "Completion of task 2");
+			}
 
-		TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, closedEvent), "Closing coordinator after task 2 has terminated");
+			TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, closedEvent), "Closing coordinator after task 2 has terminated");
+		} else {
+			// single thread => task 2 will not be started and coordinator closes immediately after exception in task 1
+			Assertions.assertFalse(eventManager.encounteredEvent(new HandleEvent(task2, HandleState.STARTED)));
+			TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, eventManager.getElapsedTimeMs(closedEvent), "Closing coordinator after task 2 has terminated");
+		}
 	}
 
 	private void run1() throws ExpectedException {
