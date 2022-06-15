@@ -1,4 +1,4 @@
-package dd.kms.hippodamus;
+package dd.kms.hippodamus.stopping;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * @implNote This test does not rely on the tasks being executed in submission order. Instead, it enumerates the tasks
  * according to their execution order.
  */
-class CoordinatorTerminationTimeTest
+class StopOnExceptionTest
 {
 	private static final int	PARALLELISM						= 3;
 	private static final long	TASK_TIME_MS					= 1000;
