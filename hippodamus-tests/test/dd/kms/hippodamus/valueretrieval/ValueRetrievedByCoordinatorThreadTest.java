@@ -8,7 +8,6 @@ import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
@@ -59,7 +58,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 		boolean encounteredCompletionException = false;
 		TestEventManager eventManager = new TestEventManager();
 		int result = 0;
-		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (TestExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			dummyTask = coordinator.execute(this::runDummyTask);
 
 			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> runSupplierTask(coordinator, stopSupplier, supplierWithException));

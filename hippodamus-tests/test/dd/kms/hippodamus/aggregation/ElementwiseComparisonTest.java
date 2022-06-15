@@ -8,7 +8,6 @@ import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBui
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
@@ -85,7 +84,7 @@ class ElementwiseComparisonTest
 		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
 			.configureAggregationCoordinator(conjunctionAggregator);
 		List<Handle> loadElementTasks = new ArrayList<>();
-		try (AggregationCoordinator<Boolean, Boolean> coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			for (int i = 0; i < numElements; i++) {
 				int index = i;
 				boolean elementsEqual = i != deviatingElementIndex;

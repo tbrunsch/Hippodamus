@@ -1,5 +1,10 @@
 package dd.kms.hippodamus.testUtils;
 
+import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.coordinator.TestAggregationCoordinator;
+import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.InvocationHandler;
@@ -66,5 +71,13 @@ public class TestUtils
 		InvocationHandler invocationHandler = (proxy, method, args) ->
 			"toString".equals(method.getName()) && (args == null || args.length == 0) ? name : method.invoke(unnamedInstance, args);
 		return instanceInterface.cast(Proxy.newProxyInstance(instanceInterface.getClassLoader(), new Class[]{instanceInterface}, invocationHandler));
+	}
+
+	public static TestExecutionCoordinator wrap(ExecutionCoordinator coordinator, TestEventManager eventManager) {
+		return new TestExecutionCoordinator(coordinator, eventManager);
+	}
+
+	public static <S, R> TestAggregationCoordinator<S, R> wrap(AggregationCoordinator<S, R> coordinator, TestEventManager eventManager) {
+		return new TestAggregationCoordinator(coordinator, eventManager);
 	}
 }

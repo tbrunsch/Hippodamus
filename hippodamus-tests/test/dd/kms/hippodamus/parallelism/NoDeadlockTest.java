@@ -5,7 +5,6 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
@@ -68,7 +67,7 @@ class NoDeadlockTest
 			.maximumParallelism(TaskType.COMPUTATIONAL, maxParallelism);
 		TestEventManager eventManager = new TestEventManager();
 		List<ResultHandle<Integer>> tasks = new ArrayList<>();
-		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(builder.build(), eventManager)) {
+		try (TestExecutionCoordinator coordinator = TestUtils.wrap(builder.build(), eventManager)) {
 			ResultHandle<Integer> task1 = coordinator.execute(() -> returnWithDelay(1));
 			ResultHandle<Integer> task2 = coordinator.configure().dependencies(task1).execute(() -> returnWithDelay(task1.get() + 1));
 			ResultHandle<Integer> task3 = coordinator.execute(() -> returnWithDelay(task2.get() + 1));

@@ -3,7 +3,6 @@ package dd.kms.hippodamus.stopping;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
@@ -26,7 +25,7 @@ class ManualStopTest
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		TestEventManager eventManager = new TestEventManager();
-		try (ExecutionCoordinator coordinator = TestCoordinators.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
 			coordinator.execute(this::runWithStopReaction);
 			coordinator.execute(() -> {
 				TestUtils.simulateWork(TIME_UNTIL_STOP_MS);

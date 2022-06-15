@@ -6,7 +6,6 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
@@ -45,7 +44,7 @@ class StopCorrectTasksTest
 		TestEventManager eventManager = new TestEventManager();
 		List<Handle> managedTasks = new ArrayList<>();
 		List<Future<?>> unmanagedTasks = new ArrayList<>();
-		try (ExecutionCoordinator coordinator = TestCoordinators.wrap(builder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(builder.build(), eventManager)) {
 			for (int i = 1; i <= NUM_TASKS; i++) {
 				int taskId = i;
 				if (isTaskManagedByCoordinator(taskId)) {

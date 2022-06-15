@@ -7,7 +7,7 @@ import dd.kms.hippodamus.testUtils.execution.configuration.TestExecutionConfigur
 
 public class TestExecutionCoordinator extends BaseTestCoordinator<ExecutionCoordinator>
 {
-	TestExecutionCoordinator(ExecutionCoordinator wrappedCoordinator, TestEventManager eventManager) {
+	public TestExecutionCoordinator(ExecutionCoordinator wrappedCoordinator, TestEventManager eventManager) {
 		super(wrappedCoordinator, eventManager);
 	}
 
