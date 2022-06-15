@@ -106,7 +106,7 @@ class DependencyVerificationTest
 	}
 
 	static Object getVerifyDependencyValues() {
-		return new Object[]{ false, true };
+		return TestUtils.BOOLEANS;
 	}
 
 	private static class TestLogger implements Logger

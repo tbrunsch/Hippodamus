@@ -86,7 +86,7 @@ class StopReactionTest
 	}
 
 	static Object getPossibleReactToStopValues() {
-		return new Object[]{false, true};
+		return TestUtils.BOOLEANS;
 	}
 
 	private static class ExpectedException extends Exception {}

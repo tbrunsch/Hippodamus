@@ -7,8 +7,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.List;
 
 /**
  * This test focuses on how the framework handles exceptions.<br>
@@ -49,13 +50,14 @@ class ExceptionTest
 		}
 	}
 
-	static Collection<Object> getParameters() {
-		return Arrays.asList(
-			new Object[]{ false, false },
-			new Object[]{ false, true },
-			new Object[]{ true, false },
-			new Object[]{ true, true }
-		);
+	static List<Object> getParameters() {
+		List<Object> parameters = new ArrayList<>();
+		for (boolean throwExceptionInTask1 : TestUtils.BOOLEANS) {
+			for (boolean throwExceptionInTask2 : TestUtils.BOOLEANS) {
+				parameters.add(new Object[]{throwExceptionInTask1, throwExceptionInTask2});
+			}
+		}
+		return parameters;
 	}
 
 	private static class Exception1 extends Exception {}
