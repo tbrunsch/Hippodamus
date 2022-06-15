@@ -5,11 +5,10 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
-import dd.kms.hippodamus.testUtils.StopWatch;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
-import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import dd.kms.hippodamus.testUtils.states.HandleState;
@@ -107,6 +106,4 @@ class CoordinatorTerminationTimeTest
 			return counter++;
 		}
 	}
-
-	private static class TestException extends Exception {}
 }

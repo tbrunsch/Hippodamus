@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.valueretrieval;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
 
@@ -23,14 +24,14 @@ abstract class AbstractValueRetrievedTest
 		TestUtils.simulateWork(DUMMY_TASK_TIME_MS);
 	}
 
-	int runSupplierTask(ExecutionCoordinator coordinator, boolean stop, boolean throwException) throws SupplierException {
+	int runSupplierTask(ExecutionCoordinator coordinator, boolean stop, boolean throwException) throws TestException {
 		for (int i = 0; i < SUPPLIER_TASK_SLEEP_REPETITIONS; i++) {
 			TestUtils.simulateWork(SUPPLIER_TASK_SLEEP_TIME_MS);
 			if (stop) {
 				coordinator.stop();
 				stop = false;
 			} else if (throwException) {
-				throw new SupplierException();
+				throw new TestException();
 			}
 		}
 		return SUPPLIER_VALUE;
@@ -72,6 +73,4 @@ abstract class AbstractValueRetrievedTest
 										: null;
 		}
 	}
-
-	static class SupplierException extends Exception {}
 }

@@ -6,6 +6,7 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
@@ -92,7 +93,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 				default:
 					throw new UnsupportedOperationException("Unsupported retrieval task state: " + retrievalStartState);
 			}
-		} catch (SupplierException e) {
+		} catch (TestException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {
 			encounteredCancellationException = true;
@@ -143,7 +144,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		Assertions.assertEquals(resultTaskException, eventManager.getException(resultTask));
 
 		if (supplierWithException) {
-			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+			Assertions.assertTrue(supplierTaskException instanceof TestException);
 
 			Assertions.assertTrue(resultTaskException instanceof CompletionException);
 			Assertions.assertTrue(resultTaskException.getCause() == supplierTaskException);

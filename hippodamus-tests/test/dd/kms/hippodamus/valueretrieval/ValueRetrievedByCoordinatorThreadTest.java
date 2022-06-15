@@ -6,6 +6,7 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
@@ -98,7 +99,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 					eventManager.fireEvent(RetrievalEvent.EXCEPTION);
 				}
 			}
-		} catch (SupplierException e) {
+		} catch (TestException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {
 			encounteredCancellationException = true;
@@ -157,7 +158,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 		Assertions.assertEquals(supplierTaskException, eventManager.getException(supplierTask));
 
 		if (supplierWithException) {
-			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+			Assertions.assertTrue(supplierTaskException instanceof TestException);
 
 			if (checkExceptionThrows) {
 				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, new CoordinatorEvent(CoordinatorState.CLOSED)) <= PRECISION_MS);

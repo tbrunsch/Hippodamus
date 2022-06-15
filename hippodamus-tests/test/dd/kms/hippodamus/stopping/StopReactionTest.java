@@ -3,6 +3,7 @@ package dd.kms.hippodamus.stopping;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
@@ -40,7 +41,7 @@ class StopReactionTest
 			 */
 			task1 = coordinator.execute(this::run1);
 			task2 = coordinator.execute(() -> run2(reactToStop));
-		} catch (ExpectedException e) {
+		} catch (TestException e) {
 			caughtException = true;
 		}
 		Assertions.assertNotNull(task1);
@@ -70,9 +71,9 @@ class StopReactionTest
 		}
 	}
 
-	private void run1() throws ExpectedException {
+	private void run1() throws TestException {
 		TestUtils.simulateWork(TIME_UNTIL_EXCEPTION_MS);
-		throw new ExpectedException();
+		throw new TestException();
 	}
 
 	private void run2(boolean reactToStop) {
@@ -87,6 +88,4 @@ class StopReactionTest
 	static Object getPossibleReactToStopValues() {
 		return TestUtils.BOOLEANS;
 	}
-
-	private static class ExpectedException extends Exception {}
 }

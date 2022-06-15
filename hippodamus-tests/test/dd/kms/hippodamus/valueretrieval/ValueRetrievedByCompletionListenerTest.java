@@ -6,6 +6,7 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
 import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
@@ -70,7 +71,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 				eventManager.fireEvent(RetrievalEvent.EXCEPTION);
 			});
 
-		} catch (SupplierException e) {
+		} catch (TestException e) {
 			encounteredSupplierException = true;
 		}
 
@@ -107,7 +108,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Assertions.assertEquals(supplierTaskException, exceptionEncounteredByExceptionListener.get());
 
 		if (supplierWithException) {
-			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+			Assertions.assertTrue(supplierTaskException instanceof TestException);
 		} else {
 			Assertions.assertNull(supplierTaskException);
 			Assertions.assertEquals(SUPPLIER_VALUE, resultRetrievedByCompletionListener.get());

@@ -2,6 +2,7 @@ package dd.kms.hippodamus;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,28 +25,28 @@ class ExceptionTest
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			coordinator.execute(() -> run1(throwExceptionInTask1));
 			coordinator.execute(() -> run2(throwExceptionInTask2));
-		} catch (Exception1 exception1) {
+		} catch (TestException exception1) {
 			Assertions.assertTrue(throwExceptionInTask1, "Unexpected exception in task 1");
 			Assertions.assertFalse(throwExceptionInTask2, "Exception from task 2 should have been thrown instead");
 			return;
-		} catch (Exception2 exception2) {
+		} catch (TestException2 exception2) {
 			Assertions.assertTrue(throwExceptionInTask2, "Unexpected exception in task 2");
 			return;
 		}
 		Assertions.assertTrue(!throwExceptionInTask1 && !throwExceptionInTask2, "An exception has been swallowed");
 	}
 
-	private void run1(boolean throwException) throws Exception1 {
+	private void run1(boolean throwException) throws TestException {
 		TestUtils.simulateWork(1000);
 		if (throwException) {
-			throw new Exception1();
+			throw new TestException();
 		}
 	}
 
-	private void run2(boolean throwException) throws Exception2 {
+	private void run2(boolean throwException) throws TestException2 {
 		TestUtils.simulateWork(500);
 		if (throwException) {
-			throw new Exception2();
+			throw new TestException2();
 		}
 	}
 
@@ -59,7 +60,5 @@ class ExceptionTest
 		return parameters;
 	}
 
-	private static class Exception1 extends Exception {}
-
-	private static class Exception2 extends Exception {}
+	private static class TestException2 extends Exception {}
 }
