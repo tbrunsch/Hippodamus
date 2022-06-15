@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.waitmode;
+package dd.kms.hippodamus;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
