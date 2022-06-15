@@ -113,7 +113,7 @@ class DisjunctionTest
 		for (boolean operand1 : BOOLEANS) {
 			for (boolean operand2 : BOOLEANS) {
 				for (Supplier<ExecutorService> executorServiceSupplier : Arrays.asList(COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER)) {
-					parameters.add(new Object[]{ operand1, operand2, executorServiceSupplier });
+					parameters.add(new Object[]{operand1, operand2, executorServiceSupplier});
 				}
 			}
 		}

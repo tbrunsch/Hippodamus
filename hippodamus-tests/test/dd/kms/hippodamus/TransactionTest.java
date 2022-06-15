@@ -42,7 +42,7 @@ class TransactionTest
 	 * Thread 1: File 1 ----> 500, File 3 ------------> 1800, File 6 --> 2100, File 7 ----------------------------> 3600
 	 * Thread 2: File 2 -------> 800, File 4 ------> 1500, File 5 ---------> 2500, File 8 -----> 3100, File 9 ---->3600
 	 */
-	private static final int[]	START_TIMES	= { 0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100 };
+	private static final int[]	START_TIMES	= {0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100};
 
 	@ParameterizedTest(name = "transaction timeout after {0} ms")
 	@MethodSource("getFileSystemAvailabilityTimeValues")

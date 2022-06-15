@@ -8,7 +8,7 @@ import java.util.concurrent.ForkJoinPool;
 
 public class TestUtils
 {
-	public static final boolean[]	BOOLEANS	= { false, true };
+	public static final boolean[]	BOOLEANS	= {false, true};
 
 	public static void simulateWork(long timeMs) {
 		if (timeMs == 0) {

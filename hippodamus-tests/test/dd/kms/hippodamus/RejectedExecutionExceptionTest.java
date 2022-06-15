@@ -39,6 +39,6 @@ class RejectedExecutionExceptionTest
 	}
 
 	static Object getExecutorServiceSuppliers() {
-		return new Object[]{ COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER };
+		return new Object[]{COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER};
 	}
 }

@@ -26,12 +26,12 @@ class NoDependencyBenchmark
 
 	static Object getParameters() {
 		return Arrays.asList(
-			new Object[]{ 1, 100 },
-			new Object[]{ 1, 1000 },
-			new Object[]{ 10, 100 },
-			new Object[]{ 10, 1000 },
-			new Object[]{ 100, 100 },
-			new Object[]{ 1000, 10 }
+			new Object[]{1, 100},
+			new Object[]{1, 1000},
+			new Object[]{10, 100},
+			new Object[]{10, 1000},
+			new Object[]{100, 100},
+			new Object[]{1000, 10}
 		);
 	}
 
