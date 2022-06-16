@@ -101,6 +101,10 @@ public class TestEventManager
 		return timestamp2 - timestamp1;
 	}
 
+	public long getElapsedTimeMs() {
+		return System.currentTimeMillis() - initialTimestamp;
+	}
+
 	public long getElapsedTimeMs(Handle handle, HandleState state) {
 		return getElapsedTimeMs(new HandleEvent(handle, state));
 	}
