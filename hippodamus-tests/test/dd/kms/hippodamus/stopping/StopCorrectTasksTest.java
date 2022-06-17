@@ -6,9 +6,8 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -72,8 +71,7 @@ class StopCorrectTasksTest
 			}
 		}
 
-		CoordinatorEvent stoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY);
-		long stopTimeMs = eventManager.getElapsedTimeMs(stoppedEvent);
+		long stopTimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_STOPPED_EXTERNALLY);
 
 		Iterator<Handle> managedTaskIterator = managedTasks.iterator();
 		for (int taskId = 1; taskId <= NUM_TASKS; taskId++) {

@@ -10,10 +10,9 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -72,7 +71,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 					eventManager.onHandleEvent(supplierTask, HandleState.STARTED, startValueRetrievalRunnable);
 					break;
 				case STOPPED_BEFORE_TERMINATION:
-					eventManager.onCoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY, startValueRetrievalRunnable);
+					eventManager.onEvent(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, startValueRetrievalRunnable);
 					break;
 				case TERMINATED_REGULARLY:
 					supplierTask.onCompletion(startValueRetrievalRunnable);
@@ -85,7 +84,7 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			}
 
 			while (!startValueRetrievalFlag.get());
-			eventManager.fireEvent(RetrievalEvent.START);
+			eventManager.fireEvent(RETRIEVAL_STARTED_EVENT);
 			if (checkExceptionBeforeValueRetrieval) {
 				coordinator.checkException();
 			}
@@ -93,10 +92,10 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			try {
 				result = supplierTask.get();
 				encounteredException = false;
-				eventManager.fireEvent(RetrievalEvent.END);
+				eventManager.fireEvent(RETRIEVAL_ENDED_EVENT);
 			} finally {
 				if (encounteredException) {
-					eventManager.fireEvent(RetrievalEvent.EXCEPTION);
+					eventManager.fireEvent(RETRIEVAL_EXCEPTION_EVENT);
 				}
 			}
 		} catch (TestException e) {
@@ -112,7 +111,6 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
-		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY);
 		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
 		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY);
 
@@ -123,19 +121,19 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 
 		switch (retrievalStartState) {
 			case NOT_YET_EXECUTED:
-				Assertions.assertTrue(eventManager.before(RetrievalEvent.START, supplierStartedEvent));
+				Assertions.assertTrue(eventManager.before(RETRIEVAL_STARTED_EVENT, supplierStartedEvent));
 				break;
 			case EXECUTING:
-				Assertions.assertTrue(eventManager.before(supplierStartedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierStartedEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 			case STOPPED_BEFORE_TERMINATION:
-				Assertions.assertTrue(eventManager.before(coordinatorStoppedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, RETRIEVAL_STARTED_EVENT));
 				break;
 			case TERMINATED_REGULARLY:
-				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 			case TERMINATED_EXCEPTIONALLY:
-				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 		}
 
@@ -161,19 +159,19 @@ class ValueRetrievedByCoordinatorThreadTest extends AbstractValueRetrievedTest
 			Assertions.assertTrue(supplierTaskException instanceof TestException);
 
 			if (checkExceptionThrows) {
-				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, new CoordinatorEvent(CoordinatorState.CLOSED)) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, TestEvents.COORDINATOR_CLOSED) <= PRECISION_MS);
 			} else {
-				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, RETRIEVAL_EXCEPTION_EVENT) <= PRECISION_MS);
 			}
 		} else {
 			Assertions.assertNull(supplierTaskException);
 
 			if (stopSupplier) {
-				Assertions.assertTrue(eventManager.getDurationMs(coordinatorStoppedEvent, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, RETRIEVAL_EXCEPTION_EVENT) <= PRECISION_MS);
 			} else {
 				Assertions.assertEquals(SUPPLIER_VALUE, result);
 
-				Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RETRIEVAL_ENDED_EVENT) <= PRECISION_MS);
 			}
 		}
 	}

@@ -8,9 +8,8 @@ import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBui
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -105,8 +104,7 @@ class ElementwiseComparisonTest
 
 		Assertions.assertEquals(objectsEqual, conjunctionAggregator.getAggregatedValue(), "Wrong aggregated result");
 
-		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
-		checkTimeConstraints(eventManager.getElapsedTimeMs(closedEvent), numElements, deviatingElementIndex);
+		checkTimeConstraints(eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED), numElements, deviatingElementIndex);
 	}
 
 	private int simulateLoadElement(int index) {

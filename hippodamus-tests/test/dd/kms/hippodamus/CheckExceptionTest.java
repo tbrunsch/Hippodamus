@@ -4,9 +4,8 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -44,8 +43,7 @@ class CheckExceptionTest
 			// happens if checkException() does not throw an exception => test will fail
 		}
 		Assertions.assertTrue(caughtException, "An exception has been swallowed");
-		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
 
-		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, SLEEP_TIME_MS + PRECISION_MS, eventManager.getElapsedTimeMs(closedEvent));
+		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, SLEEP_TIME_MS + PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED));
 	}
 }

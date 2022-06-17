@@ -4,6 +4,7 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,6 +20,10 @@ abstract class AbstractValueRetrievedTest
 	static final int			PRECISION_MS					= 100;
 
 	static final int			SUPPLIER_VALUE					= 42;
+
+	static final TestEvent		RETRIEVAL_STARTED_EVENT			= TestEvents.create("Value retrieval started");
+	static final TestEvent		RETRIEVAL_ENDED_EVENT			= TestEvents.create("Value retrieval ended");
+	static final TestEvent		RETRIEVAL_EXCEPTION_EVENT		= TestEvents.create("Value retrieval with exception");
 
 	void runDummyTask() {
 		TestUtils.simulateWork(DUMMY_TASK_TIME_MS);
@@ -45,32 +50,5 @@ abstract class AbstractValueRetrievedTest
 		return retrievalStartState.isReadyToJoin()
 			? Collections.singletonList(retrievalStartState)
 			: getPossibleRetrievalEndStates();
-	}
-
-	static class RetrievalEvent extends TestEvent
-	{
-		static final RetrievalEvent	START		= new RetrievalEvent();
-		static final RetrievalEvent	END			= new RetrievalEvent();
-		static final RetrievalEvent	EXCEPTION	= new RetrievalEvent();
-
-		private RetrievalEvent() {}
-
-		@Override
-		public boolean equals(Object o) {
-			return o == this;
-		}
-
-		@Override
-		public int hashCode() {
-			return System.identityHashCode(this);
-		}
-
-		@Override
-		public String toString() {
-			return	this == START 		? "Value retrieval started" :
-					this == END			? "Value retrieval ended" :
-					this == EXCEPTION	? "Value retrieval with exception"
-										: null;
-		}
 	}
 }

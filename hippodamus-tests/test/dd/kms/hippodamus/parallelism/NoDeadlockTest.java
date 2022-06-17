@@ -6,9 +6,8 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -112,7 +111,7 @@ class NoDeadlockTest
 			TestUtils.assertTimeBounds(expectedEndTimeMs, PRECISION_MS, endTimeMs, "Finishing task " + (i+1));
 		}
 
-		TestUtils.assertTimeBounds(expectedRuntimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(new CoordinatorEvent(CoordinatorState.CLOSED)));
+		TestUtils.assertTimeBounds(expectedRuntimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED));
 	}
 
 	private int returnWithDelay(int value) {

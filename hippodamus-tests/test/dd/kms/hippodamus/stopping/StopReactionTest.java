@@ -5,10 +5,9 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -50,7 +49,6 @@ class StopReactionTest
 
 		HandleEvent exceptionEvent = new HandleEvent(task1, HandleState.TERMINATED_EXCEPTIONALLY);
 		HandleEvent task2CompletedEvent = new HandleEvent(task2, HandleState.COMPLETED);
-		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
 
 		long exceptionTimeMs = eventManager.getElapsedTimeMs(exceptionEvent);
 		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, exceptionTimeMs, "Throwing exception");
@@ -62,11 +60,11 @@ class StopReactionTest
 				TestUtils.assertTimeBounds(TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL, PRECISION_MS, eventManager.getElapsedTimeMs(task2CompletedEvent), "Completion of task 2");
 			}
 
-			TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, closedEvent), "Closing coordinator after task 2 has terminated");
+			TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, TestEvents.COORDINATOR_CLOSED), "Closing coordinator after task 2 has terminated");
 		} else {
 			// single thread => task 2 will not be started and coordinator closes immediately after exception in task 1
 			Assertions.assertFalse(eventManager.encounteredEvent(new HandleEvent(task2, HandleState.STARTED)));
-			TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, eventManager.getElapsedTimeMs(closedEvent), "Closing coordinator after task 2 has terminated");
+			TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED), "Closing coordinator after task 2 has terminated");
 		}
 	}
 

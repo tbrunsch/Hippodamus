@@ -56,10 +56,10 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			final ResultHandle<Integer> finalSupplierTask = supplierTask;
 
 			finalSupplierTask.onCompletion(() -> {
-				eventManager.fireEvent(RetrievalEvent.START);
+				eventManager.fireEvent(RETRIEVAL_STARTED_EVENT);
 				try {
 					int value = finalSupplierTask.get();
-					eventManager.fireEvent(RetrievalEvent.END);
+					eventManager.fireEvent(RETRIEVAL_ENDED_EVENT);
 					resultRetrievedByCompletionListener.set(value);
 
 				} catch (Throwable t) {
@@ -68,7 +68,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			});
 			finalSupplierTask.onException(() -> {
 				exceptionEncounteredByExceptionListener.set(finalSupplierTask.getException());
-				eventManager.fireEvent(RetrievalEvent.EXCEPTION);
+				eventManager.fireEvent(RETRIEVAL_EXCEPTION_EVENT);
 			});
 
 		} catch (TestException e) {
@@ -88,13 +88,13 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Assertions.assertTrue(eventManager.before(dummyCompletedEvent, supplierStartedEvent));
 
 		if (supplierWithException) {
-			Assertions.assertFalse(eventManager.encounteredEvent(RetrievalEvent.START));
+			Assertions.assertFalse(eventManager.encounteredEvent(RETRIEVAL_STARTED_EVENT));
 
-			Assertions.assertTrue(eventManager.getDurationMs(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+			Assertions.assertTrue(eventManager.getDurationMs(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, RETRIEVAL_EXCEPTION_EVENT) <= PRECISION_MS);
 		} else {
-			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
+			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RETRIEVAL_STARTED_EVENT));
 
-			Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
+			Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RETRIEVAL_ENDED_EVENT) <= PRECISION_MS);
 		}
 
 		/*

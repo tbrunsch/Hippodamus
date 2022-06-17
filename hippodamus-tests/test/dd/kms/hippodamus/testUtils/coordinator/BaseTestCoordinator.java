@@ -5,11 +5,10 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 
 public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implements ExecutionCoordinator
@@ -20,7 +19,7 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 	BaseTestCoordinator(C wrappedCoordinator, TestEventManager eventManager) {
 		this.wrappedCoordinator = wrappedCoordinator;
 		this.eventManager = eventManager;
-		eventManager.fireEvent(new CoordinatorEvent(CoordinatorState.STARTED));
+		eventManager.fireEvent(TestEvents.COORDINATOR_STARTED);
 	}
 
 	private void encounteredEvent(TestEvent event) {
@@ -47,7 +46,7 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 		 * Only external calls of stop() can be detected. If stop() is called on the wrapped coordinator, then we
 		 * have no chance to detect it.
 		 */
-		encounteredEvent(new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY));
+		encounteredEvent(TestEvents.COORDINATOR_STOPPED_EXTERNALLY);
 	}
 
 	@Override
@@ -57,12 +56,12 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 
 	@Override
 	public void close() {
-		encounteredEvent(new CoordinatorEvent(CoordinatorState.CLOSING));
+		encounteredEvent(TestEvents.COORDINATOR_CLOSING);
 
 		try {
 			wrappedCoordinator.close();
 		} finally {
-			encounteredEvent(new CoordinatorEvent(CoordinatorState.CLOSED));
+			encounteredEvent(TestEvents.COORDINATOR_CLOSED);
 		}
 	}
 

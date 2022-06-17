@@ -3,9 +3,8 @@ package dd.kms.hippodamus.stopping;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -33,11 +32,8 @@ class ManualStopTest
 			});
 		}
 
-		CoordinatorEvent stoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED_EXTERNALLY);
-		CoordinatorEvent closedEvent = new CoordinatorEvent(CoordinatorState.CLOSED);
-
-		TestUtils.assertTimeBounds(TIME_UNTIL_STOP_MS, PRECISION_MS, eventManager.getElapsedTimeMs(stoppedEvent));
-		TestUtils.assertTimeBounds(0, TASK_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(stoppedEvent, closedEvent));
+		TestUtils.assertTimeBounds(TIME_UNTIL_STOP_MS, PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_STOPPED_EXTERNALLY));
+		TestUtils.assertTimeBounds(0, TASK_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, TestEvents.COORDINATOR_CLOSED));
 	}
 
 	private void runWithStopReaction() {

@@ -7,9 +7,8 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -83,7 +82,7 @@ class StopOnExceptionTest
 		int expectedNumberOfStartedTasks = expectedNumberOfRounds * PARALLELISM;
 		Assertions.assertEquals(expectedNumberOfStartedTasks, startedTasks.size(), "Wrong number of started tasks");
 
-		long coordinatorTimeMs = eventManager.getElapsedTimeMs(new CoordinatorEvent(CoordinatorState.CLOSED));
+		long coordinatorTimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED);
 		long expectedCoordinatorTimeMs = expectedNumberOfRounds * TASK_TIME_MS;
 		TestUtils.assertTimeBounds(expectedCoordinatorTimeMs, PRECISION_MS, coordinatorTimeMs);
 	}

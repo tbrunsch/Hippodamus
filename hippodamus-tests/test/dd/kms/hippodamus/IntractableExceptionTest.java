@@ -5,10 +5,9 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,8 +20,10 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class IntractableExceptionTest
 {
-	private static final int	TASK_DURATION_MS	= 1000;
-	private static final int	PRECISION_MS		= 300;
+	private static final int		TASK_DURATION_MS				= 1000;
+	private static final int		PRECISION_MS					= 300;
+
+	private static final TestEvent	PERMIT_TASK_SUBMISSION_EVENT	= TestEvents.create("Task submission permitted");
 
 	/**
 	 * This test demonstrates that all tasks will run to completion although an exception has been thrown inside the
@@ -44,7 +45,7 @@ class IntractableExceptionTest
 		Assertions.assertTrue(caughtIntractableException, "An exception has been swallowed");
 
 		long taskCompletedTimeMs = eventManager.getElapsedTimeMs(task, HandleState.COMPLETED);
-		long totalRuntimeMs = eventManager.getElapsedTimeMs(new CoordinatorEvent(CoordinatorState.CLOSED));
+		long totalRuntimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED);
 
 		Assertions.assertTrue(taskCompletedTimeMs <= totalRuntimeMs);
 		TestUtils.assertTimeBounds(TASK_DURATION_MS, PRECISION_MS, totalRuntimeMs);
@@ -66,12 +67,12 @@ class IntractableExceptionTest
 			coordinator.permitTaskSubmission(false);
 			task = coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
 			throwIntractableException(throwException);
-			eventManager.fireEvent(PermitTaskSubmissionEvent.EVENT);
+			eventManager.fireEvent(PERMIT_TASK_SUBMISSION_EVENT);
 			coordinator.permitTaskSubmission(true);
 		} catch (TestException e) {
 			caughtIntractableException = true;
 		}
-		long totalRuntimeMs = eventManager.getElapsedTimeMs(new CoordinatorEvent(CoordinatorState.CLOSED));
+		long totalRuntimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED);
 
 		if (throwException) {
 			Assertions.assertFalse(eventManager.encounteredEvent(task, HandleState.STARTED), "The task should not have started");
@@ -79,7 +80,7 @@ class IntractableExceptionTest
 
 			TestUtils.assertTimeUpperBound(PRECISION_MS, totalRuntimeMs);
 		} else {
-			Assertions.assertTrue(eventManager.before(PermitTaskSubmissionEvent.EVENT, task, HandleState.STARTED), "The task should not have started before permitted");
+			Assertions.assertTrue(eventManager.before(PERMIT_TASK_SUBMISSION_EVENT, task, HandleState.STARTED), "The task should not have started before permitted");
 			Assertions.assertTrue(eventManager.encounteredEvent(task, HandleState.COMPLETED), "The task should have completed");
 			Assertions.assertFalse(caughtIntractableException, "An exception has been thrown");
 
@@ -95,25 +96,5 @@ class IntractableExceptionTest
 
 	static Object getThrowExceptionValues() {
 		return TestUtils.BOOLEANS;
-	}
-
-	private static class PermitTaskSubmissionEvent extends TestEvent
-	{
-		static final TestEvent	EVENT	= new PermitTaskSubmissionEvent();
-
-		@Override
-		public boolean equals(Object o) {
-			return o == this;
-		}
-
-		@Override
-		public int hashCode() {
-			return System.identityHashCode(this);
-		}
-
-		@Override
-		public String toString() {
-			return "Permit task submission";
-		}
 	}
 }
