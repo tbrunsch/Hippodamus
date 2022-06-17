@@ -7,7 +7,6 @@ import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuild
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
@@ -54,7 +53,7 @@ class StopOnExceptionTest
 		TestEventManager eventManager = new TestEventManager();
 		boolean caughtException = false;
 		List<Handle> tasks = new ArrayList<>();
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(builder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(builder.build(), eventManager)) {
 			for (int i = 0; i < NUM_TASKS; i++) {
 				Handle task = coordinator.execute(() -> run(counter));
 				tasks.add(task);

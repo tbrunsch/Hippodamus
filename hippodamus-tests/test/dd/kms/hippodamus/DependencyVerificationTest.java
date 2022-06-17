@@ -10,7 +10,6 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.HandleState;
@@ -49,7 +48,7 @@ class DependencyVerificationTest
 		Handle dependentTask = null;
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			Handle dummyTask = coordinator.execute(() -> TestUtils.simulateWork(TASK_TIME_MS));
 			ExecutionManager executionManager = dependencyAlreadyRunning
 													? coordinator

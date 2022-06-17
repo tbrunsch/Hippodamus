@@ -2,6 +2,7 @@ package dd.kms.hippodamus.valueretrieval;
 
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
@@ -9,7 +10,6 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.HandleState;
@@ -49,7 +49,7 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			.maximumParallelism(TaskType.COMPUTATIONAL, 1);
 		boolean encounteredSupplierException = false;
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			dummyTask = coordinator.execute(this::runDummyTask);
 
 			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> runSupplierTask(coordinator, stopSupplier, supplierWithException));

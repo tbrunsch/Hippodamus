@@ -4,7 +4,6 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.CoordinatorState;
@@ -26,7 +25,7 @@ class CheckExceptionTest
 
 		boolean caughtException = false;
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
 			coordinator.execute(() -> {
 				TestUtils.simulateWork(TIME_UNTIL_EXCEPTION_MS);
 				throw new TestException();

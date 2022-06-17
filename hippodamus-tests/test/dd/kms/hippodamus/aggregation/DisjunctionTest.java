@@ -2,13 +2,13 @@ package dd.kms.hippodamus.aggregation;
 
 import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.aggregation.Aggregators;
+import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.coordinator.TestAggregationCoordinator;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
@@ -52,7 +52,7 @@ class DisjunctionTest
 		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
 			.configureAggregationCoordinator(disjunctionAggregator)
 			.executorService(TaskType.COMPUTATIONAL, executorService, true);
-		try (TestAggregationCoordinator<Boolean, Boolean> coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (AggregationCoordinator<Boolean, Boolean> coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			task1 = coordinator.aggregate(() -> simulateBooleanCallable(task2Started, operand1));
 			task2 = coordinator.aggregate(() -> simulateBooleanCallable(task1Started, operand2));
 			eventManager.onHandleEvent(task1, HandleState.STARTED, () -> task1Started.set(true));

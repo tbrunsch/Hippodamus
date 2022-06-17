@@ -73,11 +73,11 @@ public class TestUtils
 		return instanceInterface.cast(Proxy.newProxyInstance(instanceInterface.getClassLoader(), new Class[]{instanceInterface}, invocationHandler));
 	}
 
-	public static TestExecutionCoordinator wrap(ExecutionCoordinator coordinator, TestEventManager eventManager) {
+	public static ExecutionCoordinator wrap(ExecutionCoordinator coordinator, TestEventManager eventManager) {
 		return new TestExecutionCoordinator(coordinator, eventManager);
 	}
 
-	public static <S, R> TestAggregationCoordinator<S, R> wrap(AggregationCoordinator<S, R> coordinator, TestEventManager eventManager) {
+	public static <S, R> AggregationCoordinator<S, R> wrap(AggregationCoordinator<S, R> coordinator, TestEventManager eventManager) {
 		return new TestAggregationCoordinator(coordinator, eventManager);
 	}
 }

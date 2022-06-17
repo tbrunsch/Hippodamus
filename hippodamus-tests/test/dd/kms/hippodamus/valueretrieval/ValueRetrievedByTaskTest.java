@@ -2,6 +2,7 @@ package dd.kms.hippodamus.valueretrieval;
 
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
@@ -66,7 +67,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		boolean encounteredSupplierException = false;
 		boolean encounteredCancellationException = false;
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			resultTask = coordinator.execute(() -> runResultTask(supplierTaskReference, startValueRetrievalFlag, eventManager));
 
 			dummyTask = coordinator.execute(this::runDummyTask);

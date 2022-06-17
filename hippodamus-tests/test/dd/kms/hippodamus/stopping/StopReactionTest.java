@@ -5,7 +5,6 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
@@ -34,7 +33,7 @@ class StopReactionTest
 		TestEventManager eventManager = new TestEventManager();
 		Handle task1 = null;
 		Handle task2 = null;
-		try (TestExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
 			/*
 			 * Task 1 throws an exception after TIME_UNTIL_EXCEPTION_MS milliseconds, which stops the coordinator, which
 			 * then stops task 2.
