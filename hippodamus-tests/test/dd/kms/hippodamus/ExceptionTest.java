@@ -14,17 +14,24 @@ import java.util.List;
 /**
  * This test focuses on how the framework handles exceptions.<br>
  * <br>
- * The framework should force the user to write catch clauses for exactly the checked
- * exceptions that are declared to be thrown by the methods called asynchronously.
+ * The framework should force the user to write catch clauses for exactly the checked exceptions that are declared to be
+ * thrown by the methods called asynchronously.
  */
 class ExceptionTest
 {
+	private static final long	TASK_TIME_1_MS	= 1000;
+	private static final long	TASK_TIME_2_MS	= 500;
+
+	static {
+		assert TASK_TIME_2_MS <= TASK_TIME_1_MS - 300 : "The test assumes that task 2 terminates significantly earlier than task 1";
+	}
+
 	@ParameterizedTest(name = "exception in tasks: {0}, {1}")
 	@MethodSource("getParameters")
 	void testExceptions(boolean throwExceptionInTask1, boolean throwExceptionInTask2) {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(() -> run1(throwExceptionInTask1));
-			coordinator.execute(() -> run2(throwExceptionInTask2));
+			coordinator.execute(() -> task1(throwExceptionInTask1));
+			coordinator.execute(() -> task2(throwExceptionInTask2));
 		} catch (TestException exception1) {
 			Assertions.assertTrue(throwExceptionInTask1, "Unexpected exception in task 1");
 			Assertions.assertFalse(throwExceptionInTask2, "Exception from task 2 should have been thrown instead");
@@ -36,15 +43,15 @@ class ExceptionTest
 		Assertions.assertTrue(!throwExceptionInTask1 && !throwExceptionInTask2, "An exception has been swallowed");
 	}
 
-	private void run1(boolean throwException) throws TestException {
-		TestUtils.simulateWork(1000);
+	private void task1(boolean throwException) throws TestException {
+		TestUtils.simulateWork(TASK_TIME_1_MS);
 		if (throwException) {
 			throw new TestException();
 		}
 	}
 
-	private void run2(boolean throwException) throws TestException2 {
-		TestUtils.simulateWork(500);
+	private void task2(boolean throwException) throws TestException2 {
+		TestUtils.simulateWork(TASK_TIME_2_MS);
 		if (throwException) {
 			throw new TestException2();
 		}
