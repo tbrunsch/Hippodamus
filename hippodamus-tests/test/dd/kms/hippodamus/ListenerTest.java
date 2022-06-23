@@ -2,14 +2,12 @@ package dd.kms.hippodamus;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,64 +17,6 @@ class ListenerTest
 
 	private static final String	ID_COORDINATOR		= "coordinator";
 	private static final String	ID_TASK				= "task";
-
-	@Test
-	void testCompletionListenerStillRunning() {
-		OrderVerifier orderVerifier = new OrderVerifier();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 500, false));
-			// task should still be running when completion listener is added
-			result.onCompletion(() -> {
-				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
-				orderVerifier.register(ID_TASK);
-			});
-		}
-		orderVerifier.register(ID_COORDINATOR);
-		orderVerifier.checkIdOrder(Arrays.asList(ID_TASK, ID_COORDINATOR));
-	}
-
-	@Test
-	void testCompletionListenerAlreadyFinished() {
-		OrderVerifier orderVerifier = new OrderVerifier();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			ResultHandle<Integer> result = coordinator.execute(() -> getValue(VALUE, 0, false));
-			TestUtils.simulateWork(500);
-			// task should already have completed when completion listener is added
-			result.onCompletion(() -> {
-				Assertions.assertEquals(VALUE, (int) result.get(), "Result handle has wrong value");
-				orderVerifier.register(ID_TASK);
-			});
-		}
-		orderVerifier.register(ID_COORDINATOR);
-		orderVerifier.checkIdOrder(Arrays.asList(ID_TASK, ID_COORDINATOR));
-	}
-
-	@Test
-	void testExceptionListenerStillRunning() {
-		OrderVerifier orderVerifier = new OrderVerifier();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> getValue(VALUE, 500, true));	// exception
-			// task should still be running when exception listener is added
-			handle.onException(() -> orderVerifier.register(ID_TASK));
-		} catch (TestException e) {
-			orderVerifier.register(ID_COORDINATOR);
-		}
-		orderVerifier.checkIdOrder(Arrays.asList(ID_TASK, ID_COORDINATOR));
-	}
-
-	@Test
-	void testExceptionListenerAlreadyFinished() {
-		OrderVerifier orderVerifier = new OrderVerifier();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> getValue(VALUE, 0, true));	// exception
-			TestUtils.simulateWork(500);
-			// task should already have thrown an exception when exception listener is added
-			handle.onException(() -> orderVerifier.register(ID_TASK));
-		} catch (TestException e) {
-			orderVerifier.register(ID_COORDINATOR);
-		}
-		orderVerifier.checkIdOrder(Arrays.asList(ID_TASK, ID_COORDINATOR));
-	}
 
 	@Test
 	void testExceptionAndCompletionListenerStillRunning() {
