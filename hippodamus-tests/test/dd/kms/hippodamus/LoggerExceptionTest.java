@@ -8,6 +8,9 @@ import dd.kms.hippodamus.api.logging.LogLevel;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+/**
+ * This test checks that the coordinator works as expected when a logger throws an exception.
+ */
 class LoggerExceptionTest
 {
 	private static final String	EXCEPTION_TEXT	=	"Logger exception";
@@ -15,7 +18,10 @@ class LoggerExceptionTest
 	@Test
 	void testExceptionInLogger() {
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.logger(this::log);
+			.logger((logLevel, taskName, message) -> {
+				throw new RuntimeException(EXCEPTION_TEXT);
+			})
+			.minimumLogLevel(LogLevel.STATE);
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			coordinator.execute(() -> {});
 		} catch (CoordinatorException e){
@@ -23,9 +29,5 @@ class LoggerExceptionTest
 			return;
 		}
 		Assertions.fail("Swallowed logger exception");
-	}
-
-	private void log(LogLevel logLevel, String taskName, String message) {
-		throw new RuntimeException(EXCEPTION_TEXT);
 	}
 }
