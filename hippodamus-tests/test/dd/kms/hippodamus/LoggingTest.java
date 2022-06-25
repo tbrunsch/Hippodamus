@@ -36,7 +36,7 @@ class LoggingTest
 		}
 		Assertions.assertEquals(0, logger.getCounter(LogLevel.INTERNAL_ERROR), "An internal error occurred");
 
-		int expectedNumStateChangeLogMessages = minLogLevel.compareTo(LogLevel.STATE) <= 0
+		int expectedNumStateChangeLogMessages = minLogLevel.compareTo(LogLevel.STATE) >= 0
 				? NUM_TASKS*5	// logged 5 state changes per task: SUBMITTED, EXECUTING, FINISHED, notification about result, and TERMINATED
 				: 0;			// state changes not logged
 		Assertions.assertEquals(expectedNumStateChangeLogMessages, logger.getCounter(LogLevel.STATE), "Wrong number of state change log messages");
