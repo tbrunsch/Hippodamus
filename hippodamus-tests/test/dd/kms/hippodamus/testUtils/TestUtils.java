@@ -9,11 +9,21 @@ import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Supplier;
 
 public class TestUtils
 {
 	public static final boolean[]	BOOLEANS	= {false, true};
+
+	public static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER	= createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
+	public static final Supplier<ExecutorService>	WORK_STEALING_POOL_SUPPLIER		= createNamedInstance(Supplier.class, Executors::newWorkStealingPool, "work stealing pool");
+
+	public static Supplier<ExecutorService>	createFixedThreadPoolSupplier(int numThreads) {
+		return createNamedInstance(Supplier.class, () -> Executors.newFixedThreadPool(numThreads), "fixed thread pool");
+	}
 
 	public static void simulateWork(long timeMs) {
 		if (timeMs == 0) {
@@ -67,7 +77,7 @@ public class TestUtils
 			description + " required " + elapsedTimeMs + " ms, but it should have required at most " + expectedUpperBoundMs + " ms");
 	}
 
-	public static <T> T createNamedInstance(Class<T> instanceInterface, T unnamedInstance, String name) {
+	private static <T> T createNamedInstance(Class<T> instanceInterface, T unnamedInstance, String name) {
 		InvocationHandler invocationHandler = (proxy, method, args) ->
 			"toString".equals(method.getName()) && (args == null || args.length == 0) ? name : method.invoke(unnamedInstance, args);
 		return instanceInterface.cast(Proxy.newProxyInstance(instanceInterface.getClassLoader(), new Class[]{instanceInterface}, invocationHandler));

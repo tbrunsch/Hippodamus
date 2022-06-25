@@ -20,8 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
 import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
@@ -33,9 +31,6 @@ import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
  */
 class DisjunctionTest
 {
-	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= TestUtils.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
-	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= TestUtils.createNamedInstance(Supplier.class, Executors::newWorkStealingPool, "dedicated executor service");
-
 	@ParameterizedTest(name = "computation of {0} || {1} with {2}")
 	@MethodSource("getParameters")
 	void testDisjunction(boolean operand1, boolean operand2, Supplier<ExecutorService> executorServiceSupplier) {
@@ -111,7 +106,7 @@ class DisjunctionTest
 		List<Object[]> parameters = new ArrayList<>();
 		for (boolean operand1 : BOOLEANS) {
 			for (boolean operand2 : BOOLEANS) {
-				for (Supplier<ExecutorService> executorServiceSupplier : Arrays.asList(COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER)) {
+				for (Supplier<ExecutorService> executorServiceSupplier : Arrays.asList(TestUtils.COMMON_FORK_JOIN_POOL_SUPPLIER, TestUtils.WORK_STEALING_POOL_SUPPLIER)) {
 					parameters.add(new Object[]{operand1, operand2, executorServiceSupplier});
 				}
 			}
