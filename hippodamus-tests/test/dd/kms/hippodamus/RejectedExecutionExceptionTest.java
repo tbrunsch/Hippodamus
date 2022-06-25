@@ -13,13 +13,18 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
 
 /**
- * This test checks that the framework does not suffer from {@link RejectedExecutionException}s.
+ * The internally used {@link ExecutorService} may throw a {@link RejectedExecutionException} for whatever reason,
+ * usually because internal resources have been exhausted. Hippodamus currently does not provide a strategy to avoid
+ * this problem.<br>
+ * <br>
+ * This test checks that such exceptions at least do not occur in reasonable scenarios for different kinds of
+ * {@code ExecutorService}s.
  */
 class RejectedExecutionExceptionTest
 {
-	private static final int						NUM_THREADS		= 2;
-	private static final int						NUM_TASKS		= 1000;
-	private static final long						TASK_TIME_MS	= 10;
+	private static final int	NUM_THREADS		= 2;
+	private static final int	NUM_TASKS		= 1000;
+	private static final long	TASK_TIME_MS	= 10;
 
 	@ParameterizedTest(name = "executor service: {0}")
 	@MethodSource("getExecutorServiceSuppliers")
@@ -34,6 +39,10 @@ class RejectedExecutionExceptionTest
 	}
 
 	static Object getExecutorServiceSuppliers() {
-		return new Object[]{TestUtils.COMMON_FORK_JOIN_POOL_SUPPLIER, TestUtils.createFixedThreadPoolSupplier(NUM_THREADS)};
+		return new Object[]{
+			TestUtils.COMMON_FORK_JOIN_POOL_SUPPLIER,
+			TestUtils.WORK_STEALING_POOL_SUPPLIER,
+			TestUtils.createFixedThreadPoolSupplier(NUM_THREADS)
+		};
 	}
 }
