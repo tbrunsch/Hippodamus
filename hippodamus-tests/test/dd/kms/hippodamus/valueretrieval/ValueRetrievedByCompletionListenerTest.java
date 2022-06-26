@@ -2,13 +2,14 @@ package dd.kms.hippodamus.valueretrieval;
 
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.testUtils.TestException;
+import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
 import dd.kms.hippodamus.testUtils.states.HandleState;
@@ -33,7 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 {
 	@ParameterizedTest(name = "end state of supplier task: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getPossibleRetrievalEndStates")
 	void testValueRetrieval(ValueRetrievalTaskState supplierTaskEndState) {
 		boolean stopSupplier = supplierTaskEndState == ValueRetrievalTaskState.STOPPED_BEFORE_TERMINATION;
 		boolean supplierWithException = supplierTaskEndState == ValueRetrievalTaskState.TERMINATED_EXCEPTIONALLY;
@@ -48,17 +49,17 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			.maximumParallelism(TaskType.COMPUTATIONAL, 1);
 		boolean encounteredSupplierException = false;
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			dummyTask = coordinator.execute(this::runDummyTask);
 
 			supplierTask = coordinator.configure().dependencies(dummyTask).execute(() -> runSupplierTask(coordinator, stopSupplier, supplierWithException));
 			final ResultHandle<Integer> finalSupplierTask = supplierTask;
 
 			finalSupplierTask.onCompletion(() -> {
-				eventManager.fireEvent(RetrievalEvent.START);
+				eventManager.fireEvent(RETRIEVAL_STARTED_EVENT);
 				try {
 					int value = finalSupplierTask.get();
-					eventManager.fireEvent(RetrievalEvent.END);
+					eventManager.fireEvent(RETRIEVAL_ENDED_EVENT);
 					resultRetrievedByCompletionListener.set(value);
 
 				} catch (Throwable t) {
@@ -67,10 +68,10 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 			});
 			finalSupplierTask.onException(() -> {
 				exceptionEncounteredByExceptionListener.set(finalSupplierTask.getException());
-				eventManager.fireEvent(RetrievalEvent.EXCEPTION);
+				eventManager.fireEvent(RETRIEVAL_EXCEPTION_EVENT);
 			});
 
-		} catch (SupplierException e) {
+		} catch (TestException e) {
 			encounteredSupplierException = true;
 		}
 
@@ -87,13 +88,13 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Assertions.assertTrue(eventManager.before(dummyCompletedEvent, supplierStartedEvent));
 
 		if (supplierWithException) {
-			Assertions.assertFalse(eventManager.encounteredEvent(RetrievalEvent.START));
+			Assertions.assertFalse(eventManager.encounteredEvent(RETRIEVAL_STARTED_EVENT));
 
-			Assertions.assertTrue(eventManager.getDurationMs(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, RetrievalEvent.EXCEPTION) <= PRECISION_MS);
+			Assertions.assertTrue(eventManager.getDurationMs(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY, RETRIEVAL_EXCEPTION_EVENT) <= PRECISION_MS);
 		} else {
-			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
+			Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RETRIEVAL_STARTED_EVENT));
 
-			Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
+			Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RETRIEVAL_ENDED_EVENT) <= PRECISION_MS);
 		}
 
 		/*
@@ -107,14 +108,10 @@ class ValueRetrievedByCompletionListenerTest extends AbstractValueRetrievedTest
 		Assertions.assertEquals(supplierTaskException, exceptionEncounteredByExceptionListener.get());
 
 		if (supplierWithException) {
-			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+			Assertions.assertTrue(supplierTaskException instanceof TestException);
 		} else {
 			Assertions.assertNull(supplierTaskException);
 			Assertions.assertEquals(SUPPLIER_VALUE, resultRetrievedByCompletionListener.get());
 		}
-	}
-
-	static Object[] getParameters() {
-		return ValueRetrievalTaskState.values();
 	}
 }

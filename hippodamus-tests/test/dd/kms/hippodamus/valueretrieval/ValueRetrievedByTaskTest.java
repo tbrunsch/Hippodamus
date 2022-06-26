@@ -2,18 +2,17 @@ package dd.kms.hippodamus.valueretrieval;
 
 import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
-import dd.kms.hippodamus.testUtils.coordinator.TestCoordinators;
-import dd.kms.hippodamus.testUtils.coordinator.TestExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.events.CoordinatorEvent;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -66,7 +65,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		boolean encounteredSupplierException = false;
 		boolean encounteredCancellationException = false;
 		TestEventManager eventManager = new TestEventManager();
-		try (TestExecutionCoordinator coordinator = TestCoordinators.wrap(coordinatorBuilder.build(), eventManager)) {
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			resultTask = coordinator.execute(() -> runResultTask(supplierTaskReference, startValueRetrievalFlag, eventManager));
 
 			dummyTask = coordinator.execute(this::runDummyTask);
@@ -82,7 +81,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 					eventManager.onHandleEvent(supplierTask, HandleState.STARTED, startValueRetrievalRunnable);
 					break;
 				case STOPPED_BEFORE_TERMINATION:
-					eventManager.onCoordinatorEvent(CoordinatorState.STOPPED, startValueRetrievalRunnable);
+					eventManager.onEvent(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, startValueRetrievalRunnable);
 					break;
 				case TERMINATED_REGULARLY:
 					supplierTask.onCompletion(startValueRetrievalRunnable);
@@ -93,7 +92,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 				default:
 					throw new UnsupportedOperationException("Unsupported retrieval task state: " + retrievalStartState);
 			}
-		} catch (SupplierException e) {
+		} catch (TestException e) {
 			encounteredSupplierException = true;
 		} catch (CancellationException e) {
 			encounteredCancellationException = true;
@@ -105,7 +104,6 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 
 		HandleEvent dummyCompletedEvent = new HandleEvent(dummyTask, HandleState.COMPLETED);
 		HandleEvent supplierStartedEvent = new HandleEvent(supplierTask, HandleState.STARTED);
-		CoordinatorEvent coordinatorStoppedEvent = new CoordinatorEvent(CoordinatorState.STOPPED);
 		HandleEvent supplierCompletedEvent = new HandleEvent(supplierTask, HandleState.COMPLETED);
 		HandleEvent supplierTerminatedExceptionallyEvent = new HandleEvent(supplierTask, HandleState.TERMINATED_EXCEPTIONALLY);
 
@@ -116,19 +114,19 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 
 		switch (retrievalStartState) {
 			case NOT_YET_EXECUTED:
-				Assertions.assertTrue(eventManager.before(RetrievalEvent.START, supplierStartedEvent));
+				Assertions.assertTrue(eventManager.before(RETRIEVAL_STARTED_EVENT, supplierStartedEvent));
 				break;
 			case EXECUTING:
-				Assertions.assertTrue(eventManager.before(supplierStartedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierStartedEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 			case STOPPED_BEFORE_TERMINATION:
-				Assertions.assertTrue(eventManager.before(coordinatorStoppedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, RETRIEVAL_STARTED_EVENT));
 				break;
 			case TERMINATED_REGULARLY:
-				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierCompletedEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 			case TERMINATED_EXCEPTIONALLY:
-				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, RetrievalEvent.START));
+				Assertions.assertTrue(eventManager.before(supplierTerminatedExceptionallyEvent, RETRIEVAL_STARTED_EVENT));
 				break;
 		}
 
@@ -144,7 +142,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		Assertions.assertEquals(resultTaskException, eventManager.getException(resultTask));
 
 		if (supplierWithException) {
-			Assertions.assertTrue(supplierTaskException instanceof SupplierException);
+			Assertions.assertTrue(supplierTaskException instanceof TestException);
 
 			Assertions.assertTrue(resultTaskException instanceof CompletionException);
 			Assertions.assertTrue(resultTaskException.getCause() == supplierTaskException);
@@ -157,12 +155,12 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 				Assertions.assertTrue(resultTaskException instanceof CancellationException);
 				Assertions.assertTrue(eventManager.getException(resultTask) instanceof CancellationException);
 
-				Assertions.assertTrue(eventManager.getDurationMs(coordinatorStoppedEvent, resultTask, HandleState.TERMINATED_EXCEPTIONALLY) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(TestEvents.COORDINATOR_STOPPED_EXTERNALLY, resultTask, HandleState.TERMINATED_EXCEPTIONALLY) <= PRECISION_MS);
 			} else {
 				Assertions.assertNull(resultTaskException);
 				Assertions.assertEquals(SUPPLIER_VALUE, resultTask.get());
 
-				Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RetrievalEvent.END) <= PRECISION_MS);
+				Assertions.assertTrue(eventManager.getDurationMs(supplierCompletedEvent, RETRIEVAL_ENDED_EVENT) <= PRECISION_MS);
 			}
 		}
 	}
@@ -171,9 +169,9 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 		while (!resultTaskStartFlag.get());
 		ResultHandle<Integer> supplierTask;
 		while ((supplierTask = supplierTaskReference.get()) == null);
-		eventManager.fireEvent(RetrievalEvent.START);
+		eventManager.fireEvent(RETRIEVAL_STARTED_EVENT);
 		int value = supplierTask.get();
-		eventManager.fireEvent(RetrievalEvent.END);
+		eventManager.fireEvent(RETRIEVAL_ENDED_EVENT);
 		return value;
 	}
 

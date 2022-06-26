@@ -15,10 +15,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 /**
- * One of the main purposes of {@link ExecutionCoordinator}s is
- * handling exceptions and dependencies. If there are no dependencies, then other approaches
- * with less overhead may be a better alternative. However, we want to ensure that the
- * framework overhead is not too large.
+ * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and dependencies. If there are no
+ * dependencies, then other approaches with less overhead may be a better alternative. However, we want to ensure that
+ * the framework overhead is not too large.
  */
 class NoDependencyBenchmark
 {
@@ -27,12 +26,12 @@ class NoDependencyBenchmark
 
 	static Object getParameters() {
 		return Arrays.asList(
-			new Object[]{ 1, 100 },
-			new Object[]{ 1, 1000 },
-			new Object[]{ 10, 100 },
-			new Object[]{ 10, 1000 },
-			new Object[]{ 100, 100 },
-			new Object[]{ 1000, 10 }
+			new Object[]{1, 100},
+			new Object[]{1, 1000},
+			new Object[]{10, 100},
+			new Object[]{10, 1000},
+			new Object[]{100, 100},
+			new Object[]{1000, 10}
 		);
 	}
 

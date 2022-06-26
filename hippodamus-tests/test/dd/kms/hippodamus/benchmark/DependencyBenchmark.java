@@ -13,9 +13,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
 /**
- * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and
- * dependencies. In this test we benchmark the framework against {@link CompletableFuture}
- * in different scenarios.<br>
+ * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and dependencies. In this test we
+ * benchmark the framework against {@link CompletableFuture} in different scenarios.<br>
  * <br>
  * We use parallelization to speed up recursive MergeSort steps.
  */

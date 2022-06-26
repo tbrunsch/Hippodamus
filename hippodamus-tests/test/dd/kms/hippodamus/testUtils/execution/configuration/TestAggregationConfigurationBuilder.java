@@ -20,7 +20,7 @@ public class TestAggregationConfigurationBuilder<S, R> extends BaseTestConfigura
 	@Override
 	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T {
 		TestCallable<S, T> testCallable = new TestCallable<>(testCoordinator, callable);
-		ResultHandle<S> handle = wrappedBuilder.aggregate(callable);
+		ResultHandle<S> handle = wrappedBuilder.aggregate(testCallable);
 		testCallable.setHandle(handle);
 		return handle;
 	}

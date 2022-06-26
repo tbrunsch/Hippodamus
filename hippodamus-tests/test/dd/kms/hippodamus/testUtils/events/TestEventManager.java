@@ -3,7 +3,6 @@ package dd.kms.hippodamus.testUtils.events;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import dd.kms.hippodamus.api.handles.Handle;
-import dd.kms.hippodamus.testUtils.states.CoordinatorState;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 
 import java.util.Collection;
@@ -34,12 +33,7 @@ public class TestEventManager
 		onEvent(e, listener);
 	}
 
-	public void onCoordinatorEvent(CoordinatorState state, Runnable listener) {
-		CoordinatorEvent e = new CoordinatorEvent(state);
-		onEvent(e, listener);
-	}
-
-	private void onEvent(TestEvent e, Runnable listener) {
+	public void onEvent(TestEvent e, Runnable listener) {
 		synchronized (this) {
 			// call listener once for every matching event that has already been encountered
 			for (TestEvent event : eventTimesMs.keySet()) {
@@ -57,6 +51,10 @@ public class TestEventManager
 
 	public Throwable getException(Handle handle) {
 		return taskExceptions.get(handle);
+	}
+
+	public boolean encounteredEvent(Handle handle, HandleState state) {
+		return encounteredEvent(new HandleEvent(handle, state));
 	}
 
 	public boolean encounteredEvent(TestEvent event) {
@@ -92,14 +90,24 @@ public class TestEventManager
 	}
 
 	public long getDurationMs(TestEvent event1, TestEvent event2) {
-		Long timestamp1 = eventTimesMs.get(event1);
-		if (timestamp1 == null) {
-			throw new IllegalArgumentException("First event has not been encountered");
-		}
-		Long timestamp2 = eventTimesMs.get(event2);
-		if (timestamp2 == null) {
-			throw new IllegalArgumentException("Second event has not been encountered");
-		}
+		long timestamp1 = getElapsedTimeMs(event1);
+		long timestamp2 = getElapsedTimeMs(event2);
 		return timestamp2 - timestamp1;
+	}
+
+	public long getElapsedTimeMs() {
+		return System.currentTimeMillis() - initialTimestamp;
+	}
+
+	public long getElapsedTimeMs(Handle handle, HandleState state) {
+		return getElapsedTimeMs(new HandleEvent(handle, state));
+	}
+
+	public long getElapsedTimeMs(TestEvent event) {
+		Long timestamp = eventTimesMs.get(event);
+		if (timestamp == null) {
+			throw new IllegalArgumentException("Event '" + event + "' has not been encountered");
+		}
+		return timestamp;
 	}
 }

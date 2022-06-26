@@ -9,29 +9,25 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
 
 /**
- * This test checks that the framework does not suffer from {@link RejectedExecutionException}s.
+ * The internally used {@link ExecutorService} may throw a {@link RejectedExecutionException} for whatever reason,
+ * usually because internal resources have been exhausted. Hippodamus currently does not provide a strategy to avoid
+ * this problem.<br>
+ * <br>
+ * This test checks that such exceptions at least do not occur in reasonable scenarios for different kinds of
+ * {@code ExecutorService}s.
  */
 class RejectedExecutionExceptionTest
 {
-	private static final int						NUM_THREADS		= 2;
-	private static final int						NUM_TASKS		= 1000;
-	private static final long						TASK_TIME_MS	= 10;
-
-	private static final Supplier<ExecutorService>	COMMON_FORK_JOIN_POOL_SUPPLIER		= TestUtils.createNamedInstance(Supplier.class, ForkJoinPool::commonPool, "common fork join pool");
-	private static final Supplier<ExecutorService>	DEDICATED_EXECUTOR_SERVICE_SUPPLIER	= TestUtils.createNamedInstance(Supplier.class, () -> Executors.newFixedThreadPool(NUM_THREADS), "dedicated executor service");
-
-	static Object getParameters() {
-		return new Object[]{ COMMON_FORK_JOIN_POOL_SUPPLIER, DEDICATED_EXECUTOR_SERVICE_SUPPLIER };
-	}
+	private static final int	NUM_THREADS		= 2;
+	private static final int	NUM_TASKS		= 1000;
+	private static final long	TASK_TIME_MS	= 10;
 
 	@ParameterizedTest(name = "executor service: {0}")
-	@MethodSource("getParameters")
+	@MethodSource("getExecutorServiceSuppliers")
 	void testRejectedExecutionException(Supplier<ExecutorService> executorServiceSupplier) {
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
 			.executorService(TaskType.COMPUTATIONAL, executorServiceSupplier.get(), true);
@@ -40,5 +36,13 @@ class RejectedExecutionExceptionTest
 				coordinator.execute(() -> TestUtils.simulateWork(TASK_TIME_MS));
 			}
 		}
+	}
+
+	static Object getExecutorServiceSuppliers() {
+		return new Object[]{
+			TestUtils.COMMON_FORK_JOIN_POOL_SUPPLIER,
+			TestUtils.WORK_STEALING_POOL_SUPPLIER,
+			TestUtils.createFixedThreadPoolSupplier(NUM_THREADS)
+		};
 	}
 }

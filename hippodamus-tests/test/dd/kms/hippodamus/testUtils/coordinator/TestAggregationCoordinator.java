@@ -9,7 +9,7 @@ import dd.kms.hippodamus.testUtils.execution.configuration.TestAggregationConfig
 
 public class TestAggregationCoordinator<S, R> extends BaseTestCoordinator<AggregationCoordinator<S, R>> implements AggregationCoordinator<S, R>
 {
-	TestAggregationCoordinator(AggregationCoordinator<S, R> wrappedCoordinator, TestEventManager eventManager) {
+	public TestAggregationCoordinator(AggregationCoordinator<S, R> wrappedCoordinator, TestEventManager eventManager) {
 		super(wrappedCoordinator, eventManager);
 	}
 

@@ -1,5 +1,7 @@
 package dd.kms.hippodamus.api.exceptions;
 
+import java.util.concurrent.ExecutorService;
+
 /**
  * This exception is thrown for every exceptional state that occur inside the coordinator
  * that is not caused by an exception in one of the tasks. Possible causes are:
@@ -19,6 +21,7 @@ package dd.kms.hippodamus.api.exceptions;
  *         An exception thrown by one of the loggers registered via
  *         {@link dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder#logger(dd.kms.hippodamus.api.logging.Logger)}
  *     </li>
+ *     <li>The underlying {@link ExecutorService} throws an exception when a task is submitted to it.</li>
  * </ul>
  */
 public class CoordinatorException extends RuntimeException

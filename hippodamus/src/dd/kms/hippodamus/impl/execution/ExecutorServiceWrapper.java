@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.execution;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
 
 import java.util.Comparator;
@@ -8,6 +9,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Wraps an {@link ExecutorService} to provide two additional features:
@@ -73,7 +75,13 @@ public class ExecutorServiceWrapper implements AutoCloseable
 
 	private void _submitNow(HandleImpl<?> handle) {
 		_numPendingSubmittedTasks++;
-		Future<?> future = executorService.submit(handle::_executeCallable);
+		Future<?> future;
+		try {
+			future = executorService.submit(handle::_executeCallable);
+		} catch (RejectedExecutionException e) {
+			handle.getExecutionCoordinator()._log(LogLevel.INTERNAL_ERROR, handle, e.toString());
+			return;
+		}
 		handle._setFuture(future);
 	}
 
