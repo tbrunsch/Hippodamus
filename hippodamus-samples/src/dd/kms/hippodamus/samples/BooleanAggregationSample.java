@@ -16,13 +16,13 @@ public class BooleanAggregationSample
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		System.out.println("\nSuper task successful: " + successAggregator.getAggregatedValue());
+		System.out.println("\nSupertask successful: " + successAggregator.getAggregatedValue());
 	}
 
 	private static boolean runTask() throws InterruptedException {
 		Thread.sleep(500);
 		boolean subTaskSuccess = Math.random() >= 0.1;
-		System.out.println("Sub task successful: " + subTaskSuccess);
+		System.out.println("Subtask successful: " + subTaskSuccess);
 		return subTaskSuccess;
 	}
 }

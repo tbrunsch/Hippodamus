@@ -28,7 +28,7 @@ Hippodamus provides a comfortable way of handling exceptions similar to exceptio
 
 In Hippodamus, you write a try-with-resources block, in which you may execute tasks in parallel. These tasks are allowed to throw checked exceptions. Since Hippodamus guarantees that the try-block is not left unless all tasks have terminated, there is a predestined place where to handle exceptions thrown in any of these tasks: a catch-block. If a task only declares to throw one type of exception, then Hippodamus can even infer the exact exception type that has to be caught.
 
-Since Hippodamus assumes that everything within a try-block forms one super task that has been split into sub task, it will stop all running tasks if at least one task terminates exceptionally.
+Since Hippodamus assumes that everything within a try-block forms one supertask that has been split into subtask, it will stop all running tasks if at least one task terminates exceptionally.
 
 When working with Hippodamus, it is advantageous to understand how exception handling is realized by the framework. For further details see Section [Exception Handling Magic](#exception-handling-magic).
 
@@ -36,17 +36,17 @@ When working with Hippodamus, it is advantageous to understand how exception han
 
 Hippodamus **does not** cover all use cases that can be tackled with the `CompletableFuture` API. Instead, it is optimized for the following use case:
 
-- There is a super task that can be split into sub tasks.
-- The sub tasks can (partially) be executed in parallel.
-- An exceptional termination of one tasks should result in an exceptional termination of the super task.
-- There are no cyclic dependencies between the sub tasks.
+- There is a supertask that can be split into subtasks.
+- The subtasks can (partially) be executed in parallel.
+- An exceptional termination of one tasks should result in an exceptional termination of the supertask.
+- There are no cyclic dependencies between the subtasks.
 
 You will gain even more benefit by using Hippodamus if at least one of the following applies:
 
 - You have sequential code that you want to parallelize.
-- The sub tasks depend on each other, i.e., some tasks must not be executed before some others have completed. The more complex these dependencies, the better.
-- Some sub tasks throw checked exceptions.
-- You want a comfortable exception handling mechanism.
+- The subtasks depend on each other, i.e., some tasks must not be executed before some others have completed. The more complex these dependencies, the better.
+- Some subtasks throw checked exceptions.
+- You want a convenient exception handling mechanism.
 
 # Coordinators
 
@@ -66,7 +66,7 @@ As can be seen in the example, the entry point to the framework is the class `dd
 1. `ExecutionCoordinator`s and
 1. `AggregationCoordinator`s.
 
-An `AggregationCoordinator` is a special case of an `ExecutionCoordinator` that offers additional support for super tasks that aggregate data of their sub tasks. For more details see Section [Aggregation](#aggregation). 
+An `AggregationCoordinator` is a special case of an `ExecutionCoordinator` that offers additional support for supertasks that aggregate data of their subtasks. For more details see Section [Aggregation](#aggregation). 
 
 For each of these coordinator types, the class `Coordinators` offers two factory methods: One method creates a preconfigured coordinator, while the other one returns a builder via which the coordinator can be configured (see Section [Configuring Coordinators](#configuring-coordinators)).
 
@@ -105,7 +105,7 @@ There are two ways to execute a task within a coordinator's try-block:
 1. By directly calling `ExecutionCoordinator.execute()` or
 1. By calling `ExecutionCoordinator.configure()`.
 
-The first method is used for executing tasks that need no further configuration. This is the case for computational tasks (see Section [Task Types](#task-types)) without dependencies. In all other cases you should call the second method.
+The first method is used for executing tasks that do not need further configuration. This is the case for computational tasks (see Section [Task Types](#task-types)) without dependencies. In all other cases you should call the second method.
 
 When executing a task, you get a `Handle` (comparable to a `Future`) to that task that allows some control over the task. In particular, it allows specifying dependencies between tasks.  
 
@@ -132,7 +132,7 @@ When configuring the coordinator (see Section [Configuring Coordinators](#config
 
 Since the `ExecutorService`s are not bound to the tasks, but to the coordinator, shutting them down (if desired) can be automatically done in the coordinator's `close()` method.
 
-Note that, by default, computational tasks are sent to the common `ForkJoinPool`, whereas blockung tasks are sent to a dedicated single-threaded `ExecutorService`.
+Note that, by default, computational tasks are sent to the common `ForkJoinPool`, whereas blocking tasks are sent to a dedicated single-threaded `ExecutorService`.
 
 **TaskTypeSample.java:**
 
@@ -209,7 +209,7 @@ Task X can be in different states when someone tries to receive its value:
 
 At first glance it does not seem to make any difference whether the task is stopped before or after starting execution as long as it has not yet terminated. This is only true for the behavior of `ResultHandle.get()`. Technically, there is a huge difference between both cases: In the first case we simply do not execute the task, while in the second case the task just gets informed about the stop request (see Section [Stopping Tasks](#stopping-tasks)). Whether it stops or not is the task's responsibility.
 
-The following table shows which combinations of who tries to retrieve the value of a task and in which state task is are possible:
+The following table shows which combinations of who tries to retrieve the value of a task and in which state the task is are possible:
 
 | |not yet executed|executing|stopped before termination|terminated regularly|terminated exceptionally|
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -319,67 +319,11 @@ One possibility is to specify a dedicated `ExecutorService` for theses tasks (se
 
 Alternatively, you can specify the maximum parallelism for a certain task type. This is the maximum number of tasks of that type processed by their `ExecutorService` at any time. Surplus tasks will be queued until one of the tasks currently be processed by the `ExecutorService` terminates.
 
-For the sake of completeness we discuss in Section [Maximum Parallelism And Deadlocks](#maximum-parallelism-and-deadlocks) why we internally use a priority queue instead of a simple FIFO queue. These are just technical details and not relevant for users of Hippodamus. 
-
-### Maximum Parallelism And Deadlocks
-
-In this section we discuss why we use a priority queue rather than a FIFO queue for queuing surplus tasks that cannot immediately be submitted to the `ExecutorService` due to the specified maximum parallelism. The reason is that one may run into a deadlock when using a FIFO queue if not all task dependencies are specified correctly. For this to see, consider the following example:
-
-```
-    ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-        .maximumParallelism(TaskType.COMPUTATIONAL, 2)
-        .logger(((logLevel, taskName, message) -> System.out.println(taskName + ": " + message)));
-    try (ExecutionCoordinator coordinator = builder.build()) {
-        ResultHandle<Integer> task1 = coordinator.execute(() -> returnWithDelay(1));
-        ResultHandle<Integer> task2 = coordinator.configure().dependencies(task1).execute(() -> returnWithDelay(task1.get() + 1));
-        ResultHandle<Integer> task3 = coordinator.execute(() -> returnWithDelay(task2.get() + 1));
-        ResultHandle<Integer> task4 = coordinator.execute(() -> returnWithDelay(task3.get() + 1));
-    } catch (InterruptedException e) {
-        e.printStackTrace();
-    }
-```
-
-The implementation of `returnWithDelay()` is:
-
-```
-int returnWithDelay(int value) throws InterruptedException {
-    Thread.sleep(500);
-    return value;
-}
-```
-
-In this example, the maximum parallelism is 2. Task 4 depends on task 3, which depends on task 2, which depends on task 1. However, the dependencies of task 3 and task 4 are not specified. The program flow will be as follows:
-
-1. The coordinator submits task 1 because it has no dependencies.
-1. The coordinator **does not submit** task 2 because it specifies to depend on task 1 and task 1 has not yet finished.
-1. The coordinator submits task 3 because it **does not specify** any dependency.
-1. The coordinator tries to submit task 4 because it **does not specify** any dependency. Since the `ExecutorService` is already processing 2 tasks (task 1 and task 3), task 4 is queued for later submission.
-1. Task 1 terminates, which causes task 2 to be queue for later submission.
-1. We can now submit a further task. If we use the FIFO rule, then the queued task 4 is selected for submission because it was queued before task 2. 
-1. Task 3 keeps waiting for task 2 to terminate, while task 4 keeps waiting for task 3 to terminate. However, task 2 will never be submitted because of the maximum parallelism.
-
-Note that in this example the coordinator could have avoided the deadlock by submitting task 2 instead of task 4 after task 1 has terminated. This is what a priority queue would have done.
-
-Let us now discuss why we do not run into such problems with a priority queue (aka a *min heap*) with the task IDs as priorities, i.e., where task i has priority i, independent of how wrong the task dependencies are specified (missing dependencies, additional incorrect dependencies). For this to see, we first observe that
-
-1. a task i can only depend on tasks j < i (by accessing `ResultHandle.get()`) and
-1. a task i can only be declared to depend on tasks k < i (see Section [Task Dependencies](#task-dependencies)).
-
-This is due to the fact that when executing a task by calling `ExecutionCoordinator.execute()`, the specified dependencies and the task's code (if we do not apply some hacks) can only refer to handles that have already been created. These handles (and their tasks) have a lower ID than the task at hand.
-
-Now let us assume that our maximum parallelism is M and that we are in a deadlock with the tasks i_1 < ... < i_M being submitted to the `ExecutorService`. In particular, task i_1 must depend on a task j < i_1 (real dependency) that has not yet been executed. We will now argue that it is impossible to encounter this situation with a priority queue.
-
-For this, consider all direct and indirect specified (!) dependencies of task j that have not yet been executed plus task j and consider among these tasks the one with the smallest ID k. By construction, all specified dependencies of task k (which must have IDs lower than k) must already have been executed, which makes task k eligible for submission.
-
-Now consider the point in time when the last task completes, i.e., before reaching the deadlock. At that time, only M-1 of the tasks i_1, ..., i_M have already been submitted to the `ExecutorService`. The deadlock is created by submitting the remaining one of these tasks. However, this cannot happen with a priority queue because k ≤ j < i_1: There was at least one other task (task k) at that time (or earlier) that would have been selected instead. This contradicts the assumption that we ran into a deadlock with the tasks i_1, ..., i_M.
-
-We have shown that priority queues, in contrast to FIFO queues, prevent certain deadlocks if not all dependencies are specified correctly. However, we still can encounter situations in which all but one submitted task are waiting for other tasks to complete. This is why we encourage users to specify all dependencies of their tasks. After all, one main objective of Hippodamus is to exploit dependency information for improving the performance.  
-
 ## Aggregation
 
-Hippodamus particularly supports the use case in which a super task aggregates the values of (some of its) sub tasks. You will probably encounter such use cases more often than you might think.
+Hippodamus particularly supports the use case in which a supertask aggregates the values of (some of its) subtasks. You will probably encounter such use cases more often than you might think.
 
-**Example:** One of the fundamental assumptions imposed by Hippodamus is that the super task fails if at least one of its sub tasks fails. If failing is signaled by throwing an exception, then this behavior is already achieved by using the `ExecutionCoordinator`. However, if sub tasks signal their success by returning a `boolean` value, then an `AggregationCoordinator` is required. The boolean values are aggregated into one boolean value describing the success of the super task by applying a logical conjunction:     
+**Example:** One of the fundamental assumptions imposed by Hippodamus is that the supertask fails if at least one of its subtasks fails. If failing is signaled by throwing an exception, then this behavior is already achieved by using the `ExecutionCoordinator`. However, if subtasks signal their success by returning a `boolean` value, then an `AggregationCoordinator` is required. The boolean values are aggregated into one boolean value describing the success of the supertask by applying a logical conjunction:     
 
 **BooleanAggregationSample.java:**
 
@@ -390,21 +334,21 @@ try (AggregationCoordinator<Boolean, Boolean> coordinator = Coordinators.createA
         coordinator.aggregate(() -> runTask());
     }
 }
-System.out.println("Super task successful: " + successAggregator.getAggregatedValue());
+System.out.println("Supertask successful: " + successAggregator.getAggregatedValue());
 ```
 
-In the previous example, the method `runTask()` returns a boolean value describing the success of the sub task. The value aggregated until a certain point in time can be queried via the method `Aggregator.getAggregatedValue()`.
+In the previous example, the method `runTask()` returns a boolean value describing the success of the subtask. The value aggregated until a certain point in time can be queried via the method `Aggregator.getAggregatedValue()`.
 
 ### Aggregators
 
 The interface `dd.kms.hippodamus.api.aggregation.Aggregator` describes how values of a type `S` have to be aggregated to a value of type `R`. In many cases `S` and `R` will be identical. You can either directly implement that interface or use the factory class `dd.kms.hippodamus.api.aggregation.Aggregators` to construct an aggregator. This factory provides methods for creating
 
-- Disjunction (logical or) and conjunction (logical and) aggregators and
-- Aggregators based on an initial value, an aggregation function, and a predicate that can be used to test whether aggregation can complete prematurely (see Section [Short Circuit Evaluation](#short-circuit-evaluation)).
+- disjunction (logical or) and conjunction (logical and) aggregators and
+- aggregators based on an initial value, an aggregation function, and a predicate that can be used to test whether aggregation can complete prematurely (see Section [Short Circuit Evaluation](#short-circuit-evaluation)).
 
-### Aggregating Sub Task Values
+### Aggregating Subtask Values
 
-To aggregate the value of a sub task, you simply call the method `AggregationCoordinator.aggregate()` (instead of `ExecutionCoordinator.execute()`). Of course, only tasks are accepted that have a return value that match the expectation of the aggregator that has been specified when constructing the `AggregationCoordinator`.
+To aggregate the value of a subtask, you simply call the method `AggregationCoordinator.aggregate()` (instead of `ExecutionCoordinator.execute()`). Of course, only tasks are accepted that have a return value that match the expectation of the aggregator that has been specified when constructing the `AggregationCoordinator`.
 
 Note that an `AggregationCoordinator` is just a special `ExecutionCoordinator` and that the `aggregate()` method does the same as the `execute()` method plus some additional aggregation logic. Hence, aggregation tasks are not different from other tasks. They just get some extra treatment. Consequently, it is valid to mix aggregation tasks and other tasks:
 
@@ -425,15 +369,15 @@ The `Aggregator` interface provides a method `hasAggregationCompleted()` that is
 
 ## Stopping Tasks
 
-It is not possible to stop individual tasks manually. Since all tasks are part of a super task that is meant to be processed parallely by the coordinator, stopping some tasks but not all does not make sense. You can only stop the whole coordinator (see Section [Stopping Coordinators](#stopping-coordinators)), which internally stops all tasks individually. If a task is stopped and it has not yet been executed, then it will never be executed at all. If a task is executing when it is requested to stop, then the interrupt flag of the thread that executes the task is set. It is the task's responsibility to check the interrupted flag by, e.g., calling  `Thread.isInterrupted()` or `Thread.interrupted()`.
+It is not possible to stop individual tasks manually. Since all tasks are part of a supertask that is meant to be processed parallely by the coordinator, stopping some tasks but not all does not make sense. You can only stop the whole coordinator (see Section [Stopping Coordinators](#stopping-coordinators)), which internally stops all tasks individually. If a task is stopped and it has not yet been executed, then it will never be executed at all. If a task is executing when it is requested to stop, then the interrupt flag of the thread that executes the task is set. It is the task's responsibility to check the interrupted flag by, e.g., calling  `Thread.isInterrupted()` or `Thread.interrupted()`.
 
 ## Stopping Coordinators
 
 Currently there are three ways to stop a coordinator:
 
-- Manually by calling `ExecutionCoordinator.stop()`,
-- Automatically by the `ExecutionCoordinator` as a reaction to an exception, and
-- Automatically by the `AggregationCoordinator` as a consequence of short circuit evaluation.
+- manually by calling `ExecutionCoordinator.stop()`,
+- automatically by the `ExecutionCoordinator` as a reaction to an exception, and
+- automatically by the `AggregationCoordinator` as a consequence of short circuit evaluation.
 
 # Task Listeners
 
@@ -442,7 +386,7 @@ Hippodamus was designed to enable writing code that looks as much sequential as 
 - `Handle.onCompletion(Runnable)` or
 - `Handle.onException(Runnable)`,
 
-respectively. Note that, unlike in the `CompletableFuture` API, the listeners are pure `Runnable`s instead of consumers of the result value or an exception. This makes it a bit more flexible because the runnable could also be a lambda that captures the handle. We propose the following procedure for registering listeners:
+respectively. Note that, unlike in the `CompletableFuture` API, the listeners are pure `Runnable`s instead of consumers of the result value or an exception. We propose the following procedure for registering listeners:
 
 ```
     Handle handle = coordinator.execute(() -> doSomething());
@@ -452,7 +396,7 @@ respectively. Note that, unlike in the `CompletableFuture` API, the listeners ar
 The question remains where and when the listener is executed. This depends on the state of the coordinator at the point of time when the listener is registered:
 
 - If the task has already completed or thrown an exception, respectively, then the listener is executed immediately in the coordinator's thread.
-- If the task completes (or throws an exception) later, then the listener is called in the thread that executed the task. 
+- If the task completes (or throws an exception) later, then the listener is called in the thread that executed the task.
 
 # Exception Handling Magic
 
@@ -466,7 +410,7 @@ Let us discuss these points in more detail:
 
 1. Since the `execute()` methods of the `ExecutionCoordinator` do not immediately execute the specified task, they do not really throw the task's exceptions. These exceptions will be thrown later. However, since the `execute()` methods are the only place where we know at compile time which exceptions may be thrown, these methods pretend to throw them to force the user to handle them. Without this trick, the user had to handle generic `Throwable`s instead of concrete exception classes.
 1. The second point is simple: `Handle`s catch the exceptions of their tasks and inform the coordinator via a setter about these exceptions. The coordinator stores this information in a field and stops all tasks. The coordinator **does not throw** exceptions at that time because they would be thrown in the task's instead of the coordinator's thread.
-1. The `ExecutionCoordinator` has a method `checkException()` that checks whether its exception field is set. If so, it throws this exception. Note that this method **might throw checked exceptions** although it does not declare to do so. This is a well-known trick based on type erasure (see `dd.kms.hippodamus.impl.exceptions.Exceptions.throwUnchecked(Throwable)`). With this trick we bypass Java's exception handling mechanism locally. However, by the first point we ensure that the user handles these type of exceptions nevertheless. (After all, we want to provide an exception handling mechanism.)
+1. The `ExecutionCoordinator` has a method `checkException()` that checks whether its exception field is set. If so, it throws this exception. Note that this method **might throw checked exceptions** although it does not declare to do so. This is a well-known trick based on type erasure (see `dd.kms.hippodamus.impl.coordinator.ExceptionalState.throwUnchecked(Throwable)`). With this trick we bypass Java's exception handling mechanism locally. However, by the first point we ensure that the user handles these exceptions nevertheless. (After all, we want to provide an exception handling mechanism.)
 The method `checkException()` **must only be called in the coordinator's thread** such that the exception is caught by the correct handler. The coordinator calls this method in its `execute()` methods and in its `close()` method.
 
 ## When Exceptions Are Thrown
@@ -508,6 +452,7 @@ Hippodamus throws `dd.kms.hippodamus.api.exceptions.CoordinatorException`s when 
 - Dependency verification is enabled and there is an attempt to access the value of a task that has not yet completed (cf. Section [Dependency Verification](#dependency-verification)).
 - The logger throws an exception (cf. Section [Configuring Coordinators](#configuring-coordinators)).
 - A completion or exception listener throws an exception (cf. Section [Task Listeners](#task-listeners)).
+- The underlying `ExecutorService` throws an exception when a task is submitted to it.
 
 Internal errors are treated with the highest priority as they are fatal. If a task throws an exception and, e.g., an exception listener which is notified also throws an exception, then the coordinator will throw a `CoordinatorException` containing information about the listener that threw an exception. The task's exception is ignored in this case.
 
