@@ -1,119 +1,117 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.exceptions.CoordinatorException;
-import dd.kms.hippodamus.handles.ResultHandle;
-import dd.kms.hippodamus.logging.LogLevel;
-import dd.kms.hippodamus.logging.Logger;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.execution.ExecutionManager;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import dd.kms.hippodamus.testUtils.events.HandleEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.states.HandleState;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 /**
- * The {@link ExecutionCoordinator} only
- * submits tasks to the {@link ExecutorService}, if
- * all of its dependencies are resolved. If dependencies are not specified
- * correctly, then tasks might end up actively waiting for other tasks to
- * complete.<br/>
- * <br/>
- * Dependency verification allows to check whether for all tasks all
- * dependencies are specified. If activated, then there will be an exception
- * when accessing the result of a task that has not yet completed. If
- * deactivated, then the task will wait for the other task to complete.<br/>
- * <br/>
- * This task focuses on testing both modi, which should be both supported
- * by the framework.
+ * The {@link ExecutionCoordinator} only submits tasks to the underlying {@link ExecutorService} if all of its
+ * dependencies are resolved. If dependencies are not specified correctly, then tasks might have to wait for other tasks
+ * to complete, blocking the thread they are executed in.<br>
+ * <br>
+ * Dependency verification allows to check whether such situations occur. If activated, then there will be an exception
+ * when accessing the result of a task that has not yet completed. If deactivated, then the task will wait for the other
+ * task to complete.<br>
+ * <br>
+ * This class tests several situations with activated and with deactivated dependency verification.
  */
-@RunWith(Parameterized.class)
-public class DependencyVerificationTest
+class DependencyVerificationTest
 {
-	@Parameterized.Parameters(name = "verify dependencies: {0}")
-	public static Object getParameters() {
-		return new Object[]{ false, true };
-	}
+	private static final int	TASK_TIME_MS	= 500;
 
-	private final boolean	verifyDependencies;
-
-	public DependencyVerificationTest(boolean verifyDependencies) {
-		this.verifyDependencies = verifyDependencies;
-	}
-
-	@Test
-	public void testNonSubmittedTaskDependency() {
+	@ParameterizedTest(name = "verify dependencies: {0}, dependency already running: {1}")
+	@MethodSource("getParameters")
+	void testDependencyVerification(boolean verifyDependencies, boolean dependencyAlreadyRunning) {
 		TestLogger logger = new TestLogger();
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
 			.verifyDependencies(verifyDependencies);
-		ResultHandle<Integer> task3 = null;
 		boolean caughtException = false;
-		int task1Result = 13;
-		int task2Result = 17;
+		ResultHandle<Void> dependencyTask = null;
+		Handle dependentTask = null;
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
-			ResultHandle<Integer> task1 = coordinator.execute(() -> generateNumber(task1Result, 1000));
-			ResultHandle<Integer> task2 = coordinator.configure().dependencies(task1).execute(() -> generateNumber(task2Result, 100));
+		TestEventManager eventManager = new TestEventManager();
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
+			Handle dummyTask = coordinator.execute(() -> TestUtils.simulateWork(TASK_TIME_MS));
+			ExecutionManager executionManager = dependencyAlreadyRunning
+													? coordinator
+													: coordinator.configure().dependencies(dummyTask);
+			dependencyTask = executionManager.execute(() -> {
+				TestUtils.simulateWork(TASK_TIME_MS);
+				return null;
+			});
 
+			TestUtils.simulateWork(TASK_TIME_MS / 2);
 			/*
-			 * Task 3 depend on the result of task 2, but that dependency is not specified.
-			 * If task 3 is executed, task 2 will not even be submitted to an ExecutorService
-			 * because it is waiting in task 1.
+			 * At this point, dependencyTask will already be executed if and only if dependencyAlreadyRunning is true.
+			 * In both cases, it will not have terminated yet.
 			 */
-			task3 = coordinator.execute(() -> task2.get());
+			dependentTask = coordinator.execute(dependencyTask::get);
 		} catch (CoordinatorException e) {
 			caughtException = true;
 		}
-		Assert.assertTrue("task3 is null", task3 != null);
+		Assertions.assertNotNull(dependencyTask, "dependency task has not been submitted at all");
+		Assertions.assertNotNull(dependentTask, "dependent task has not been submitted at all");
+
+		// Check test setup
+		HandleEvent dependencyTaskStartedEvent = new HandleEvent(dependencyTask, HandleState.STARTED);
+		HandleEvent dependencyTaskCompletedEvent = new HandleEvent(dependencyTask, HandleState.COMPLETED);
+		HandleEvent dependentTaskStartedEvent = new HandleEvent(dependentTask, HandleState.STARTED);
+
 		if (verifyDependencies) {
-			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
-			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
+			if (dependencyAlreadyRunning) {
+				Assertions.assertTrue(eventManager.before(dependencyTaskStartedEvent, dependentTaskStartedEvent), "dependency task should already have started when dependent task is started");
+				Assertions.assertTrue(eventManager.before(dependentTaskStartedEvent, dependencyTaskCompletedEvent), "dependent task should have started before dependency task has completed");
+			} else {
+				Assertions.assertFalse(eventManager.encounteredEvent(dependencyTaskStartedEvent), "dependency task should not have started at all");
+			}
 		} else {
-			Assert.assertFalse("Encountered an internal error", logger.hasEncounteredInternalError());
-			Assert.assertFalse("Encountered an exception", caughtException);
-			Assert.assertEquals(task2Result, (int) task3.get());
+			Assertions.assertTrue(eventManager.before(dependentTaskStartedEvent, dependencyTaskCompletedEvent), "dependent task should have started before dependency task has completed");
+			if (dependencyAlreadyRunning) {
+				Assertions.assertTrue(eventManager.before(dependencyTaskStartedEvent, dependentTaskStartedEvent), "dependency task should already have started when dependent task is started");
+			} else {
+				Assertions.assertTrue(eventManager.before(dependentTaskStartedEvent, dependencyTaskStartedEvent), "dependency task should not have started yet when dependent task is started");
+			}
 		}
-	}
 
-	@Test
-	public void testRunningTaskDependency() {
-		TestLogger logger = new TestLogger();
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
-			.logger(logger)
-			.verifyDependencies(verifyDependencies);
-		boolean caughtException = false;
-		int addend1Result = 13;
-		int addend2Result = 17;
-		ResultHandle<Integer> sum = null;
-		TestUtils.waitForEmptyCommonForkJoinPool();
-		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
-			ResultHandle<Integer> addend1 = coordinator.execute(() -> generateNumber(addend1Result, 1000));
-			ResultHandle<Integer> addend2 = coordinator.execute(() -> generateNumber(addend2Result, 500));
-			sum = coordinator.execute(() -> addend1.get() + addend2.get());
-		} catch (CoordinatorException e) {
-			caughtException = true;
-		}
-		Assert.assertTrue("sum is null", sum != null);
+		// Check behavior
 		if (verifyDependencies) {
-			Assert.assertTrue("Expected an internal error due to missing dependency specification", logger.hasEncounteredInternalError());
-			Assert.assertTrue("Expected an exception due to missing dependency specification", caughtException);
+			Assertions.assertTrue(logger.hasEncounteredInternalError(), "Expected an internal error due to missing dependency specification");
+			Assertions.assertTrue(caughtException, "Expected an exception due to missing dependency specification");
 		} else {
-			Assert.assertFalse("Encountered an internal error", logger.hasEncounteredInternalError());
-			Assert.assertFalse("Encountered an exception", caughtException);
-			Assert.assertEquals(addend1Result + addend2Result, (int) sum.get());
+			Assertions.assertFalse(logger.hasEncounteredInternalError(), "Encountered an internal error");
+			Assertions.assertFalse(caughtException, "Encountered an exception");
 		}
 	}
 
-	private int generateNumber(int number, long simulatedTimeMs) {
-		TestUtils.simulateWork(simulatedTimeMs);
-		return number;
+	static Object getParameters() {
+		List<Object[]> parameters = new ArrayList<>();
+		for (boolean verifyDependencies : TestUtils.BOOLEANS) {
+			for (boolean dependencyAlreadyRunning : TestUtils.BOOLEANS) {
+				parameters.add(new Object[]{verifyDependencies, dependencyAlreadyRunning});
+			}
+		}
+		return parameters;
 	}
 
-	private class TestLogger implements Logger
+	private static class TestLogger implements Logger
 	{
 		private boolean encounteredInternalError;
 

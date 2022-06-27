@@ -1,12 +1,11 @@
 package dd.kms.hippodamus.benchmark;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -16,98 +15,67 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 /**
- * One of the main purposes of {@link ExecutionCoordinator}s is
- * handling exceptions and dependencies. If there are no dependencies, then other approaches
- * with less overhead may be a better alternative. However, we want to ensure that the
- * framework overhead is not too large.
+ * One of the main purposes of {@link ExecutionCoordinator}s is handling exceptions and dependencies. If there are no
+ * dependencies, then other approaches with less overhead may be a better alternative. However, we want to ensure that
+ * the framework overhead is not too large.
  */
-@RunWith(Parameterized.class)
-public class NoDependencyBenchmark
+class NoDependencyBenchmark
 {
 	private static final long	PRECISION_MS	= 200;
 	private static final double	TOLERANCE		= 1.05;
 
-	private final int	numTasks;
-	private final long	taskTimeMs;
-
-	public NoDependencyBenchmark(int numTasks, long taskTimeMs) {
-		this.numTasks = numTasks;
-		this.taskTimeMs = taskTimeMs;
-	}
-
-	@Parameterized.Parameters(name = "#tasks: {0}, task duration: {1} ms")
-	public static Object getParameters() {
+	static Object getParameters() {
 		return Arrays.asList(
-			new Object[]{ 1, 100 },
-			new Object[]{ 1, 1000 },
-			new Object[]{ 10, 100 },
-			new Object[]{ 10, 1000 },
-			new Object[]{ 100, 100 },
-			new Object[]{ 1000, 10 }
+			new Object[]{1, 100},
+			new Object[]{1, 1000},
+			new Object[]{10, 100},
+			new Object[]{10, 1000},
+			new Object[]{100, 100},
+			new Object[]{1000, 10}
 		);
 	}
 
-	@Test
-	public void benchmarkNoDependencies() {
+	@ParameterizedTest(name = "#tasks: {0}, task duration: {1} ms")
+	@MethodSource("getParameters")
+	void benchmarkNoDependencies(int numTasks, long taskTimeMs) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		long threadsTimeMs = BenchmarkUtils.measureTime(this::runWithDedicatedThreads);
+		long futureTimeMs = BenchmarkUtils.measureTime(() -> runWithCompletableFutures(numTasks, taskTimeMs));
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		long futureTimeMs = BenchmarkUtils.measureTime(this::runWithCompletableFutures);
-		TestUtils.waitForEmptyCommonForkJoinPool();
-		long coordinatorTimeMs = BenchmarkUtils.measureTime(this::runWithCoordinator);
+		long coordinatorTimeMs = BenchmarkUtils.measureTime(() -> runWithCompletableFutures(numTasks, taskTimeMs));
 
-		System.out.println(MessageFormat.format("Times (threads/futures/coordinator): {0} ms/{1} ms/{2} ms", threadsTimeMs, futureTimeMs, coordinatorTimeMs));
+		System.out.println(MessageFormat.format("Times (futures/coordinator): {0} ms/{1} ms", futureTimeMs, coordinatorTimeMs));
 
-		long minTimeMs = Math.min(threadsTimeMs, futureTimeMs);
-		long maxAllowedTimeMs = Math.round(TOLERANCE*minTimeMs + PRECISION_MS);
+		long maxAllowedTimeMs = Math.round(TOLERANCE*futureTimeMs + PRECISION_MS);
 
 		TestUtils.assertTimeUpperBound(maxAllowedTimeMs, coordinatorTimeMs);
 	}
 
-	private void runWithDedicatedThreads() {
-		List<Thread> threads = new ArrayList<>(numTasks);
+	private void runWithCompletableFutures(int numTasks, long taskTimeMs) {
+		List<Future<Void>> futures = new ArrayList<>(numTasks);
 		for (int i = 0; i < numTasks; i++) {
-			Thread thread = new Thread(this::runTask);
-			thread.run();
-			threads.add(thread);
-		}
-		boolean exception = false;
-		for (Thread thread : threads) {
-			try {
-				thread.join();
-			} catch (InterruptedException e) {
-				exception = true;
-			}
-		}
-		Assert.assertFalse("An interrupted exception occurred in the thread approach", exception);
-	}
-
-	private void runWithCompletableFutures() {
-		List<Future> futures = new ArrayList<>(numTasks);
-		for (int i = 0; i < numTasks; i++) {
-			Future future = CompletableFuture.runAsync(this::runTask);
+			Future<Void> future = CompletableFuture.runAsync(() -> runTask(taskTimeMs));
 			futures.add(future);
 		}
 		boolean exception = false;
-		for (Future future : futures) {
+		for (Future<Void> future : futures) {
 			try {
 				future.get();
 			} catch (Exception e) {
 				exception = true;
 			}
 		}
-		Assert.assertFalse("An interrupted exception occurred in the thread approach", exception);
+		Assertions.assertFalse(exception, "An interrupted exception occurred in the thread approach");
 	}
 
-	private void runWithCoordinator() {
+	private void runWithCoordinator(int numTasks, long taskTimeMs) {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 0; i < numTasks; i++) {
-				coordinator.execute(this::runTask);
+				coordinator.execute(() -> runTask(taskTimeMs));
 			}
 		}
 	}
 
-	private void runTask() {
+	private void runTask(long taskTimeMs) {
 		TestUtils.simulateWork(taskTimeMs);
 	}
 }

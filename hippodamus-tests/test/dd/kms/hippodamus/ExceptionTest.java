@@ -1,74 +1,71 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * This test focuses on how the framework handles exceptions.<br/>
- * <br/>
- * The framework should force the user to write catch clauses for exactly the checked
- * exceptions that are declared to be thrown by the methods called asynchronously.
+ * This test focuses on how the framework handles exceptions.<br>
+ * <br>
+ * The framework should force the user to write catch clauses for exactly the checked exceptions that are declared to be
+ * thrown by the methods called asynchronously.
  */
-@RunWith(Parameterized.class)
-public class ExceptionTest
+class ExceptionTest
 {
-	@Parameterized.Parameters(name = "exception in tasks: {0}, {1}")
-	public static Collection<Object> getParameters() {
-		return Arrays.asList(
-			new Object[]{ false, false },
-			new Object[]{ false, true },
-			new Object[]{ true, false },
-			new Object[]{ true, true }
-		);
+	private static final long	TASK_TIME_1_MS	= 1000;
+	private static final long	TASK_TIME_2_MS	= 500;
+
+	static {
+		assert TASK_TIME_2_MS <= TASK_TIME_1_MS - 300 : "The test assumes that task 2 terminates significantly earlier than task 1";
 	}
 
-	private final boolean throwExceptionInTask1;
-	private final boolean throwExceptionInTask2;
-
-	public ExceptionTest(boolean throwExceptionInTask1, boolean throwExceptionInTask2) {
-		this.throwExceptionInTask1 = throwExceptionInTask1;
-		this.throwExceptionInTask2 = throwExceptionInTask2;
-	}
-
-	@Test
-	public void testExceptions() {
+	@ParameterizedTest(name = "exception in tasks: {0}, {1}")
+	@MethodSource("getParameters")
+	void testExceptions(boolean throwExceptionInTask1, boolean throwExceptionInTask2) {
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(this::run1);
-			coordinator.execute(this::run2);
-		} catch (Exception1 exception1) {
-			Assert.assertTrue("Unexpected exception in task 1", throwExceptionInTask1);
-			Assert.assertFalse("Exception from task 2 should have been thrown instead", throwExceptionInTask2);
+			coordinator.execute(() -> task1(throwExceptionInTask1));
+			coordinator.execute(() -> task2(throwExceptionInTask2));
+		} catch (TestException exception1) {
+			Assertions.assertTrue(throwExceptionInTask1, "Unexpected exception in task 1");
+			Assertions.assertFalse(throwExceptionInTask2, "Exception from task 2 should have been thrown instead");
 			return;
-		} catch (Exception2 exception2) {
-			Assert.assertTrue("Unexpected exception in task 2", throwExceptionInTask2);
+		} catch (TestException2 exception2) {
+			Assertions.assertTrue(throwExceptionInTask2, "Unexpected exception in task 2");
 			return;
 		}
-		Assert.assertTrue("An exception has been swallowed", !throwExceptionInTask1 && !throwExceptionInTask2);
+		Assertions.assertTrue(!throwExceptionInTask1 && !throwExceptionInTask2, "An exception has been swallowed");
 	}
 
-	private void run1() throws Exception1 {
-		TestUtils.simulateWork(1000);
-		if (throwExceptionInTask1) {
-			throw new Exception1();
+	private void task1(boolean throwException) throws TestException {
+		TestUtils.simulateWork(TASK_TIME_1_MS);
+		if (throwException) {
+			throw new TestException();
 		}
 	}
 
-	private void run2() throws Exception2 {
-		TestUtils.simulateWork(500);
-		if (throwExceptionInTask2) {
-			throw new Exception2();
+	private void task2(boolean throwException) throws TestException2 {
+		TestUtils.simulateWork(TASK_TIME_2_MS);
+		if (throwException) {
+			throw new TestException2();
 		}
 	}
 
-	private static class Exception1 extends Exception {}
+	static List<Object> getParameters() {
+		List<Object> parameters = new ArrayList<>();
+		for (boolean throwExceptionInTask1 : TestUtils.BOOLEANS) {
+			for (boolean throwExceptionInTask2 : TestUtils.BOOLEANS) {
+				parameters.add(new Object[]{throwExceptionInTask1, throwExceptionInTask2});
+			}
+		}
+		return parameters;
+	}
 
-	private static class Exception2 extends Exception {}
+	private static class TestException2 extends Exception {}
 }

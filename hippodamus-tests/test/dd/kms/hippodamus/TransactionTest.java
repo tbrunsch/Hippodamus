@@ -1,30 +1,34 @@
 package dd.kms.hippodamus;
 
 import com.google.common.collect.ImmutableList;
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.TaskType;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import dd.kms.hippodamus.testUtils.events.HandleEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.states.HandleState;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
- * This test focuses on the following scenario: We have a transaction consisting
- * of multiple parallel tasks that all have to complete. If any of these tasks
- * fails, then no further task should be started and the transaction should be
- * rewound.
+ * This test focuses on the following scenario: We have a transaction consisting of multiple parallel tasks that all
+ * have to complete. If any of these tasks fails, then no further task should be started and the transaction should be
+ * rewound.<br>
+ * <br>
+ * In this test, we simulate the creation of several files within a transaction. At some point in time, the file system
+ * is pretended to be shut down, such that trials to create further files on that file system will fail. In that case,
+ * the transaction has to be rewound, which means to delete all files that have been created so far.
  */
-@RunWith(Parameterized.class)
-public class TransactionTest
+class TransactionTest
 {
 	private static final Transaction	TRANSACTION	= new Transaction(
 		new CreateFileAction("File 1", 500),
@@ -44,56 +48,104 @@ public class TransactionTest
 	 * Thread 1: File 1 ----> 500, File 3 ------------> 1800, File 6 --> 2100, File 7 ----------------------------> 3600
 	 * Thread 2: File 2 -------> 800, File 4 ------> 1500, File 5 ---------> 2500, File 8 -----> 3100, File 9 ---->3600
 	 */
-	private static final int[]	START_TIMES	= { 0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100 };
+	private static final long[]			EXPECTED_START_TIMES_MS = {0, 0, 500, 800, 1500, 1800, 2100, 2500, 3100};
 
-	@Parameterized.Parameters(name = "transaction timeout after {0} ms")
-	public static Object getParameters() {
-		return ImmutableList.of(300, 1200, 1600, 2400, 3000);
+	private static final long[]			EXPECTED_END_TIMES_MS;
+
+	private static final long			PRECISION_MS			= 300;
+
+	static {
+		List<CreateFileAction> actions = TRANSACTION.getActions();
+		int numActions = actions.size();
+		EXPECTED_END_TIMES_MS = new long[numActions];
+		for (int i = 0; i < numActions; i++) {
+			EXPECTED_END_TIMES_MS[i] = EXPECTED_START_TIMES_MS[i] + actions.get(i).getRequiredTimeMs();
+		}
 	}
 
-	private final long	fileSystemAvailabilityTimeMs;
-
-	public TransactionTest(long fileSystemAvailabilityTimeMs) {
-		this.fileSystemAvailabilityTimeMs = fileSystemAvailabilityTimeMs;
-	}
-
-	@Test
-	public void testCopyFiles() throws IOException {
+	@ParameterizedTest(name = "transaction timeout after {0} ms")
+	@MethodSource("getFileSystemAvailabilityTimeValues")
+	void testCopyFiles(long fileSystemAvailabilityTimeMs) throws IOException {
 		/*
-		 * The file system will "shut down" after fileSystemAvailabilityTimeMs millis.
-		 * => Trying to create a file afterwards will result in an IOException.
+		 * The file system will "shut down" after fileSystemAvailabilityTimeMs millis. Trying to create a file
+		 * afterwards will result in an IOException.
 		 */
-		FileSystem fileSystem = new FileSystem(System.currentTimeMillis() + fileSystemAvailabilityTimeMs);
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
-			.executorService(TaskType.IO, Executors.newFixedThreadPool(2), true);
+		FileSystem fileSystem = new FileSystem(fileSystemAvailabilityTimeMs);
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+			.executorService(TaskType.BLOCKING, Executors.newFixedThreadPool(2), true)
+			.maximumParallelism(TaskType.BLOCKING, 2);
 		boolean caughtException = false;
 		List<CreateFileAction> actions = TRANSACTION.getActions();
-		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
+		List<Handle> tasks = new ArrayList<>();
+		TestEventManager eventManager = new TestEventManager();
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			for (CreateFileAction action : actions) {
-				coordinator.configure().taskType(TaskType.IO).execute(() -> action.apply(fileSystem));
+				Handle task = coordinator.configure().taskType(TaskType.BLOCKING).execute(() -> action.apply(fileSystem));
+				tasks.add(task);
 			}
 		} catch (IOException e) {
 			caughtException = true;
-
-			// Check that only the files of those actions exist that have been executed before the file system shutdown
-			Set<String> expectedExistingFiles = new HashSet<>();
-			for (int i = 0; i < actions.size(); i++) {
-				CreateFileAction action = actions.get(i);
-				boolean fileExpectedToExist = START_TIMES[i] < fileSystemAvailabilityTimeMs;
-				if (fileExpectedToExist) {
-					Assert.assertTrue("The action for file name '" + action.getFileName() + "' should have been performed", action.hasTriedToPerform());
-					expectedExistingFiles.add(action.getFileName());
-				} else {
-					Assert.assertFalse("The coordinator should have stopped the task containing that action for file name '" + action.getFileName() + "' before executing it", action.hasTriedToPerform());
-				}
-			}
-			Assert.assertEquals("There exist other files than expected", expectedExistingFiles, fileSystem.getFiles());
-
-			// Undo transaction
-			TRANSACTION.undo(fileSystem);
-			Assert.assertTrue("Undo of transaction failed", fileSystem.getFiles().isEmpty());
 		}
-		Assert.assertTrue("An exception has been swallowed", caughtException);
+		long lastEndTimeMs = Arrays.stream(EXPECTED_END_TIMES_MS).max().getAsLong();
+		boolean expectedException = fileSystemAvailabilityTimeMs <= lastEndTimeMs;
+
+		List<Handle> exceptionalTasks = tasks.stream().filter(task -> task.getException() instanceof IOException).collect(Collectors.toList());
+		if (expectedException) {
+			Assertions.assertTrue(caughtException, "An IOException has been swallowed");
+			Assertions.assertFalse(exceptionalTasks.isEmpty(), "No IOException has been encountered in any of the tasks");
+		} else {
+			Assertions.assertFalse(caughtException, "Unexpected IOException");
+			Assertions.assertTrue(exceptionalTasks.isEmpty(), "An IOException has been encountered in some tasks");
+		}
+
+		int numTasks = tasks.size();
+		for (int i = 0; i < numTasks; i++) {
+			CreateFileAction taskAction = actions.get(i);
+			Handle task = tasks.get(i);
+			long expectedStartTimeMs = EXPECTED_START_TIMES_MS[i];
+			long expectedEndTimeMs = EXPECTED_END_TIMES_MS[i];
+			HandleEvent taskStartedEvent = new HandleEvent(task, HandleState.STARTED);
+			if (expectedEndTimeMs <= fileSystemAvailabilityTimeMs) {
+				// task should have been executed
+				Assertions.assertTrue(taskAction.hasPerformed(), "The action of task " + i + " should have been performed");
+				Assertions.assertTrue(fileSystem.getFiles().contains(taskAction.getFileName()), "File '" + taskAction.getFileName() + "' does not exist");
+				Assertions.assertNull(task.getException(), "Task " + i + " should not have thrown an exception");
+				HandleEvent taskCompletedEvent = new HandleEvent(task, HandleState.COMPLETED);
+				TestUtils.assertTimeBounds(expectedStartTimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(taskStartedEvent), "Start of task " + i);
+				TestUtils.assertTimeBounds(expectedEndTimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(taskCompletedEvent), "Completion of task " + i);
+			} else if (expectedStartTimeMs > fileSystemAvailabilityTimeMs) {
+				// task should not even have started
+				Assertions.assertFalse(taskAction.hasTriedToPerform(), "The action of task " + i + " should not have been tried to be performed");
+				Assertions.assertFalse(fileSystem.getFiles().contains(taskAction.getFileName()), "File '" + taskAction.getFileName() + "' should not exist");
+				Assertions.assertFalse(eventManager.encounteredEvent(taskStartedEvent), "Task " + i + " should not started");
+				Assertions.assertNull(task.getException(), "Task " + i + " should not have thrown an exception");
+			} else {
+				// task should have started, but then terminated exceptionally
+				Assertions.assertTrue(taskAction.hasTriedToPerform(), "The action of task " + i + " should have been tried to be performed");
+				Assertions.assertFalse(taskAction.hasPerformed(), "The action of task " + i + " should not have been finished");
+				Assertions.assertFalse(fileSystem.getFiles().contains(taskAction.getFileName()), "File '" + taskAction.getFileName() + "' should not exist");
+				Assertions.assertTrue(task.getException() instanceof IOException, "Task " + i + " should have thrown an IOException");
+				HandleEvent taskTerminatedExceptionallyEvent = new HandleEvent(task, HandleState.TERMINATED_EXCEPTIONALLY);
+				TestUtils.assertTimeBounds(expectedStartTimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(taskStartedEvent), "Start of task " + i);
+				TestUtils.assertTimeBounds(expectedEndTimeMs, PRECISION_MS, eventManager.getElapsedTimeMs(taskTerminatedExceptionallyEvent), "Completion of task " + i);
+			}
+		}
+
+		if (caughtException) {
+			// rewind transaction
+			TRANSACTION.undo(fileSystem);
+			Assertions.assertTrue(fileSystem.getFiles().isEmpty(), "Undo of transaction failed");
+		} else {
+			Assertions.assertEquals(actions.size(), fileSystem.getFiles().size(), "Wrong number of files in file system");
+		}
+	}
+
+	static Object getFileSystemAvailabilityTimeValues() {
+		/*
+		 * Ensure that these values are not close to expected end times of tasks because the actual schedule will
+		 * slightly deviate from the ideal schedule.
+		 */
+		return ImmutableList.of(300, 1200, 1600, 2400, 3000, 4000);
 	}
 
 	private static class Transaction
@@ -132,12 +184,14 @@ public class TransactionTest
 			return fileName;
 		}
 
+		long getRequiredTimeMs() {
+			return requiredTimeMs;
+		}
+
 		void apply(FileSystem fileSystem) throws IOException {
 			triedToPerform = true;
-			fileSystem.createFile(fileName);
+			fileSystem.createFile(fileName, requiredTimeMs);
 			performed = true;
-			TestUtils.simulateWork(requiredTimeMs);
-			fileSystem.accessFileSystem();
 		}
 
 		void undo(FileSystem fileSystem) throws IOException {
@@ -145,6 +199,10 @@ public class TransactionTest
 				fileSystem.removeFile(fileName);
 				performed = false;
 			}
+		}
+
+		boolean hasPerformed() {
+			return performed;
 		}
 
 		boolean hasTriedToPerform() {
@@ -157,16 +215,20 @@ public class TransactionTest
 		private final long			timeOfShutdownMs;
 		private final Set<String>	files				= new HashSet<>();
 
-		private FileSystem(long timeOfShutdownMs) {
-			this.timeOfShutdownMs = timeOfShutdownMs;
+		private FileSystem(long fileSystemAvailabilityTimeMs) {
+			this.timeOfShutdownMs = System.currentTimeMillis() + fileSystemAvailabilityTimeMs;
 		}
 
-		synchronized void createFile(String fileName) throws IOException {
+		void createFile(String fileName, long accessTimeMs) throws IOException {
 			accessFileSystem();
-			files.add(fileName);
+			TestUtils.simulateWork(accessTimeMs);
+			accessFileSystem();
+			synchronized (files) {
+				files.add(fileName);
+			}
 		}
 
-		void accessFileSystem() throws IOException {
+		private void accessFileSystem() throws IOException {
 			if (System.currentTimeMillis() >= timeOfShutdownMs) {
 				throw new IOException("Could not write file");
 			}

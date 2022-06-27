@@ -1,88 +1,100 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.testUtils.StopWatch;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-
-import static dd.kms.hippodamus.testUtils.TestUtils.BOOLEANS;
+import dd.kms.hippodamus.testUtils.events.TestEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
+import dd.kms.hippodamus.testUtils.states.HandleState;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * This test focuses on the behavior of the framework in case of exceptions
- * occurring where the framework has no chance to handle them.
+ * This test focuses on the behavior of the framework in case of exceptions that occur when the framework has no chance
+ * to handle them.
  */
-public class IntractableExceptionTest
+class IntractableExceptionTest
 {
-	private static final int	TASK_DURATION_MS	= 1000;
-	private static final int	PRECISION_MS		= 200;
+	private static final int		TASK_DURATION_MS				= 1000;
+	private static final int		PRECISION_MS					= 300;
+
+	private static final TestEvent	PERMIT_TASK_SUBMISSION_EVENT	= TestEvents.create("Task submission permitted");
 
 	/**
-	 * This test demonstrates that all tasks will run to completion although an
-	 * exception has been thrown inside the try-block. The reason for this is
-	 * that the coordinator does not get informed about this exception and
-	 * the coordinator's close method will be called before the code inside the
-	 * catch-clause is executed.
+	 * This test demonstrates that all tasks will run to completion although an exception has been thrown inside the
+	 * try-block. The reason for this is that the coordinator does not get informed about this exception and the
+	 * coordinator's close method will be called before the code inside the catch-clause is executed.
 	 */
 	@Test
-	public void testIntractableException() {
+	void testIntractableException() {
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		StopWatch stopWatch = new StopWatch();
+		TestEventManager eventManager = new TestEventManager();
+		Handle task = null;
 		boolean caughtIntractableException = false;
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+			task = coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
 			throwIntractableException(true);
-		} catch (IntractableException e) {
+		} catch (TestException e) {
 			caughtIntractableException = true;
 		}
-		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
+		Assertions.assertTrue(caughtIntractableException, "An exception has been swallowed");
 
-		Assert.assertTrue(caughtIntractableException);
+		long taskCompletedTimeMs = eventManager.getElapsedTimeMs(task, HandleState.COMPLETED);
+		long totalRuntimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED);
 
-		TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
-		TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
+		Assertions.assertTrue(taskCompletedTimeMs <= totalRuntimeMs);
+		TestUtils.assertTimeBounds(TASK_DURATION_MS, PRECISION_MS, totalRuntimeMs);
 	}
 
 	/**
-	 * This test demonstrates how to protecting against the time loss due to intractable exceptions
-	 * by guarding the code inside the try-block with {@code coordinator.permitTaskSubmission()}.
-	 * The disadvantage is that no task will be executed until the end of the try-block.
+	 * This test demonstrates how to protect against the time loss due to intractable exceptions by guarding the code
+	 * inside the try-block with {@link ExecutionCoordinator#permitTaskSubmission(boolean)}. The disadvantage is that no
+	 * task will be executed until the end of the try-block.
 	 */
-	@Test
-	public void testIntractableExceptionWithImmediateStop() {
-		for (boolean throwException : BOOLEANS) {
-			TestUtils.waitForEmptyCommonForkJoinPool();
-			StopWatch stopWatch = new StopWatch();
-			boolean caughtIntractableException = false;
-			try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-				coordinator.permitTaskSubmission(false);
-				coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
-				throwIntractableException(throwException);
-				coordinator.permitTaskSubmission(true);
-			} catch (IntractableException e) {
-				caughtIntractableException = true;
-			}
-			long elapsedTimeMs = stopWatch.getElapsedTimeMs();
-
-			if (throwException) {
-				Assert.assertTrue("No exception has been thrown", caughtIntractableException);
-
-				TestUtils.assertTimeUpperBound(PRECISION_MS, elapsedTimeMs);
-			} else {
-				Assert.assertFalse("An exception has been thrown", caughtIntractableException);
-
-				TestUtils.assertTimeLowerBound(TASK_DURATION_MS, elapsedTimeMs);
-				TestUtils.assertTimeUpperBound(TASK_DURATION_MS + PRECISION_MS, elapsedTimeMs);
-			}
+	@ParameterizedTest(name = "throw exception: {0}")
+	@MethodSource("getThrowExceptionValues")
+	void testIntractableExceptionWithImmediateStop(boolean throwException) {
+		TestUtils.waitForEmptyCommonForkJoinPool();
+		TestEventManager eventManager = new TestEventManager();
+		Handle task = null;
+		boolean caughtIntractableException = false;
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+			coordinator.permitTaskSubmission(false);
+			task = coordinator.execute(() -> TestUtils.simulateWork(TASK_DURATION_MS));
+			throwIntractableException(throwException);
+			eventManager.fireEvent(PERMIT_TASK_SUBMISSION_EVENT);
+			coordinator.permitTaskSubmission(true);
+		} catch (TestException e) {
+			caughtIntractableException = true;
 		}
-	}
+		long totalRuntimeMs = eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED);
 
-	private void throwIntractableException(boolean throwException) {
 		if (throwException) {
-			throw new IntractableException();
+			Assertions.assertFalse(eventManager.encounteredEvent(task, HandleState.STARTED), "The task should not have started");
+			Assertions.assertTrue(caughtIntractableException, "No exception has been thrown");
+
+			TestUtils.assertTimeUpperBound(PRECISION_MS, totalRuntimeMs);
+		} else {
+			Assertions.assertTrue(eventManager.before(PERMIT_TASK_SUBMISSION_EVENT, task, HandleState.STARTED), "The task should not have started before permitted");
+			Assertions.assertTrue(eventManager.encounteredEvent(task, HandleState.COMPLETED), "The task should have completed");
+			Assertions.assertFalse(caughtIntractableException, "An exception has been thrown");
+
+			TestUtils.assertTimeBounds(TASK_DURATION_MS, PRECISION_MS, totalRuntimeMs);
 		}
 	}
 
-	private static class IntractableException extends RuntimeException {}
+	private void throwIntractableException(boolean throwException) throws TestException {
+		if (throwException) {
+			throw new TestException();
+		}
+	}
+
+	static Object getThrowExceptionValues() {
+		return TestUtils.BOOLEANS;
+	}
 }

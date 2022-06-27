@@ -1,43 +1,49 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
- * This test checks whether the method {@link ExecutionCoordinator#checkException()}
- * really throws an exception if exists.
+ * This test checks whether the method {@link ExecutionCoordinator#checkException()} throws an exception if exists.
  */
-public class CheckExceptionTest
+class CheckExceptionTest
 {
-	private static final String	EXCEPTION_MESSAGE	= "Break infinite loop!";
+	private static final long	TIME_UNTIL_EXCEPTION_MS	= 500;
+	private static final long	SLEEP_TIME_MS			= 100;
+	private static final long	PRECISION_MS			= 100;
 
 	@Test
-	public void testCheckException() {
+	void testCheckException() {
+		TestUtils.waitForEmptyCommonForkJoinPool();
+
 		boolean caughtException = false;
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+		TestEventManager eventManager = new TestEventManager();
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
 			coordinator.execute(() -> {
-				TestUtils.simulateWork(500);
-				throw new TestException(EXCEPTION_MESSAGE);
+				TestUtils.simulateWork(TIME_UNTIL_EXCEPTION_MS);
+				throw new TestException();
 			});
-			while (true) {
-				coordinator.checkException();
+			while (eventManager.getElapsedTimeMs() <= 2*TIME_UNTIL_EXCEPTION_MS) {
+				TestUtils.simulateWork(SLEEP_TIME_MS);
+				try {
+					coordinator.checkException();
+				} catch (Throwable e) {
+					Assertions.assertTrue(e instanceof TestException, "Caught unexpected exception " + e);
+					caughtException = true;
+					break;
+				}
 			}
 		} catch (TestException e) {
-			Assert.assertEquals("Wrong exception message", EXCEPTION_MESSAGE, e.getMessage());
-			caughtException = true;
+			// happens if checkException() does not throw an exception => test will fail
 		}
-		if (!caughtException) {
-			Assert.fail("An exception has been swallowed");
-		}
-	}
+		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
-	private static class TestException extends Exception
-	{
-		TestException(String message) {
-			super(message);
-		}
+		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, SLEEP_TIME_MS + PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED));
 	}
 }

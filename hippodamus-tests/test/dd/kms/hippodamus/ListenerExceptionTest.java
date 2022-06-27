@@ -1,86 +1,69 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.handles.Handle;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-public class ListenerExceptionTest
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * This test checks that exceptions in listeners are handled correctly. Since we consider such exceptions as internal
+ * errors, these exceptions are ranked higher than, e.g., exceptions that are thrown within the task and are therefore
+ * thrown as {@link CoordinatorException}s.
+ */
+class ListenerExceptionTest
 {
+	private static final long	WAIT_TIME_MS				= 500;
+
 	private static final String	TASK_EXCEPTION_MESSAGE		= "This is an exception in the task";
 	private static final String	LISTENER_EXCEPTION_MESSAGE	= "This is an exception in the listener";
 
-	@Test
-	public void testCompletionListenerStillRunning() {
+	@ParameterizedTest(name = "task terminates exceptionally: {0}, add listener before termination: {1}")
+	@MethodSource("getParameters")
+	void testExceptionInListener(boolean taskTerminatesExceptionally, boolean addListenerBeforeTermination) {
+		long taskTimeMs = addListenerBeforeTermination ? WAIT_TIME_MS : 0;
+		long timeUntilListenerRegistrationMs = addListenerBeforeTermination ? 0 : WAIT_TIME_MS;
+
+		Runnable listener = () -> {
+			throw new RuntimeException(LISTENER_EXCEPTION_MESSAGE);
+		};
+
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> TestUtils.simulateWork(500));
-			// task should still be running when completion listener is added
-			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
-		} catch (Throwable t) {
-			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
+			Handle handle = coordinator.execute(() -> {
+				TestUtils.simulateWork(taskTimeMs);
+				if (taskTerminatesExceptionally) {
+					// to ensure that exception listener is called
+					throw new RuntimeException(TASK_EXCEPTION_MESSAGE);
+				}
+			});
+			TestUtils.simulateWork(timeUntilListenerRegistrationMs);
+
+			if (taskTerminatesExceptionally) {
+				handle.onException(listener);
+			} else {
+				handle.onCompletion(listener);
+			}
+		} catch (CoordinatorException e) {
+			String message = e.getMessage();
+			Assertions.assertTrue(message.contains(LISTENER_EXCEPTION_MESSAGE), "The exception message did not contain the listener exception text: " + message);
 			return;
 		}
-		Assert.fail("An exception has been swallowed");
+		Assertions.fail("An exception has been swallowed");
 	}
 
-	@Test
-	public void testCompletionListenerAlreadyFinished() {
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> {});
-			TestUtils.simulateWork(500);
-			// task should already have completed when completion listener is added
-			handle.onCompletion(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
-		} catch (Throwable t) {
-			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
-			return;
+	static List<Object[]> getParameters() {
+		List<Object[]> parameters = new ArrayList<>();
+		for (boolean taskTerminatesExceptionally : TestUtils.BOOLEANS) {
+			for (boolean addListenerBeforeTermination : TestUtils.BOOLEANS) {
+				parameters.add(new Object[]{taskTerminatesExceptionally, addListenerBeforeTermination});
+			}
 		}
-		Assert.fail("An exception has been swallowed");
-	}
-
-	@Test
-	public void testExceptionListenerStillRunning() {
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> runWithException(500, TASK_EXCEPTION_MESSAGE));
-			// task should still be running when exception listener is added
-			handle.onException(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
-		} catch (Throwable t) {
-			// exception in listener should dominate task exception
-			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
-			return;
-		}
-		Assert.fail("An exception has been swallowed");
-	}
-
-	@Test
-	public void testExceptionListenerAlreadyFinished() {
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			Handle handle = coordinator.execute(() -> runWithException(0, TASK_EXCEPTION_MESSAGE));
-			TestUtils.simulateWork(500);
-			// task should already have thrown an exception when exception listener is added
-			handle.onException(() -> runWithException(0, LISTENER_EXCEPTION_MESSAGE));
-		} catch (Throwable t) {
-			// exception in listener should dominate task exception
-			String message = t.getMessage();
-			Assert.assertTrue("The exception message did not contain the listener exception text: " + message, message.contains(LISTENER_EXCEPTION_MESSAGE));
-			return;
-		}
-		Assert.fail("An exception has been swallowed");
-	}
-
-	private void runWithException(long waitTimeMs, String errorMessage) {
-		TestUtils.simulateWork(waitTimeMs);
-		throw new TestException(errorMessage);
-	}
-
-	private static class TestException extends RuntimeException
-	{
-		TestException(String message) {
-			super(message);
-		}
+		return parameters;
 	}
 }

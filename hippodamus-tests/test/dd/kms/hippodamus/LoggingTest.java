@@ -1,76 +1,69 @@
 package dd.kms.hippodamus;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.exceptions.ExceptionalRunnable;
-import dd.kms.hippodamus.logging.LogLevel;
-import dd.kms.hippodamus.logging.Logger;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
+import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.logging.Logger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * This test verifies that log messages are send to the specified logger
- * and that messages with a too low log level are ignored.
+ * This test verifies that log messages are sent to the specified logger and that messages with log levels that are
+ * lower than the specified minimum log level are ignored.
  */
-@RunWith(Parameterized.class)
-public class LoggingTest
+class LoggingTest
 {
-	@Parameterized.Parameters(name = "exception in tasks: {0}, {1}")
-	public static Object getParameters() {
-		return LogLevel.values();
-	}
+	private static final int	NUM_TASKS	= 10;
 
-	private final LogLevel	minLogLevel;
-
-	public LoggingTest(LogLevel minLogLevel) {
-		this.minLogLevel = minLogLevel;
-	}
-
-	@Test
-	public void testLogger() {
+	@ParameterizedTest(name = "minimum log level: {0}")
+	@MethodSource("getLogLevelValues")
+	void testLogger(LogLevel minLogLevel) {
 		TestLogger logger = new TestLogger();
-		ExecutionCoordinatorBuilder<?> coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger(logger)
 			.minimumLogLevel(minLogLevel);
 		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
 			ExceptionalRunnable<RuntimeException> task = () -> {};
-			for (int i = 0; i < 10; i++) {
+			for (int i = 0; i < NUM_TASKS; i++) {
 				coordinator.execute(task);
 			}
 		}
-		Set<LogLevel> logLevels = logger.getEncounteredLogLevels();
-		for (LogLevel logLevel : LogLevel.values()) {
-			boolean logLevelEncountered = logLevels.contains(logLevel);
-			if (logLevel == LogLevel.INTERNAL_ERROR) {
-				Assert.assertFalse("Encountered an internal error", logLevelEncountered);
-				continue;
-			}
-			boolean logLevelExpected = logLevel.compareTo(minLogLevel) <= 0;
-			if (logLevelExpected) {
-				Assert.assertTrue("Log message of level '" + logLevel + "' has been swallowed", logLevelEncountered);
-			} else {
-				Assert.assertFalse("Encountered a log message of level '" + logLevel + "' which should have been ignored", logLevelEncountered);
-			}
-		}
+		Assertions.assertEquals(0, logger.getCounter(LogLevel.INTERNAL_ERROR), "An internal error occurred");
+
+		int expectedNumStateChangeLogMessages = minLogLevel.compareTo(LogLevel.STATE) >= 0
+				? NUM_TASKS*5	// logged 5 state changes per task: SUBMITTED, EXECUTING, FINISHED, notification about result, and TERMINATED
+				: 0;			// state changes not logged
+		Assertions.assertEquals(expectedNumStateChangeLogMessages, logger.getCounter(LogLevel.STATE), "Wrong number of state change log messages");
 	}
 
-	private class TestLogger implements Logger
+	static Object getLogLevelValues() {
+		return LogLevel.values();
+	}
+
+	private static class TestLogger implements Logger
 	{
-		private final Set<LogLevel>	encounteredLogLevels	= new HashSet<>();
+		private final Map<LogLevel, Integer>	logLevelCounters	= new HashMap<>();
+
+		TestLogger() {
+			for (LogLevel logLevel : LogLevel.values()) {
+				logLevelCounters.put(logLevel, 0);
+			}
+		}
 
 		@Override
 		public void log(LogLevel logLevel, String taskName, String message) {
-			encounteredLogLevels.add(logLevel);
+			int counter = logLevelCounters.get(logLevel);
+			logLevelCounters.put(logLevel, counter + 1);
 		}
 
-		Set<LogLevel> getEncounteredLogLevels() {
-			return encounteredLogLevels;
+		int getCounter(LogLevel logLevel) {
+			return logLevelCounters.get(logLevel);
 		}
 	}
 }

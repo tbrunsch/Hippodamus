@@ -1,101 +1,88 @@
 package dd.kms.hippodamus.stopping;
 
-import dd.kms.hippodamus.coordinator.Coordinators;
-import dd.kms.hippodamus.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.exceptions.StoppableExceptionalCallable;
-import dd.kms.hippodamus.exceptions.StoppableExceptionalRunnable;
-import dd.kms.hippodamus.testUtils.StopWatch;
+import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
-import java.util.function.Supplier;
+import dd.kms.hippodamus.testUtils.events.HandleEvent;
+import dd.kms.hippodamus.testUtils.events.TestEventManager;
+import dd.kms.hippodamus.testUtils.events.TestEvents;
+import dd.kms.hippodamus.testUtils.states.HandleState;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * By default, the {@link ExecutionCoordinator} uses the common
- * {@link ForkJoinPool} to execute tasks. Since this {@link ExecutorService}
- * cannot be shut down, submitted tasks cannot be stopped, but run until end. The interfaces
- * {@link StoppableExceptionalRunnable} and {@link StoppableExceptionalCallable}
- * allow implementers of a task to query whether the task should be stopped.<br/>
- * <br/>
- * This test verifies that reacting to a stop request indeed has an effect.
+ * This test verifies that the interrupted flag is set correctly by the {@link ExecutionCoordinator} by
+ * showing that by considering the interrupted flag tasks will terminate earlier than without.
  */
-@RunWith(Parameterized.class)
-public class StopReactionTest
+class StopReactionTest
 {
 	private static final long	TIME_UNTIL_EXCEPTION_MS	= 500;
 	private static final long	TASK_2_SLEEP_INTERVAL	= 100;
 	private static final int	TASK_2_SLEEP_REPETITION	= 20;
 	private static final long	PRECISION_MS			= 300;
 
-	@Parameters(name = "react to stop: {0}")
-	public static Object getParameters() {
-		return new Object[]{ false, true };
-	}
-
-	private final boolean reactToStop;
-
-	public StopReactionTest(boolean reactToStop) {
-		this.reactToStop = reactToStop;
-	}
-
-	@Test
-	public void testStopWithoutStopReaction() {
+	@ParameterizedTest(name = "react to stop: {0}")
+	@MethodSource("getPossibleReactToStopValues")
+	void testStopWithoutStopReaction(boolean reactToStop) {
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		boolean caughtException = false;
-		StopWatch stopWatch = new StopWatch();
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
-			coordinator.execute(this::run1);
-			coordinator.execute(this::run2);
-		} catch (ExpectedException e) {
+		TestEventManager eventManager = new TestEventManager();
+		Handle task1 = null;
+		Handle task2 = null;
+		try (ExecutionCoordinator coordinator = TestUtils.wrap(Coordinators.createExecutionCoordinator(), eventManager)) {
+			/*
+			 * Task 1 throws an exception after TIME_UNTIL_EXCEPTION_MS milliseconds, which stops the coordinator, which
+			 * then stops task 2.
+			 */
+			task1 = coordinator.execute(this::run1);
+			task2 = coordinator.execute(() -> run2(reactToStop));
+		} catch (TestException e) {
 			caughtException = true;
 		}
-		long elapsedTimeCoordinatorMs = stopWatch.getElapsedTimeMs();
-		TestUtils.waitForEmptyCommonForkJoinPool();
-		long elapsedTimePoolMs = stopWatch.getElapsedTimeMs();
+		Assertions.assertNotNull(task1);
+		Assertions.assertNotNull(task2);
 
-		Assert.assertTrue("An exception has been swallowed", caughtException);
+		Assertions.assertTrue(caughtException, "An exception has been swallowed");
 
-		if (TestUtils.getDefaultParallelism() < 2) {
-			// We do not require time constraints to be met with only 1 processor
-			System.out.println("Skipped checking time constraints");
-			return;
+		HandleEvent exceptionEvent = new HandleEvent(task1, HandleState.TERMINATED_EXCEPTIONALLY);
+		HandleEvent task2CompletedEvent = new HandleEvent(task2, HandleState.COMPLETED);
+
+		long exceptionTimeMs = eventManager.getElapsedTimeMs(exceptionEvent);
+		TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, exceptionTimeMs, "Throwing exception");
+
+		if (TestUtils.getDefaultParallelism() > 1) {
+			if (reactToStop) {
+				TestUtils.assertTimeBounds(0, TASK_2_SLEEP_INTERVAL + PRECISION_MS, eventManager.getDurationMs(exceptionEvent, task2CompletedEvent), "Reaction to stop");
+			} else {
+				TestUtils.assertTimeBounds(TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL, PRECISION_MS, eventManager.getElapsedTimeMs(task2CompletedEvent), "Completion of task 2");
+			}
+
+			TestUtils.assertTimeBounds(0, PRECISION_MS, eventManager.getDurationMs(task2CompletedEvent, TestEvents.COORDINATOR_CLOSED), "Closing coordinator after task 2 has terminated");
+		} else {
+			// single thread => task 2 will not be started and coordinator closes immediately after exception in task 1
+			Assertions.assertFalse(eventManager.encounteredEvent(new HandleEvent(task2, HandleState.STARTED)));
+			TestUtils.assertTimeBounds(TIME_UNTIL_EXCEPTION_MS, PRECISION_MS, eventManager.getElapsedTimeMs(TestEvents.COORDINATOR_CLOSED), "Closing coordinator after task 2 has terminated");
 		}
-
-		/*
-		 * The coordinator requests tasks to stop if it encounters an exception, but
-		 * it does not wait for them to stop. If submitted tasks themselves to not check
-		 * whether they should stop, then they will run until end.
-		 */
-		long expectedTimeCoordinatorMs = TIME_UNTIL_EXCEPTION_MS;
-		TestUtils.assertTimeLowerBound(expectedTimeCoordinatorMs, elapsedTimeCoordinatorMs);
-		TestUtils.assertTimeUpperBound(expectedTimeCoordinatorMs + PRECISION_MS, elapsedTimeCoordinatorMs);
-
-		long expectedPoolLowerBoundMs = reactToStop ? TIME_UNTIL_EXCEPTION_MS : TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL;
-		long expectedPoolUpperBoundMs = (reactToStop ? TIME_UNTIL_EXCEPTION_MS + TASK_2_SLEEP_INTERVAL : TASK_2_SLEEP_REPETITION * TASK_2_SLEEP_INTERVAL)
-										+ PRECISION_MS;
-		TestUtils.assertTimeLowerBound(expectedPoolLowerBoundMs, elapsedTimePoolMs);
-		TestUtils.assertTimeUpperBound(expectedPoolUpperBoundMs, elapsedTimePoolMs);
 	}
 
-	private void run1() throws ExpectedException {
+	private void run1() throws TestException {
 		TestUtils.simulateWork(TIME_UNTIL_EXCEPTION_MS);
-		throw new ExpectedException();
+		throw new TestException();
 	}
 
-	private void run2(Supplier<Boolean> stopFlag) {
+	private void run2(boolean reactToStop) {
 		for (int i = 0; i < TASK_2_SLEEP_REPETITION; i++) {
-			if (reactToStop && stopFlag.get()) {
+			if (reactToStop && Thread.currentThread().isInterrupted()) {
 				return;
 			}
 			TestUtils.simulateWork(TASK_2_SLEEP_INTERVAL);
 		}
 	}
 
-	private static class ExpectedException extends Exception {}
+	static Object getPossibleReactToStopValues() {
+		return TestUtils.BOOLEANS;
+	}
 }
