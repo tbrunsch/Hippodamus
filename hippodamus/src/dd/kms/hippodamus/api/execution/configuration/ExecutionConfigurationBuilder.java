@@ -3,6 +3,7 @@ package dd.kms.hippodamus.api.execution.configuration;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
 import dd.kms.hippodamus.api.handles.Handle;
 
@@ -49,9 +50,16 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	ExecutionConfigurationBuilder dependencies(Handle... dependencies);
 
 	/**
-	 * Specifies the tasks dependencies.
+	 * Specifies the task's dependencies.
 	 *
 	 * @see ExecutionConfigurationBuilder#dependencies(Handle...)
 	 */
 	ExecutionConfigurationBuilder dependencies(Collection<? extends Handle> dependencies);
+
+	/**
+	 * Specifies an {@link ExecutionController} for the task. An {@code ExecutionController} is the last instance that
+	 * decides whether the task may be executed. It can postpone the task's execution for whatever reason. A typical
+	 * reason are scarce resources, particularly memory.
+	 */
+	ExecutionConfigurationBuilder executionController(ExecutionController controller);
 }

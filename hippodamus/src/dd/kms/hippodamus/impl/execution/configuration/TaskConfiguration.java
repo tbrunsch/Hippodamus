@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.TaskType;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
 
 import javax.annotation.Nullable;
@@ -13,14 +14,16 @@ import java.util.Optional;
  */
 public class TaskConfiguration
 {
-	private final @Nullable String		name;
-	private final TaskType				taskType;
-	private final Collection<Handle>	dependencies;
+	private final @Nullable String				name;
+	private final TaskType						taskType;
+	private final Collection<Handle>			dependencies;
+	private final @Nullable ExecutionController	controller;
 
-	TaskConfiguration(String name, TaskType taskType, Collection<Handle> dependencies) {
+	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, @Nullable ExecutionController controller) {
 		this.name = name;
 		this.taskType = taskType;
 		this.dependencies = dependencies;
+		this.controller = controller;
 	}
 
 	public Optional<String> getName() {
@@ -33,5 +36,9 @@ public class TaskConfiguration
 
 	public Collection<Handle> getDependencies() {
 		return dependencies;
+	}
+
+	public Optional<ExecutionController> getController() {
+		return Optional.ofNullable(controller);
 	}
 }

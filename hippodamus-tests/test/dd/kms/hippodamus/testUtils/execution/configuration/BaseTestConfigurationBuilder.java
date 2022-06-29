@@ -3,6 +3,7 @@ package dd.kms.hippodamus.testUtils.execution.configuration;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -39,6 +40,12 @@ abstract class BaseTestConfigurationBuilder<B extends ExecutionConfigurationBuil
 	@Override
 	public B dependencies(Handle... dependencies) {
 		wrappedBuilder.dependencies(dependencies);
+		return getBuilder();
+	}
+
+	@Override
+	public B executionController(ExecutionController controller) {
+		wrappedBuilder.executionController(controller);
 		return getBuilder();
 	}
 

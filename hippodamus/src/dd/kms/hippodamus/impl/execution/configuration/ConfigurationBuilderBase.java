@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -21,11 +22,12 @@ import java.util.Collection;
  */
 abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
 {
-	final C						coordinator;
+	final C									coordinator;
 
-	private @Nullable String	name			= null;
-	private TaskType			taskType		= TaskType.COMPUTATIONAL;
-	private Collection<Handle>	dependencies	= ImmutableList.of();
+	private @Nullable String				name			= null;
+	private TaskType						taskType		= TaskType.COMPUTATIONAL;
+	private Collection<Handle>				dependencies	= ImmutableList.of();
+	private @Nullable ExecutionController	controller		= null;
 
 	ConfigurationBuilderBase(C coordinator) {
 		this.coordinator = coordinator;
@@ -69,6 +71,12 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	@Override
+	public B executionController(ExecutionController controller) {
+		this.controller = controller;
+		return getBuilder();
+	}
+
+	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
 		ExceptionalCallable<Void, T> callable = () -> {
 			runnable.run();
@@ -83,6 +91,6 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	TaskConfiguration createConfiguration() {
-		return new TaskConfiguration(name, taskType, dependencies);
+		return new TaskConfiguration(name, taskType, dependencies, controller);
 	}
 }

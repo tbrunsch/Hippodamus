@@ -2,6 +2,7 @@ package dd.kms.hippodamus.api.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.execution.AggregationManager;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
 
 import java.util.Collection;
@@ -25,4 +26,7 @@ public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigur
 
 	@Override
 	AggregationConfigurationBuilder<S, R> dependencies(Collection<? extends Handle> dependencies);
+
+	@Override
+	AggregationConfigurationBuilder<S, R> executionController(ExecutionController controller);
 }
