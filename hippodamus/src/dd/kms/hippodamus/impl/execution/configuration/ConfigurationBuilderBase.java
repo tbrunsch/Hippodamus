@@ -10,6 +10,7 @@ import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuild
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
+import dd.kms.hippodamus.impl.execution.NoExecutionController;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -22,12 +23,12 @@ import java.util.Collection;
  */
 abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
 {
-	final C									coordinator;
+	final C						coordinator;
 
-	private @Nullable String				name			= null;
-	private TaskType						taskType		= TaskType.COMPUTATIONAL;
-	private Collection<Handle>				dependencies	= ImmutableList.of();
-	private @Nullable ExecutionController	controller		= null;
+	private @Nullable String	name			= null;
+	private TaskType			taskType		= TaskType.COMPUTATIONAL;
+	private Collection<Handle>	dependencies	= ImmutableList.of();
+	private ExecutionController	controller		= NoExecutionController.CONTROLLER;
 
 	ConfigurationBuilderBase(C coordinator) {
 		this.coordinator = coordinator;

@@ -101,6 +101,10 @@ class TaskStateController<V>
 		return state.isExecuting();
 	}
 
+	boolean isOnHold() {
+		return state.isOnHold();
+	}
+
 	private void _log(LogLevel logLevel, String message) {
 		coordinator._log(logLevel, handle, message);
 	}

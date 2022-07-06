@@ -2,11 +2,13 @@ package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.execution.NoExecutionController;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -27,6 +29,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	private final int						id;
 	private final ExecutorServiceWrapper	executorServiceWrapper;
 	private final ExceptionalCallable<V, ?> callable;
+	private final ExecutionController		executionController;
 	private final boolean					verifyDependencies;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
@@ -48,12 +51,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 */
 	private Thread							_executingThread;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ExecutionController executionController, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
+		this.executionController = executionController;
 		this.verifyDependencies = verifyDependencies;
 		this.stateController = new TaskStateController<>(this, coordinator);
 	}
@@ -88,8 +92,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
 			executorServiceWrapper._onTaskCompleted();
-			stateController._transitionTo(TaskStage.TERMINATED);
-			_executingThread = null;
+			_terminate();
 		}
 	}
 
@@ -97,9 +100,14 @@ public class HandleImpl<V> implements ResultHandle<V>
 		synchronized (coordinator) {
 			stateController._setException(exception);
 			_notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
-			stateController._transitionTo(TaskStage.TERMINATED);
-			_executingThread = null;
+			_terminate();
 		}
+	}
+
+	private void _terminate() {
+		stateController._transitionTo(TaskStage.TERMINATED);
+		_executingThread = null;
+		_future = null;
 	}
 
 	public void _stop() {
@@ -112,6 +120,9 @@ public class HandleImpl<V> implements ResultHandle<V>
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
+			if (stateController.isOnHold()) {
+				executionController.stop();
+			}
 			stateController._transitionTo(TaskStage.TERMINATED);
 		}
 		if (_future != null) {
@@ -162,15 +173,35 @@ public class HandleImpl<V> implements ResultHandle<V>
 		this._future = future;
 	}
 
-	public void _executeCallable() {
+	public void executeCallable() {
 		clearInterruptionFlag();
+
+		if (executionController != NoExecutionController.CONTROLLER) {
+			synchronized (coordinator) {
+				boolean permitTaskExecution;
+				try {
+					permitTaskExecution = executionController.permitExecution(this::submit);
+				} catch (Throwable t) {
+					String error = "Exception when asking execution controller whether task may be executed: " + t;
+					coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+					_terminate();
+					return;
+				}
+				if (!permitTaskExecution) {
+					stateController._transitionTo(TaskStage.ON_HOLD);
+				}
+			}
+		}
+
 		try {
 			if (!startExecution()) {
 				return;
 			}
 			V result = callable.call();
+			executionController.finishedExecution(true);
 			complete(result);
 		} catch (Throwable throwable) {
+			executionController.finishedExecution(false);
 			terminateExceptionally(throwable);
 		} finally {
 			clearInterruptionFlag();

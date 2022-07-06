@@ -14,12 +14,12 @@ import java.util.Optional;
  */
 public class TaskConfiguration
 {
-	private final @Nullable String				name;
-	private final TaskType						taskType;
-	private final Collection<Handle>			dependencies;
-	private final @Nullable ExecutionController	controller;
+	private final @Nullable String		name;
+	private final TaskType				taskType;
+	private final Collection<Handle>	dependencies;
+	private final ExecutionController	controller;
 
-	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, @Nullable ExecutionController controller) {
+	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, ExecutionController controller) {
 		this.name = name;
 		this.taskType = taskType;
 		this.dependencies = dependencies;
@@ -38,7 +38,7 @@ public class TaskConfiguration
 		return dependencies;
 	}
 
-	public Optional<ExecutionController> getController() {
-		return Optional.ofNullable(controller);
+	public ExecutionController getController() {
+		return controller;
 	}
 }

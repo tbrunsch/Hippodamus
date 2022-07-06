@@ -77,9 +77,10 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		_numPendingSubmittedTasks++;
 		Future<?> future;
 		try {
-			future = executorService.submit(handle::_executeCallable);
+			future = executorService.submit(handle::executeCallable);
 		} catch (RejectedExecutionException e) {
-			handle.getExecutionCoordinator()._log(LogLevel.INTERNAL_ERROR, handle, e.toString());
+			String error = "Submitting task to ExecutorService failed: " + e;
+			handle.getExecutionCoordinator()._log(LogLevel.INTERNAL_ERROR, handle, error);
 			return;
 		}
 		handle._setFuture(future);

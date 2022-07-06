@@ -19,6 +19,10 @@ class TaskState<V>
 		return taskStage == TaskStage.EXECUTING;
 	}
 
+	boolean isOnHold() {
+		return taskStage == TaskStage.ON_HOLD;
+	}
+
 	String transitionTo(TaskStage newStage) {
 		if (!taskStage.canTransitionTo(newStage)) {
 			return "Trying to transition state from '" + taskStage + "' to '" + newStage + "'";
