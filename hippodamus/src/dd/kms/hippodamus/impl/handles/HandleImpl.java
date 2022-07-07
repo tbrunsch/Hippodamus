@@ -189,6 +189,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 				}
 				if (!permitTaskExecution) {
 					stateController._transitionTo(TaskStage.ON_HOLD);
+					return;
 				}
 			}
 		}
