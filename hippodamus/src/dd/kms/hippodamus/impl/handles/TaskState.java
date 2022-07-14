@@ -15,12 +15,8 @@ class TaskState<V>
 		taskStage = TaskStage.INITIAL;
 	}
 
-	boolean isExecuting() {
-		return taskStage == TaskStage.EXECUTING;
-	}
-
-	boolean isOnHold() {
-		return taskStage == TaskStage.ON_HOLD;
+	TaskStage getTaskStage() {
+		return taskStage;
 	}
 
 	String transitionTo(TaskStage newStage) {

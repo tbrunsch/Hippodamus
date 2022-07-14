@@ -114,13 +114,14 @@ public class HandleImpl<V> implements ResultHandle<V>
 		if (coordinator._hasStopped()) {
 			return;
 		}
-		if (stateController.isExecuting()) {
+		TaskStage taskStage = stateController.getTaskStage();
+		if (taskStage == TaskStage.EXECUTING) {
 			// since we stop the task, the current result type won't change anymore
 			_executingThread.interrupt();
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			if (stateController.isOnHold()) {
+			if (taskStage == TaskStage.ON_HOLD) {
 				executionController.stop();
 			}
 			stateController._transitionTo(TaskStage.TERMINATED);
