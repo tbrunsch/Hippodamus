@@ -59,7 +59,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		}
 	}
 
-	public void _onTaskCompleted() {
+	public void _onExecutionCompleted() {
 		_numPendingSubmittedTasks--;
 		if (_canSubmitTask()) {
 			HandleImpl<?> handle = _unsubmittedTasks.poll();

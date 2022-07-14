@@ -8,7 +8,6 @@ import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-import dd.kms.hippodamus.impl.execution.NoExecutionController;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -16,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -77,21 +77,11 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 	}
 
-	/**
-	 * @return true if task should be executed
-	 */
-	private boolean startExecution() {
-		synchronized (coordinator) {
-			_executingThread = Thread.currentThread();
-			return !coordinator._hasStopped() && stateController._transitionTo(TaskStage.EXECUTING);
-		}
-	}
-
 	private void complete(V result) {
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-			executorServiceWrapper._onTaskCompleted();
+			executorServiceWrapper._onExecutionCompleted();
 			_terminate();
 		}
 	}
@@ -177,41 +167,57 @@ public class HandleImpl<V> implements ResultHandle<V>
 	public void executeCallable() {
 		clearInterruptionFlag();
 
-		if (executionController != NoExecutionController.CONTROLLER) {
-			synchronized (coordinator) {
-				boolean permitTaskExecution;
-				try {
-					permitTaskExecution = executionController.permitExecution(this::submit);
-				} catch (Throwable t) {
-					String error = "Exception when asking execution controller whether task may be executed: " + t;
-					coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
-					_terminate();
-					return;
-				}
-				if (!permitTaskExecution) {
-					stateController._transitionTo(TaskStage.ON_HOLD);
-					return;
-				}
+		synchronized (coordinator) {
+			if (!_startExecution()) {
+				_future = null;
+				_executingThread = null;
+				return;
 			}
 		}
 
+		boolean completedSuccessfully = false;
 		try {
-			if (!startExecution()) {
-				return;
-			}
 			V result = callable.call();
-			executionController.finishedExecution(true);
+			completedSuccessfully = true;
 			complete(result);
 		} catch (Throwable throwable) {
-			executionController.finishedExecution(false);
 			terminateExceptionally(throwable);
 		} finally {
+			executionController.finishedExecution(completedSuccessfully);
 			clearInterruptionFlag();
 		}
 	}
 
 	private void clearInterruptionFlag() {
 		Thread.interrupted();
+	}
+
+	private boolean _startExecution() {
+		boolean permitTaskExecution;
+		try {
+			permitTaskExecution = executionController.permitExecution(this::submitAsynchronously);
+		} catch (Throwable t) {
+			String error = "Exception when asking execution controller whether task may be executed: " + t;
+			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+			stateController._transitionTo(TaskStage.TERMINATED);
+			return false;
+		}
+		if (!permitTaskExecution) {
+			stateController._transitionTo(TaskStage.ON_HOLD);
+			executorServiceWrapper._onExecutionCompleted();
+			return false;
+		}
+
+		_executingThread = Thread.currentThread();
+		return !coordinator._hasStopped() && stateController._transitionTo(TaskStage.EXECUTING);
+	}
+
+	/**
+	 * Calls {@link #submit()} asynchronously. This is required when given the {@link ExecutionController} a runnable
+	 * for resubmitting this task in order to avoid deadlocks (see TECHDOC for details).
+	 */
+	private void submitAsynchronously() {
+		CompletableFuture.runAsync(this::submit);
 	}
 
 	/***********************
