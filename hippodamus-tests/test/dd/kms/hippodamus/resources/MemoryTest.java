@@ -2,7 +2,9 @@ package dd.kms.hippodamus.resources;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
+import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
+import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -19,37 +21,48 @@ import java.util.List;
  */
 class MemoryTest
 {
-	private static final String[]	MEMORY_UNITS	= { "Bytes", "kB", "MB", "GB", "TB" };
-
-	@ParameterizedTest(name = "consider memory consumption: {0}")
-	@MethodSource("getConsiderMemoryConsumptionValues")
-	public void testOutOfMemoryError(boolean considerMemoryConsumption) {
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("getResourceTypes")
+	public void testOutOfMemoryError(ResourceType resourceType) {
 		TaskParameters taskParameters = getTaskParameters();
 		taskParameters.printSetup();
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 
+		CountableResource resource = createResource(resourceType, taskParameters.getAvailableMemory());
+
+		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
+			.logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
+			.minimumLogLevel(LogLevel.STATE);
+
 		boolean outOfMemoryErrorOccurred = false;
-		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
 			for (int i = 0; i < taskParameters.getNumberOfTasks(); i++) {
 				ExecutionConfigurationBuilder builder = coordinator.configure();
-				if (considerMemoryConsumption) {
-					builder.executionController(MemoryResource.getShare(taskParameters.getTaskSize()));
-				}
+				builder.executionController(resource.getShare(taskParameters.getTaskSize()));
 				builder.execute(() -> executeTask(taskParameters));
 			}
 		} catch (OutOfMemoryError e) {
+			System.out.println("Caught out of memory exception");
 			outOfMemoryErrorOccurred = true;
 		}
-		if (considerMemoryConsumption) {
-			Assertions.assertFalse(outOfMemoryErrorOccurred, "Unexpected OutOfMemoryError");
-		} else {
-			Assertions.assertTrue(outOfMemoryErrorOccurred, "Expected an OutOfMemoryError");
+		switch (resourceType) {
+			case UNLIMITED:
+				// memory constraints ignored
+				Assertions.assertTrue(outOfMemoryErrorOccurred, "Expected an OutOfMemoryError");
+				break;
+			case MONITORED_MEMORY:
+			case CONTROLLABLE_COUNTABLE_RESOURCE:
+				// memory constraints considered
+				Assertions.assertFalse(outOfMemoryErrorOccurred, "Unexpected OutOfMemoryError");
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported resource type");
 		}
 	}
 
 	private TaskParameters getTaskParameters() {
-		forceGc();
+		MemoryUtils.forceGc();
 		try {
 			return new TaskParameters();
 		} catch (IllegalStateException e) {
@@ -58,8 +71,21 @@ class MemoryTest
 		}
 	}
 
-	static Object getConsiderMemoryConsumptionValues() {
-		return TestUtils.BOOLEANS;
+	private static CountableResource createResource(ResourceType resourceType, long availableMemory) {
+		switch (resourceType) {
+			case UNLIMITED:
+				return UnlimitedCountableResource.RESOURCE;
+			case MONITORED_MEMORY:
+				return MemoryResource.RESOURCE;
+			case CONTROLLABLE_COUNTABLE_RESOURCE:
+				return new ControllableCountableResource(availableMemory);
+			default:
+				throw new IllegalArgumentException("Unsupported resource type " + resourceType);
+		}
+	}
+
+	static Object[] getResourceTypes() {
+		return ResourceType.values();
 	}
 
 	private static void executeTask(TaskParameters taskParameters) {
@@ -75,22 +101,24 @@ class MemoryTest
 				return;
 			}
 		}
-		forceGc();
+		MemoryUtils.forceGc();
 	}
 
-	private static void forceGc() {
-		for (int i = 0; i < 3; i++) {
-			System.gc();
+	private enum ResourceType
+	{
+		UNLIMITED("Unlimited countable resource"),
+		MONITORED_MEMORY("Monitored memory resource"),
+		CONTROLLABLE_COUNTABLE_RESOURCE("Controllable countable resource");
+
+		private final String	stringRepresentation;
+
+		ResourceType(String stringRepresentation) {
+			this.stringRepresentation = stringRepresentation;
 		}
-	}
 
-	private static String formatMemory(long sizeInBytes) {
-		double size = sizeInBytes;
-		for (int i = 0; ; i++) {
-			if (size < 1024 || i == MEMORY_UNITS.length - 1) {
-				return String.format("%.2f %s", size, MEMORY_UNITS[i]);
-			}
-			size /= 1024;
+		@Override
+		public String toString() {
+			return stringRepresentation;
 		}
 	}
 
@@ -113,19 +141,17 @@ class MemoryTest
 				throw new IllegalStateException("Cannot run OutOfMemory tests because the common ForkJoinPool has parallelism < 2");
 			}
 
-			Runtime runtime = Runtime.getRuntime();
-			long maxMemory = runtime.maxMemory();
-			if (maxMemory == Long.MAX_VALUE) {
-				throw new IllegalStateException("Cannot run OutOfMemory tests because no max heap size is defined");
-			}
-			long allocatedMemory = runtime.totalMemory() - runtime.freeMemory();
-			availableMemory = maxMemory - allocatedMemory;
+			availableMemory = MemoryUtils.getAvailableMemory();
 			numTasks = NUMBER_OF_TASKS_OVER_PARALLELISM*parallelism;
 
 			// ensure that parallelism many tasks will require more memory than available
 			taskSize = (long) Math.ceil(1.1 * availableMemory / parallelism);
 			chunkSize = Math.toIntExact(Math.min(taskSize / PREFERRED_NUMBER_OF_CHUNKS, Integer.MAX_VALUE));
 			numChunksPerTask = taskSize / chunkSize;
+		}
+
+		long getAvailableMemory() {
+			return availableMemory;
 		}
 
 		int getNumberOfTasks() {
@@ -149,11 +175,9 @@ class MemoryTest
 		}
 
 		void printSetup() {
-			System.out.println("Parallelism: " + parallelism);
-			System.out.println("Available memory: " + formatMemory(availableMemory));
-			System.out.println("Task sizes: " + formatMemory(taskSize));
+			System.out.println("Available memory: " + MemoryUtils.formatMemory(availableMemory));
+			System.out.println("Task sizes: " + MemoryUtils.formatMemory(taskSize));
 			System.out.println("Number of tasks: " + numTasks);
-			System.out.println("Number of chunks to allocate per task: " + numChunksPerTask);
 		}
 	}
 }

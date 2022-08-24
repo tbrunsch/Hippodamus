@@ -1,10 +1,11 @@
 package dd.kms.hippodamus.resources;
 
-import dd.kms.hippodamus.api.execution.ExecutionController;
-
-class MemoryResource
+class MemoryResource extends AbstractCountableResource
 {
-	static ExecutionController getShare(long sizeInBytes) {
-		return null;
+	static final CountableResource	RESOURCE	= new MemoryResource();
+
+	@Override
+	long getCapacity() {
+		return MemoryUtils.getAvailableMemory();
 	}
 }
