@@ -3,7 +3,7 @@
 Hippodamus is a Java library for writing parallel code in an elegant way. It provides some features of sequential code that parallel code usually lacks:
 
 ---
-Hippodamus = [Nursery](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/) + Dependency Management + Exception Handling
+Hippodamus = [Nursery](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/) + Dependency Management + Exception Handling + Resource Management Support
 ___
 
 The API design was motivated by several practical applications that were ugly to implement with [CompletableFuture](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html).  
@@ -31,6 +31,10 @@ In Hippodamus, you write a try-with-resources block, in which you may execute ta
 Since Hippodamus assumes that everything within a try-block forms one supertask that has been split into subtask, it will stop all running tasks if at least one task terminates exceptionally.
 
 When working with Hippodamus, it is advantageous to understand how exception handling is realized by the framework. For further details see Section [Exception Handling Magic](#exception-handling-magic).
+
+## Resource Management Support
+
+Parallelization frameworks often do not consider resource constraints. Probably the most important resource is memory. When too many memory intensive tasks are executed in parallel, then we might encounter an `OutOfMemoryError`. The only option common parallelization frameworks offer is to specify the maximum parallelism. However, such a constraint is often unnecessarily restrictive. Hippodamus provides a way to postpone the execution of individual tasks until all preconditions for their execution are fulfilled. The user is responsible for defining when this is the case. See Section [Managing Resources with ExecutionControllers](#managing-resources-with-executioncontrollers) for further details.
 
 ## When To Use Hippodamus
 
@@ -318,6 +322,46 @@ Sometimes it is useful to specify a limit for the number of tasks of a certain t
 One possibility is to specify a dedicated `ExecutorService` for theses tasks (see Section [Configuring Coordinators](#configuring-coordinators)) whose parallelism is limited to the desired number. However, specifying dedicated `ExecutorService`s does not scale as well as using a shared `ExecutorService`.
 
 Alternatively, you can specify the maximum parallelism for a certain task type. This is the maximum number of tasks of that type processed by their `ExecutorService` at any time. Surplus tasks will be queued until one of the tasks currently be processed by the `ExecutorService` terminates.
+
+## Managing Resources with ExecutionControllers
+
+The term "resource" is very abstract: It could be something countable from which you can acquire pieces of certain sizes or it could, e.g., be a file in file system. This is why we decided not to introduce an interface that represents a resource, but decided to introduce an `ExecutionController` interface by which a user can control whether certain tasks can be executed or whether they have to be postponed and resubmitted later. In some scenarios such resource constraints could have been by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
+
+* Any such locking concept would block the task when the requested (amount of) resource is currently not available. This prevents the execution of other tasks that are ready to execute but cannot because all threads of the `ExecutorService` are already assigned a task, including this blocked task. In Hippodamus, the `ExecutionController` also postpones the task, but for the underlying `ExecutorService` (not for Hippodamus) it seems that the task has terminated and that it can now process the next task. The `ExecutionController` can resubmit the postponed task later. For the `ExecutorService` this is another task, but for Hippodamus it is the same.
+* Memory, which is one of the most important resources, cannot be managed that way because there is no semaphore whose `acquire()` method will return when enough memory is available.
+* Tasks could starve if one cannot guarantee that there will be enough of the resource available for the postponed task in the future. Implementers of `ExecutionController` also have to keep this issue in mind, but at least they have a chance to react: They could implement a fallback strategy to make more of the resource available somehow, e.g., swapping data to the hard disk to make some memory available or performing some clean-up. However, this is highly individual and cannot be implemented by Hippodamus.
+
+As you can see, resource management is very complicated and depends on the application. There is no silver bullet for managing resources that could be implemented once and for all. Instead, Hippodamus only gives users the chance to interfere in its scheduling algorithm, which particularly allows the user to take resource constraints into consideration.
+
+In the remainder of this section we discuss some further points that have to be considered when implementing some kind of memory management:
+
+* It is not even clear what memory consumption of a task means: In the simplest scenario, each task allocates some amount of memory during its life time and finally releases all of it. The amount of memory allocated by that task can be considered its memory consumption. However, tasks might also model state transitions in a stateful system like an in-memory database. In this case, the allocated memory can be categorized into two classes:
+
+  1. Memory the task needs for its execution which is released again when the task terminates. This is the same type as in the simple scenario.
+  2. Memory that is allocated as a result of the state change the task caused. This could be, e.g., memory for additional tables the task creates within an in-memory database. This memory does not get released when the task terminates. 
+  
+  In this case it is not clear what the memory consumption of the task is. You will probably have to consider both categories of allocated memory, but maybe treat them differently.
+  
+* You have to be careful with nested parallelization and counting resources twice: When a task executes a method that also utilizes Hippodamus for parallelization, then you need a concept whether the consumed resources required by the nested tasks are also considered as consumed resources by the parent task. It is clear that you must count it exactly once, but you have to decide whether to count it for the parent task or for the nested tasks.
+
+* Memory is a resource that is hard to track: When you use a counter that is initialized with the amount of memory available at the time of initializating and update this counter whenever a task starts executing or terminates, then this counter will diverge from the real amount of available memory on the long run because you most likely will not have full control of the memory consumption in your application. On the other hand, when you do not maintain a counter, but always consider the currently available memory, then it is hard to say whether the tasks that are currently running have already allocated the memory they claimed to allocate (optimistic assumption) or whether they have not allocated any memory yet (pessimistic assumption). Hence, the available memory a new task can rely on is something between the currently available memory minus the sum of the memory claimed to be allocated by the tasks that are currently executing and the currently available memory. For our unit tests we have implemented both models (`ControllableCountableResource` and `MemoryResource`) and documented the drawbacks (e.g., potential starvation of postponed tasks). For the purpose of testing they are sufficient and can give you a hint of how to implement an `ExecutionController`, but we strongly advise you to implement your own `ExecutionController` that takes your individual requirements into consideration.
+
+In Section [ExecutionControllers](#executioncontrollers) we explain how `ExecutionController`s are used by Hippodamus and how they should be implemented. 
+
+### ExecutionControllers
+
+You can specify an `ExecutionController` for every task you want to be able to control by the call `ExecutionCoordinator.configure().executionController()`. When Hippodamus wants to execute a task, it calls `ExecutionController.permitExecution(submitLaterRunnable)`. The `ExecutionController` then has to decide whether the task the `ExecutionController` belongs to may be executed or not. If not, then it is responsible for queuing the task and resubmitting it at a later point in time. This submission is done by calling the `submitLaterRunnable` it received as parameter for the method `permitExecution()`.
+
+When a task terminates, the method `ExecutionController.finishedExecution()` is called. This gives the `ExecutionController` the change to update internal information and is a good point for deciding whether to resubmit postponed tasks.
+
+When the coordinator is stopped, then `ExecutionController.stop()` is called. The `ExecutionController` can then clean up data that is related to the corresponding task if available.
+
+In the remainder of this section we discuss how `ExecutionControllers` should be implemented when modelling a resource.
+
+* There should be some class that represents the resource to be managed.
+* For each task that needs the resource you have to register a dedicated `ExecutionController`. This `ExecutionController` must have access to the resource class and contain all relevant information about its task to decide whether its task may be executed at a certain point of time.
+
+By now it should be clear that you cannot use one `ExecutionController` for the same task. The reason is that none of the methods of that interface get any information about the task it has to decide for. This information can be quite different between different use cases, so we decided that it is best to let the `ExecutionController` carry this information by an appropriate user-defined implementation.
 
 ## Aggregation
 
