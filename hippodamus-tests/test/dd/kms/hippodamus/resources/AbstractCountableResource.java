@@ -6,10 +6,16 @@ import java.util.List;
 
 abstract class AbstractCountableResource implements CountableResource
 {
+	private final String				name;
+
 	private long						totalReservedShareSize	= 0;
 	private final List<ResourceRequest>	postponedResourceRequests	= new ArrayList<>();
 
 	abstract long getCapacity();
+
+	AbstractCountableResource(String name) {
+		this.name = name;
+	}
 
 	@Override
 	public synchronized boolean tryAcquire(Long shareSize, Runnable tryAgainRunnable) {
@@ -50,6 +56,11 @@ abstract class AbstractCountableResource implements CountableResource
 				return;
 			}
 		}
+	}
+
+	@Override
+	public String toString() {
+		return name;
 	}
 
 	private static class ResourceRequest

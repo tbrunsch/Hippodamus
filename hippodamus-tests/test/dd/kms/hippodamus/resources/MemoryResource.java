@@ -30,6 +30,10 @@ class MemoryResource extends AbstractCountableResource
 {
 	static final CountableResource	RESOURCE	= new MemoryResource();
 
+	private MemoryResource() {
+		super("Memory");
+	}
+
 	@Override
 	long getCapacity() {
 		return MemoryUtils.getAvailableMemory();

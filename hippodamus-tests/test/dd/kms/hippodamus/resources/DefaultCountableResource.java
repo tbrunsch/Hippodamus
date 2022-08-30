@@ -11,7 +11,8 @@ class DefaultCountableResource extends AbstractCountableResource
 {
 	private final long	capacity;
 
-	DefaultCountableResource(long capacity) {
+	DefaultCountableResource(String name, long capacity) {
+		super(name);
 		this.capacity = capacity;
 	}
 

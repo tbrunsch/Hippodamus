@@ -78,7 +78,7 @@ class MemoryTest
 			case MONITORED_MEMORY:
 				return MemoryResource.RESOURCE;
 			case CONTROLLABLE_COUNTABLE_RESOURCE:
-				return new DefaultCountableResource(availableMemory);
+				return new DefaultCountableResource("Countable resource for " + MemoryUtils.formatMemory(availableMemory), availableMemory);
 			default:
 				throw new IllegalArgumentException("Unsupported resource type " + resourceType);
 		}

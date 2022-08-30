@@ -18,4 +18,9 @@ class UnlimitedCountableResource implements CountableResource
 	public void remove(Runnable tryAgainRunnable) {
 		/* nothing to do */
 	}
+
+	@Override
+	public String toString() {
+		return "Unlimited countable resource";
+	}
 }
