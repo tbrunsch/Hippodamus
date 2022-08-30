@@ -19,7 +19,7 @@ package dd.kms.hippodamus.resources;
  *         {@code OutOfMemoryError}.
  *     </li>
  *     <li>
- *			Compared to {@link ControllableCountableResource}, postponed tasks could suffer from starvation: These tasks
+ *			Compared to {@link DefaultCountableResource}, postponed tasks could suffer from starvation: These tasks
  *		    will only be resubmitted when another task finishes <b>and</b> there is enough available memory for such a
  *		    task. When the last submitted task terminates and yet there is not enough memory available for at least one
  *		    of the postponed tasks, then these task have no change to get resubmitted anymore.

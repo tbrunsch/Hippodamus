@@ -2,12 +2,12 @@ package dd.kms.hippodamus.impl.handles;
 
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
-import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -24,12 +24,14 @@ public class HandleImpl<V> implements ResultHandle<V>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
+	private final Runnable					submitLaterRunnable					= this::submitAsynchronously;
+
 	private final ExecutionCoordinatorImpl	coordinator;
 	private final String					taskName;
 	private final int						id;
 	private final ExecutorServiceWrapper	executorServiceWrapper;
 	private final ExceptionalCallable<V, ?> callable;
-	private final ExecutionController		executionController;
+	private final ResourceShare				requiredResourceShare;
 	private final boolean					verifyDependencies;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
@@ -51,13 +53,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 */
 	private Thread							_executingThread;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ExecutionController executionController, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ResourceShare requiredResourceShare, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
-		this.executionController = executionController;
+		this.requiredResourceShare = requiredResourceShare;
 		this.verifyDependencies = verifyDependencies;
 		this.stateController = new TaskStateController<>(this, coordinator);
 	}
@@ -111,9 +113,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			if (taskStage == TaskStage.ON_HOLD) {
-				executionController.stop();
-			}
+			requiredResourceShare.remove(submitLaterRunnable);
 			stateController._transitionTo(TaskStage.TERMINATED);
 		}
 		if (_future != null) {
@@ -175,15 +175,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 			}
 		}
 
-		boolean completedSuccessfully = false;
 		try {
 			V result = callable.call();
-			completedSuccessfully = true;
 			complete(result);
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
 		} finally {
-			executionController.finishedExecution(completedSuccessfully);
+			requiredResourceShare.release();
 			clearInterruptionFlag();
 		}
 	}
@@ -195,9 +193,9 @@ public class HandleImpl<V> implements ResultHandle<V>
 	private boolean _startExecution() {
 		boolean permitTaskExecution;
 		try {
-			permitTaskExecution = executionController.permitExecution(this::submitAsynchronously);
+			permitTaskExecution = requiredResourceShare.tryAcquire(submitLaterRunnable);
 		} catch (Throwable t) {
-			String error = "Exception when asking execution controller whether task may be executed: " + t;
+			String error = "Exception when trying to acquire resource: " + t;
 			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
@@ -213,8 +211,8 @@ public class HandleImpl<V> implements ResultHandle<V>
 	}
 
 	/**
-	 * Calls {@link #submit()} asynchronously. This is required when given the {@link ExecutionController} a runnable
-	 * for resubmitting this task in order to avoid deadlocks (see TECHDOC for details).
+	 * Calls {@link #submit()} asynchronously. This is required to avoid deadlocks when a {@link dd.kms.hippodamus.api.resources.Resource}
+	 * resubmits this task via this method (see TECHDOC for details).
 	 */
 	private void submitAsynchronously() {
 		CompletableFuture.runAsync(this::submit);

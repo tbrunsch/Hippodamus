@@ -24,12 +24,12 @@ The same rule applies for accessors of fields whose names are prepended by an un
     1. If the task can be submitted (taking the maximum parallelism into account), then it is submitted to the `ExecutorService` via `ExecutorServiceWrapper.submitNow()`. The resulting `Future` is then propagated to the `HandleImpl`, which uses it to stop the task on demand. 
     1. If the task cannot be submitted, then it is added to a collection of unsubmitted tasks and will be submitted later if the load on the `ExecutorService` permits it
     
-## Deadlock Prevention When Interacting With ExecutionControllers   
+## Deadlock Prevention When Interacting With Resources   
 
-`ExecutionController`s are implemented by the user and they will most likely have their own synchronization mechanism. We must avoid deadlocks that may occur when this mechanism interlocks with Hippodamus' synchronization mechanism. Such interlocking could happen in the following scenario:
+`Resource`s are implemented by the user and they will most likely have their own synchronization mechanism. We must avoid deadlocks that may occur when this mechanism interlocks with Hippodamus' synchronization mechanism. Such interlocking could happen in the following scenario:
 
-* `HandleImpl.executeCallable()` locks the coordinator and then calls `ExecutionController#permitExecution()` via `_startExecution()`. Usually, this call will acquire some kind of lock.
-* When a task terminates, then the `ExecutionController` gets informed and might trigger the submission of a task that has been put on hold until now. When this happens, the `ExecutionController` will most likely hold its synchronization lock. The task submission happens by executing the method reference `HandleImpl::submitAsynchronously`, which calls `HandleImpl.submit()` asynchronously. If it would call `HandleImpl.submit()` directly, then we would have the inverse locking order as in `HandleImpl.executeCallable()` because `HandleImpl.submit()` locks the coordinator. This would be a potential deadlock.
+* `HandleImpl.executeCallable()` locks the coordinator and then calls `Resource.tryAcquire()` via `_startExecution()` and `ResourceShare.tryAcquire()`. Usually, this call will acquire some kind of lock.
+* When a task terminates, then the `Resource` gets informed via `Resource.release()` and might trigger the submission of a task that has been put on hold until now. When this happens, the `Resource` will most likely hold its synchronization lock. The task submission happens by executing the method reference `HandleImpl::submitAsynchronously`, which calls `HandleImpl.submit()` asynchronously. If it would call `HandleImpl.submit()` directly, then we would have the inverse locking order as in `HandleImpl.executeCallable()` because `HandleImpl.submit()` locks the coordinator. This would be a potential deadlock.
     
 ## ExecutorServiceWrapper and Maximum Parallelism
 

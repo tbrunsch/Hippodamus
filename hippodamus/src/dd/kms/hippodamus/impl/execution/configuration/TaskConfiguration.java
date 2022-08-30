@@ -1,8 +1,8 @@
 package dd.kms.hippodamus.impl.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.TaskType;
-import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -17,13 +17,13 @@ public class TaskConfiguration
 	private final @Nullable String		name;
 	private final TaskType				taskType;
 	private final Collection<Handle>	dependencies;
-	private final ExecutionController	controller;
+	private final ResourceShare			requiredResourceShare;
 
-	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, ExecutionController controller) {
+	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, ResourceShare requiredResourceShare) {
 		this.name = name;
 		this.taskType = taskType;
 		this.dependencies = dependencies;
-		this.controller = controller;
+		this.requiredResourceShare = requiredResourceShare;
 	}
 
 	public Optional<String> getName() {
@@ -38,7 +38,7 @@ public class TaskConfiguration
 		return dependencies;
 	}
 
-	public ExecutionController getController() {
-		return controller;
+	public ResourceShare getRequiredResourceShare() {
+		return requiredResourceShare;
 	}
 }

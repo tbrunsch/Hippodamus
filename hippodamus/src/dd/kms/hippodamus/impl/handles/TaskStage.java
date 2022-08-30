@@ -2,7 +2,6 @@ package dd.kms.hippodamus.impl.handles;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
-import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 
 import java.util.concurrent.ExecutorService;
@@ -31,8 +30,8 @@ enum TaskStage
 	SUBMITTED("submitted"),
 
 	/**
-	 * The task execution has been put on hold by the user-defined {@link ExecutionController} just before the task was
-	 * going to be executed. The {@code ExecutionController} decides when the task is submitted again.
+	 * The task execution has been put on hold because one of the resources required by the task was not available
+	 * just before the task was going to be executed. The {@code Resource} decides when the task is submitted again.
 	 */
 	ON_HOLD("on hold"),
 

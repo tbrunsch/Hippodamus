@@ -1,7 +1,5 @@
 package dd.kms.hippodamus.resources;
 
-import dd.kms.hippodamus.api.execution.ExecutionController;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -9,82 +7,67 @@ import java.util.List;
 abstract class AbstractCountableResource implements CountableResource
 {
 	private long						totalReservedShareSize	= 0;
-
-	private final List<ResourceShare>	postponedResourceShares	= new ArrayList<>();
+	private final List<ResourceRequest>	postponedResourceRequests	= new ArrayList<>();
 
 	abstract long getCapacity();
 
-	synchronized boolean tryAcquireShare(ResourceShare share) {
-		long shareSize = share.getSize();
+	@Override
+	public synchronized boolean tryAcquire(Long shareSize, Runnable tryAgainRunnable) {
 		long availableSize = getCapacity() - totalReservedShareSize;
 		if (shareSize <= availableSize) {
 			totalReservedShareSize += shareSize;
 			return true;
 		} else {
-			postponedResourceShares.add(share);
+			ResourceRequest resourceRequest = new ResourceRequest(shareSize, tryAgainRunnable);
+			postponedResourceRequests.add(resourceRequest);
 			return false;
 		}
 	}
 
-	synchronized void releaseShare(ResourceShare share) {
-		long shareSize = share.getSize();
+	@Override
+	public synchronized void release(Long shareSize) {
 		totalReservedShareSize -= shareSize;
 		long availableSize = getCapacity() - totalReservedShareSize;
-		Iterator<ResourceShare> iter = postponedResourceShares.iterator();
+		Iterator<ResourceRequest> iter = postponedResourceRequests.iterator();
 		while (iter.hasNext()) {
-			ResourceShare postponedShare = iter.next();
-			long postponedShareSize = postponedShare.getSize();
+			ResourceRequest postponedRequest = iter.next();
+			long postponedShareSize = postponedRequest.getShareSize();
 			if (postponedShareSize <= availableSize) {
 				availableSize -= postponedShareSize;
-				postponedShare.getResourceRequest().run();
+				postponedRequest.getTryAgainRunnable().run();
 				iter.remove();
 			}
 		}
 	}
 
-	synchronized void removeResourceRequest(ResourceShare share) {
-		postponedResourceShares.remove(share);
-	}
-
 	@Override
-	public ExecutionController getShare(long size) {
-		return new ResourceShare(size, this);
+	public synchronized void remove(Runnable tryAgainRunnable) {
+		Iterator<ResourceRequest> iter = postponedResourceRequests.iterator();
+		while (iter.hasNext()) {
+			ResourceRequest postponedRequest = iter.next();
+			if (postponedRequest.getTryAgainRunnable() == tryAgainRunnable) {
+				iter.remove();
+				return;
+			}
+		}
 	}
 
-	private static class ResourceShare implements ExecutionController
+	private static class ResourceRequest
 	{
-		private final long						size;
-		private final AbstractCountableResource	resource;
+		private final long		shareSize;
+		private final Runnable	tryAgainRunnable;
 
-		private Runnable						resourceRequest;
-
-		ResourceShare(long size, AbstractCountableResource resource) {
-			this.size = size;
-			this.resource = resource;
+		ResourceRequest(long shareSize, Runnable tryAgainRunnable) {
+			this.shareSize = shareSize;
+			this.tryAgainRunnable = tryAgainRunnable;
 		}
 
-		long getSize() {
-			return size;
+		long getShareSize() {
+			return shareSize;
 		}
 
-		Runnable getResourceRequest() {
-			return resourceRequest;
-		}
-
-		@Override
-		public boolean permitExecution(Runnable submitLaterRunnable) {
-			this.resourceRequest = submitLaterRunnable;
-			return resource.tryAcquireShare(this);
-		}
-
-		@Override
-		public void stop() {
-			resource.removeResourceRequest(this);
-		}
-
-		@Override
-		public void finishedExecution(boolean finishedSuccessfully) {
-			resource.releaseShare(this);
+		Runnable getTryAgainRunnable() {
+			return tryAgainRunnable;
 		}
 	}
 }

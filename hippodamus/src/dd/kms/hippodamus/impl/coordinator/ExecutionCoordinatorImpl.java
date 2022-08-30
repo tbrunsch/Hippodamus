@@ -5,7 +5,6 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
-import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
@@ -15,6 +14,7 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -79,12 +79,12 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
-		ExecutionController controller = taskConfiguration.getController();
+		ResourceShare resourceShare = taskConfiguration.getRequiredResourceShare();
 		synchronized (this) {
 			checkException();
 			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
-			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, controller, verifyDependencies);
+			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, resourceShare, verifyDependencies);
 			_handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!_hasStopped() && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				_scheduleForSubmission(resultHandle);

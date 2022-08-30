@@ -39,7 +39,7 @@ class MemoryTest
 		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
 			for (int i = 0; i < taskParameters.getNumberOfTasks(); i++) {
 				ExecutionConfigurationBuilder builder = coordinator.configure();
-				builder.executionController(resource.getShare(taskParameters.getTaskSize()));
+				builder.requiredResource(resource, () -> taskParameters.getTaskSize());
 				builder.execute(() -> executeTask(taskParameters));
 			}
 		} catch (OutOfMemoryError e) {
@@ -78,7 +78,7 @@ class MemoryTest
 			case MONITORED_MEMORY:
 				return MemoryResource.RESOURCE;
 			case CONTROLLABLE_COUNTABLE_RESOURCE:
-				return new ControllableCountableResource(availableMemory);
+				return new DefaultCountableResource(availableMemory);
 			default:
 				throw new IllegalArgumentException("Unsupported resource type " + resourceType);
 		}

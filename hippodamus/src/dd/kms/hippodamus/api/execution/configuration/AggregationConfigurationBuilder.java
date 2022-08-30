@@ -2,10 +2,11 @@ package dd.kms.hippodamus.api.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.execution.AggregationManager;
-import dd.kms.hippodamus.api.execution.ExecutionController;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.resources.Resource;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 /**
  * Same as {@link ExecutionConfigurationBuilder}, but for tasks of an
@@ -28,5 +29,5 @@ public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigur
 	AggregationConfigurationBuilder<S, R> dependencies(Collection<? extends Handle> dependencies);
 
 	@Override
-	AggregationConfigurationBuilder<S, R> executionController(ExecutionController controller);
+	<T> AggregationConfigurationBuilder<S, R> requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier);
 }

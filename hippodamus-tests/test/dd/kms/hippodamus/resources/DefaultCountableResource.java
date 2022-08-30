@@ -7,11 +7,11 @@ package dd.kms.hippodamus.resources;
  * your memory consumption with this resource instance, the available memory and the available size of this resource
  * instance will eventually diverge.
  */
-class ControllableCountableResource extends AbstractCountableResource
+class DefaultCountableResource extends AbstractCountableResource
 {
 	private final long	capacity;
 
-	ControllableCountableResource(long capacity) {
+	DefaultCountableResource(long capacity) {
 		this.capacity = capacity;
 	}
 

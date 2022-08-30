@@ -1,32 +1,21 @@
 package dd.kms.hippodamus.resources;
 
-import dd.kms.hippodamus.api.execution.ExecutionController;
-
 class UnlimitedCountableResource implements CountableResource
 {
 	static final CountableResource	RESOURCE	= new UnlimitedCountableResource();
+
 	@Override
-	public ExecutionController getShare(long size) {
-		return UnlimitedCountableResourceShare.SHARE;
+	public boolean tryAcquire(Long resourceShare, Runnable tryAgainRunnable) {
+		return true;
 	}
 
-	private static class UnlimitedCountableResourceShare implements ExecutionController
-	{
-		static final ExecutionController	SHARE	= new UnlimitedCountableResourceShare();
+	@Override
+	public void release(Long resourceShare) {
+		/* nothing to do */
+	}
 
-		@Override
-		public boolean permitExecution(Runnable submitLaterRunnable) {
-			return true;
-		}
-
-		@Override
-		public void stop() {
-			/* nothing to do */
-		}
-
-		@Override
-		public void finishedExecution(boolean finishedSuccessfully) {
-			/* nothing to do */
-		}
+	@Override
+	public void remove(Runnable tryAgainRunnable) {
+		/* nothing to do */
 	}
 }
