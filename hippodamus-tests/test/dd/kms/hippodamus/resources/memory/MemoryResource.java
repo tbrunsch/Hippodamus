@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources;
+package dd.kms.hippodamus.resources.memory;
 
 /**
  * This class is an attempt to model the available memory as a resource. Whenever it has to be decided whether a task

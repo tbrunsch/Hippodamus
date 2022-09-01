@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources;
+package dd.kms.hippodamus.resources.memory;
 
 /**
  * This class can be used to model controllable countable resources. See {@link CountableResource} for what we mean by
@@ -7,11 +7,11 @@ package dd.kms.hippodamus.resources;
  * your memory consumption with this resource instance, the available memory and the available size of this resource
  * instance will eventually diverge.
  */
-class DefaultCountableResource extends AbstractCountableResource
+public class DefaultCountableResource extends AbstractCountableResource
 {
 	private final long	capacity;
 
-	DefaultCountableResource(String name, long capacity) {
+	public DefaultCountableResource(String name, long capacity) {
 		super(name);
 		this.capacity = capacity;
 	}

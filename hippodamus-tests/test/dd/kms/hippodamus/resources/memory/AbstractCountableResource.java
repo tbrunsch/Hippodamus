@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources;
+package dd.kms.hippodamus.resources.memory;
 
 import java.util.ArrayList;
 import java.util.Iterator;

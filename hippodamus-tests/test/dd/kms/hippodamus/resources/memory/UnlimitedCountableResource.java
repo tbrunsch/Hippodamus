@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources;
+package dd.kms.hippodamus.resources.memory;
 
 class UnlimitedCountableResource implements CountableResource
 {
