@@ -4,11 +4,13 @@ import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
+import dd.kms.hippodamus.resources.memory.CountableResource;
+import dd.kms.hippodamus.resources.memory.DefaultCountableResource;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +33,7 @@ public class MultipleResourcesTest
 
 	@Test
 	public void testMultipleResources() {
-		Assume.assumeTrue(TestUtils.getDefaultParallelism() >= 2);
+		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= 2);
 
 		final int numResources = 2*HALF_NUMBER_OF_RESOURCES;
 
@@ -43,7 +45,7 @@ public class MultipleResourcesTest
 		final int expectedNumTasks = binomialCoefficient(numResources, HALF_NUMBER_OF_RESOURCES);
 		final int expectedParallelism = 2;
 
-		Assert.assertEquals("Internal error: Unexpected number of tasks", expectedNumTasks, bitVectors.size());
+		Assertions.assertEquals(expectedNumTasks, bitVectors.size(), "Internal error: Unexpected number of tasks");
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 
@@ -52,10 +54,11 @@ public class MultipleResourcesTest
 		BitVectorCollector bitVectorCollector = new BitVectorCollector();
 		try (AggregationCoordinator<BitVector, List<BitVector>> coordinator = Coordinators.createAggregationCoordinator(bitVectorCollector)) {
 			for (BitVector bitVector : bitVectors) {
-				AggregationConfigurationBuilder<BitVector, List<BitVector>> taskConfiguration = coordinator.configure();
-				for (int bit = 0; bit < numResources; bit++) {
-					if (bitVector.isBitSet(bit)) {
-						taskConfiguration.requiredResource(resources.get(bit), () -> 1L);
+				AggregationConfigurationBuilder<BitVector, List<BitVector>> taskConfiguration = coordinator.configure()
+					.name(bitVector.toString());
+				for (int pos = 0; pos < numResources; pos++) {
+					if (bitVector.getBit(pos) == 1) {
+						taskConfiguration.requiredResource(resources.get(pos), () -> 1L);
 					}
 				}
 				taskConfiguration.aggregate(() -> executeTask(bitVector));
@@ -66,17 +69,19 @@ public class MultipleResourcesTest
 		TestUtils.assertTimeBounds(expectedDurationMs, PRECISION_MS, elapsedTimeMs);
 
 		List<BitVector> executedBitVectors = bitVectorCollector.getAggregatedValue();
-		Assert.assertEquals("Unexpected number of tasks", expectedNumTasks, executedBitVectors.size());
+		Assertions.assertEquals(expectedNumTasks, executedBitVectors.size(), "Unexpected number of tasks");
 
 		for (int i = 0; i < expectedNumTasks / 2; i++) {
 			BitVector vector1 = executedBitVectors.get(2*i);
 			BitVector vector2 = executedBitVectors.get(2*i + 1);
-			Assert.assertEquals("Each pair of subsequent tasks must consist of complementary resource allocations", vector1.invert(), vector2);
+			Assertions.assertEquals(vector1.invert(), vector2, "Each pair of subsequent tasks must consist of complementary resource allocations");
 		}
 	}
 
 	private BitVector executeTask(BitVector bitVector) {
+		System.out.println(bitVector + " started");
 		TestUtils.simulateWork(TASK_TIME_MS);
+		System.out.println(bitVector + " finished");
 		return bitVector;
 	}
 
@@ -86,17 +91,17 @@ public class MultipleResourcesTest
 			bitVectors.add(new BitVector());
 		}
 		if (hammingWeight < length) {
-			bitVectors.addAll(appendToAll(getBitVectors(length-1, hammingWeight), false));
+			bitVectors.addAll(appendToAll(getBitVectors(length-1, hammingWeight), 0));
 		}
 		if (hammingWeight > 0) {
-			bitVectors.addAll(appendToAll(getBitVectors(length-1, hammingWeight-1), true));
+			bitVectors.addAll(appendToAll(getBitVectors(length-1, hammingWeight-1), 1));
 		}
 		return bitVectors;
 	}
 
-	private static List<BitVector> appendToAll(List<BitVector> bitVectors, boolean bitValue) {
+	private static List<BitVector> appendToAll(List<BitVector> bitVectors, int bit) {
 		return bitVectors.stream()
-			.map(bitVector -> bitVector.append(bitValue))
+			.map(bitVector -> bitVector.append(bit))
 			.collect(Collectors.toList());
 	}
 
@@ -108,29 +113,28 @@ public class MultipleResourcesTest
 
 	private static class BitVector
 	{
-		private final List<Boolean> bits;
+		private final int	bits;
+		private final int	length;
 
 		BitVector() {
-			this(new ArrayList<>());
+			this(0, 0);
 		}
 
-		BitVector(List<Boolean> bits) {
+		BitVector(int bits, int length) {
 			this.bits = bits;
+			this.length = length;
 		}
 
-		boolean isBitSet(int bit) {
-			return bits.get(bit);
+		int getBit(int pos) {
+			return (bits >> pos) & 1;
 		}
 
-		BitVector append(boolean bitValue) {
-			List<Boolean> bits = new ArrayList<>(this.bits);
-			bits.add(bitValue);
-			return new BitVector(bits);
+		BitVector append(int bit) {
+			return new BitVector(bits << 1 | bit, length + 1);
 		}
 
 		BitVector invert() {
-			List<Boolean> bits = this.bits.stream().map(b -> !b).collect(Collectors.toList());
-			return new BitVector(bits);
+			return new BitVector((1 << length) - (bits+1), length);
 		}
 
 		@Override
@@ -138,12 +142,21 @@ public class MultipleResourcesTest
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 			BitVector bitVector = (BitVector) o;
-			return Objects.equals(bits, bitVector.bits);
+			return bits == bitVector.bits &&
+				length == bitVector.length;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(bits);
+			return Objects.hash(bits, length);
+		}
+
+		@Override
+		public String toString() {
+			return IntStream.range(0, length)
+				.map(this::getBit)
+				.mapToObj(String::valueOf)
+				.collect(Collectors.joining());
 		}
 	}
 
