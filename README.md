@@ -34,7 +34,7 @@ When working with Hippodamus, it is advantageous to understand how exception han
 
 ## Resource Management Support
 
-Parallelization frameworks often do not consider resource constraints. Probably the most important resource is memory. When too many memory intensive tasks are executed in parallel, then we might encounter an `OutOfMemoryError`. The only option common parallelization frameworks offer is to specify the maximum parallelism. However, such a constraint is often unnecessarily restrictive. Hippodamus provides a way to postpone the execution of individual tasks until all preconditions for their execution are fulfilled. The user is responsible for defining when this is the case. See Section [Managing Resources](#managing-resources) for further details.
+Parallelization frameworks often do not consider resource constraints. Probably the most important resource is memory. When too many memory intensive tasks are executed in parallel, then an `OutOfMemoryError` might occur. The only option common parallelization frameworks offer is to specify the maximum parallelism. However, such a constraint is often unnecessarily restrictive. Hippodamus provides a way to postpone the execution of individual tasks until a required resource is available. The user is responsible for defining when this is the case. See Section [Managing Resources](#managing-resources) for further details.
 
 ## When To Use Hippodamus
 
@@ -325,9 +325,9 @@ Alternatively, you can specify the maximum parallelism for a certain task type. 
 
 ## Managing Resources
 
-The term "resource" is very abstract: It could be something countable from which you can acquire pieces of certain sizes or it could, e.g., be a file in file system. In Hippodamus, a resource is represented by the interface `Resource`. This interface has a generic parameter that describes the type the pieces of this resource are.
+The term "resource" is very abstract: It could be something countable from which you can acquire pieces of certain sizes. It could also be, e.g., a file in a file system. In Hippodamus, a resource is represented by the interface `Resource`. This interface has a generic parameter that describes the type the pieces of this resource are.
 
-By implementing this interface a user can control whether to accept a task's resource request or whether to reject it and let the task repeat it later. In some scenarios such resource constraints could have been implemented by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
+By implementing this interface a user can control whether to accept a task's resource request or whether to reject it and let the task repeat the request later. In some scenarios such resource constraints could have been implemented by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
 
 * Any such locking concept would block the task when the requested (amount of) resource is currently not available. This prevents the execution of other tasks that are ready to execute but cannot because all threads of the `ExecutorService` are already assigned a task, including this blocked task. In Hippodamus, the execution of a task is postponed when its resource request is rejected, but for the underlying `ExecutorService` (not for Hippodamus) it seems that the task has terminated and that it can now process the next task. The `Resource` can resubmit the postponed task later. For the `ExecutorService` this is another task, but for Hippodamus it is the same.
 * Memory, which is one of the most important resources, cannot be managed that way because there is no semaphore whose `acquire()` method will return when enough memory is available.
@@ -352,7 +352,7 @@ In Section [Resources](#resources) we explain how `Resources`s are used by Hippo
 
 ### Resources
 
-You can specify the resources a task depends on by calling `coordinator.configure().requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier)` for every resource. The `resourceShareSupplier` provides information what or how much of the resource is required. The supplier will not executed until the task is eligible for execution. This allows to model scenarios in which the resource requirement cannot be easily predicted at the beginning, but depends on the task's dependencies.
+You can specify the resources a task depends on by calling `coordinator.configure().requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier)` for every resource. The `resourceShareSupplier` provides information what or how much of the resource is required. The supplier will not be executed until the task is eligible for execution. This allows modelling scenarios in which the resource requirement depends on the task's dependencies and cannot be predicted easily.
 
 When Hippodamus wants to execute a task, it calls `Resource.tryAcquire()` with a parameter that describes what or how much of the resource the task requests and a `Runnable tryAgainRunnable`. The value is provided by the `resourceShareSupplier` that has been specified when the task has been configured. The `Resource` then decides whether it accepts the resource request or not:
 
