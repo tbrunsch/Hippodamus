@@ -25,6 +25,7 @@ package dd.kms.hippodamus.resources.memory;
  *		    of the postponed tasks, then these task have no change to get resubmitted anymore.
  *     </li>
  * </ul>
+ * Additionally, this implementation inherits the problems of {@link AbstractCountableResource}.
  */
 class MemoryResource extends AbstractCountableResource
 {
