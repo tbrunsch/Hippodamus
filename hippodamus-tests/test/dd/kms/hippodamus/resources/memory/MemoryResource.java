@@ -1,5 +1,9 @@
 package dd.kms.hippodamus.resources.memory;
 
+import dd.kms.hippodamus.resources.AbstractCountableResource;
+import dd.kms.hippodamus.resources.CountableResource;
+import dd.kms.hippodamus.resources.DefaultCountableResource;
+
 /**
  * This class is an attempt to model the available memory as a resource. Whenever it has to be decided whether a task
  * can be executed, the available amount of memory is considered. Unlike an optimistic approach, which would simply
@@ -22,7 +26,7 @@ package dd.kms.hippodamus.resources.memory;
  *			Compared to {@link DefaultCountableResource}, postponed tasks could suffer from starvation: These tasks
  *		    will only be resubmitted when another task finishes <b>and</b> there is enough available memory for such a
  *		    task. When the last submitted task terminates and yet there is not enough memory available for at least one
- *		    of the postponed tasks, then these task have no change to get resubmitted anymore.
+ *		    of the postponed tasks, then these tasks have no change to get resubmitted anymore.
  *     </li>
  * </ul>
  * Additionally, this implementation inherits the problems of {@link AbstractCountableResource}.
@@ -36,7 +40,7 @@ class MemoryResource extends AbstractCountableResource
 	}
 
 	@Override
-	long getCapacity() {
+	protected long getCapacity() {
 		return MemoryUtils.getAvailableMemory();
 	}
 }

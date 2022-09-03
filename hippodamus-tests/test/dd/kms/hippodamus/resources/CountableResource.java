@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources.memory;
+package dd.kms.hippodamus.resources;
 
 import dd.kms.hippodamus.api.resources.Resource;
 

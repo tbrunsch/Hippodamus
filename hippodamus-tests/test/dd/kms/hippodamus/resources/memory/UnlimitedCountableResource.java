@@ -1,8 +1,20 @@
 package dd.kms.hippodamus.resources.memory;
 
+import dd.kms.hippodamus.resources.CountableResource;
+
 class UnlimitedCountableResource implements CountableResource
 {
 	static final CountableResource	RESOURCE	= new UnlimitedCountableResource();
+
+	@Override
+	public void addPendingResourceShare(Long resourceShare) {
+		/* nothing to do */
+	}
+
+	@Override
+	public void removePendingResourceShare(Long resourceShare) {
+		/* nothing to do*/
+	}
 
 	@Override
 	public boolean tryAcquire(Long resourceShare, Runnable tryAgainRunnable) {

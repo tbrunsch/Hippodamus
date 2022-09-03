@@ -74,6 +74,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
+				requiredResourceShare.addPendingResourceShare();
 				executorServiceWrapper._submit(this);
 			}
 		}
@@ -113,7 +114,11 @@ public class HandleImpl<V> implements ResultHandle<V>
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			requiredResourceShare.remove(submitLaterRunnable);
+			if (taskStage == TaskStage.SUBMITTED) {
+				requiredResourceShare.removePendingResourceShare();
+			} else if (taskStage == TaskStage.ON_HOLD) {
+				requiredResourceShare.remove(submitLaterRunnable);
+			}
 			stateController._transitionTo(TaskStage.TERMINATED);
 		}
 		if (_future != null) {
@@ -199,6 +204,8 @@ public class HandleImpl<V> implements ResultHandle<V>
 			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
+		} finally {
+			requiredResourceShare.removePendingResourceShare();
 		}
 		if (!permitTaskExecution) {
 			stateController._transitionTo(TaskStage.ON_HOLD);

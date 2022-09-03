@@ -11,8 +11,9 @@ import java.util.function.Supplier;
 class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResourceShare<?>>
 {
 	private final Resource<T>	resource;
-	private final Supplier<T>	resourceShareSupplier;
+	private Supplier<T>			resourceShareSupplier;
 
+	private boolean				resourceShareDetermined;
 	private T					resourceShare;
 
 	public WrappedResourceShare(Resource<T> resource, Supplier<T> resourceShareSupplier) {
@@ -21,19 +22,38 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	}
 
 	@Override
+	public void addPendingResourceShare() {
+		resource.addPendingResourceShare(getResourceShare());
+	}
+
+	@Override
+	public void removePendingResourceShare() {
+		resource.removePendingResourceShare(getResourceShare());
+	}
+
+	@Override
 	public boolean tryAcquire(Runnable tryAgainRunnable) {
-		resourceShare = resourceShareSupplier.get();
-		return resource.tryAcquire(resourceShare, tryAgainRunnable);
+
+		return resource.tryAcquire(getResourceShare(), tryAgainRunnable);
 	}
 
 	@Override
 	public void release() {
-		resource.release(resourceShare);
+		resource.release(getResourceShare());
 	}
 
 	@Override
 	public void remove(Runnable tryAgainRunnable) {
 		resource.remove(tryAgainRunnable);
+	}
+
+	private T getResourceShare() {
+		if (!resourceShareDetermined) {
+			resourceShare = resourceShareSupplier.get();
+			resourceShareSupplier = null;
+			resourceShareDetermined = true;
+		}
+		return resourceShare;
 	}
 
 	@Override

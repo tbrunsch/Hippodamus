@@ -18,6 +18,20 @@ class CompoundResourceShare implements ResourceShare
 	}
 
 	@Override
+	public void addPendingResourceShare() {
+		for (ResourceShare resourcesShare : resourcesShares) {
+			resourcesShare.addPendingResourceShare();
+		}
+	}
+
+	@Override
+	public void removePendingResourceShare() {
+		for (ResourceShare resourcesShare : resourcesShares) {
+			resourcesShare.removePendingResourceShare();
+		}
+	}
+
+	@Override
 	public boolean tryAcquire(Runnable tryAgainRunnable) {
 		int rejectedResourceIndex = acquireResources(tryAgainRunnable);
 		if (rejectedResourceIndex == -1) {

@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.resources.memory;
+package dd.kms.hippodamus.resources;
 
 /**
  * This class can be used to model controllable countable resources. See {@link CountableResource} for what we mean by
@@ -18,7 +18,7 @@ public class DefaultCountableResource extends AbstractCountableResource
 	}
 
 	@Override
-	long getCapacity() {
+	protected long getCapacity() {
 		return capacity;
 	}
 }
