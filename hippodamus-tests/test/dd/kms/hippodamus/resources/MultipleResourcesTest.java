@@ -4,8 +4,6 @@ import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
-import dd.kms.hippodamus.resources.memory.CountableResource;
-import dd.kms.hippodamus.resources.memory.DefaultCountableResource;
 import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
@@ -19,16 +17,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This test uses 6 resources and for each subset of these resources of size 3
- * one task that requires exactly these 3 resources. Only one task can hold a
- * share of a resource at the same time. Hence, at each point in time exactly
- * 2 tasks can run: An arbitrary task and its complementary task, i.e. the task
- * that uses exactly the 3 other resources.
+ * This test uses 6 resources and for each subset of these resources of size 3 one task that requires exactly these
+ * 3 resources. Only one task can hold a share of a resource at the same time. Hence, at each point in time exactly
+ * 2 tasks can run: An arbitrary task and its complementary task, i.e. the task that uses exactly the 3 other resources.
  */
 public class MultipleResourcesTest
 {
 	private static final long	TASK_TIME_MS				= 500;
-	private static final long	PRECISION_MS				= 300;
 	private static final int	HALF_NUMBER_OF_RESOURCES	= 3;
 
 	@Test
@@ -49,8 +44,6 @@ public class MultipleResourcesTest
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 
-		StopWatch stopWatch = new StopWatch();
-
 		BitVectorCollector bitVectorCollector = new BitVectorCollector();
 		try (AggregationCoordinator<BitVector, List<BitVector>> coordinator = Coordinators.createAggregationCoordinator(bitVectorCollector)) {
 			for (BitVector bitVector : bitVectors) {
@@ -64,10 +57,6 @@ public class MultipleResourcesTest
 				taskConfiguration.aggregate(() -> executeTask(bitVector));
 			}
 		}
-		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
-		long expectedDurationMs = (long) Math.ceil(1.0 * expectedNumTasks / expectedParallelism) * TASK_TIME_MS;
-		TestUtils.assertTimeBounds(expectedDurationMs, PRECISION_MS, elapsedTimeMs);
-
 		List<BitVector> executedBitVectors = bitVectorCollector.getAggregatedValue();
 		Assertions.assertEquals(expectedNumTasks, executedBitVectors.size(), "Unexpected number of tasks");
 
@@ -79,9 +68,7 @@ public class MultipleResourcesTest
 	}
 
 	private BitVector executeTask(BitVector bitVector) {
-		System.out.println(bitVector + " started");
 		TestUtils.simulateWork(TASK_TIME_MS);
-		System.out.println(bitVector + " finished");
 		return bitVector;
 	}
 
