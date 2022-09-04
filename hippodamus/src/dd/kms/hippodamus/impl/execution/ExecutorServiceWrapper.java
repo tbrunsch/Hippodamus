@@ -80,7 +80,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 			future = executorService.submit(handle::executeCallable);
 		} catch (RejectedExecutionException e) {
 			String error = "Submitting task to ExecutorService failed: " + e;
-			handle.getExecutionCoordinator()._log(LogLevel.INTERNAL_ERROR, handle, error);
+			handle.getExecutionCoordinator()._log(e, handle, error);
 			return;
 		}
 		handle._setFuture(future);

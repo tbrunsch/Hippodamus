@@ -182,9 +182,20 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	/**
-	 * Logs a message for a certain handle at a certain log message.
+	 * Logs a message for a certain handle at a certain log level.
 	 */
 	public void _log(LogLevel logLevel, Handle handle, String message) {
+		_log(logLevel, handle, message, null);
+	}
+
+	/**
+	 * Logs a message for a certain handle with the given cause at {@link LogLevel#INTERNAL_ERROR}.
+	 */
+	public void _log(Throwable cause, Handle handle, String message) {
+		_log(LogLevel.INTERNAL_ERROR, handle, message, cause);
+	}
+
+	private void _log(LogLevel logLevel, Handle handle, String message, Throwable cause) {
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
@@ -196,7 +207,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		try {
 			logger.log(logLevel, name, message);
 			if (logLevel == LogLevel.INTERNAL_ERROR){
-				_onException(new CoordinatorException(message), true);
+				_onException(new CoordinatorException(message, cause), true);
 			}
 		} catch (Throwable t) {
 			_exceptionalState.onLoggerException(t);

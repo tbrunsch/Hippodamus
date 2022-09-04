@@ -201,7 +201,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 			permitTaskExecution = requiredResourceShare.tryAcquire(submitLaterRunnable);
 		} catch (Throwable t) {
 			String error = "Exception when trying to acquire resource: " + t;
-			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+			coordinator._log(t, this, error);
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
 		} finally {
@@ -271,7 +271,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 				listenerDescription,
 				exceptionalListener,
 				listenerException.getMessage());
-			coordinator._log(LogLevel.INTERNAL_ERROR, this, message);
+			coordinator._log(listenerException, this, message);
 		}
 	}
 }
