@@ -25,7 +25,7 @@ class MemoryTest
 {
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("getResourceTypes")
-	public void testOutOfMemoryError(ResourceType resourceType) {
+	void testOutOfMemoryError(ResourceType resourceType) {
 		TaskParameters taskParameters = getTaskParameters();
 		taskParameters.printSetup();
 

@@ -21,13 +21,13 @@ import java.util.stream.IntStream;
  * 3 resources. Only one task can hold a share of a resource at the same time. Hence, at each point in time exactly
  * 2 tasks can run: An arbitrary task and its complementary task, i.e. the task that uses exactly the 3 other resources.
  */
-public class MultipleResourcesTest
+class MultipleResourcesTest
 {
 	private static final long	TASK_TIME_MS				= 500;
 	private static final int	HALF_NUMBER_OF_RESOURCES	= 3;
 
 	@Test
-	public void testMultipleResources() {
+	void testMultipleResources() {
 		Assumptions.assumeTrue(TestUtils.getDefaultParallelism() >= 2);
 
 		final int numResources = 2*HALF_NUMBER_OF_RESOURCES;
