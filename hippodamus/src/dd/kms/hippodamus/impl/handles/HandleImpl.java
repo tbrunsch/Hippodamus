@@ -74,7 +74,12 @@ public class HandleImpl<V> implements ResultHandle<V>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
-				requiredResourceShare.addPendingResourceShare();
+				try {
+					requiredResourceShare.addPendingResourceShare();
+				} catch (Throwable t) {
+					logUnexpectedException("Exception when trying to update pending resource shares", t);
+					stateController._transitionTo(TaskStage.TERMINATED);
+				}
 				executorServiceWrapper._submit(this);
 			}
 		}
@@ -98,6 +103,11 @@ public class HandleImpl<V> implements ResultHandle<V>
 	}
 
 	private void _terminate() {
+		try {
+			requiredResourceShare.release();
+		} catch (Throwable t) {
+			logUnexpectedException("Exception when releasing resource share", t);
+		}
 		stateController._transitionTo(TaskStage.TERMINATED);
 		_executingThread = null;
 		_future = null;
@@ -114,10 +124,14 @@ public class HandleImpl<V> implements ResultHandle<V>
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			if (taskStage == TaskStage.SUBMITTED) {
-				requiredResourceShare.removePendingResourceShare();
-			} else if (taskStage == TaskStage.ON_HOLD) {
-				requiredResourceShare.remove(submitLaterRunnable);
+			try {
+				if (taskStage == TaskStage.SUBMITTED) {
+					requiredResourceShare.removePendingResourceShare();
+				} else if (taskStage == TaskStage.ON_HOLD) {
+					requiredResourceShare.remove(submitLaterRunnable);
+				}
+			} catch (Throwable t) {
+				logUnexpectedException("Exception when trying to update resource state when stopping task", t);
 			}
 			stateController._transitionTo(TaskStage.TERMINATED);
 		}
@@ -186,7 +200,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 		} catch (Throwable throwable) {
 			terminateExceptionally(throwable);
 		} finally {
-			requiredResourceShare.release();
 			clearInterruptionFlag();
 		}
 	}
@@ -200,12 +213,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 		try {
 			permitTaskExecution = requiredResourceShare.tryAcquire(submitLaterRunnable);
 		} catch (Throwable t) {
-			String error = "Exception when trying to acquire resource: " + t;
-			coordinator._log(t, this, error);
+			logUnexpectedException("Exception when trying to acquire resource", t);
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
 		} finally {
-			requiredResourceShare.removePendingResourceShare();
+			if (!removePendingResourceShare()) {
+				return false;
+			}
 		}
 		if (!permitTaskExecution) {
 			stateController._transitionTo(TaskStage.ON_HOLD);
@@ -217,12 +231,27 @@ public class HandleImpl<V> implements ResultHandle<V>
 		return !coordinator._hasStopped() && stateController._transitionTo(TaskStage.EXECUTING);
 	}
 
+	private boolean removePendingResourceShare() {
+		try {
+			requiredResourceShare.removePendingResourceShare();
+			return true;
+		} catch (Throwable t) {
+			logUnexpectedException("Exception when trying to update pending resource shares", t);
+			stateController._transitionTo(TaskStage.TERMINATED);
+			return false;
+		}
+	}
+
 	/**
 	 * Calls {@link #submit()} asynchronously. This is required to avoid deadlocks when a {@link dd.kms.hippodamus.api.resources.Resource}
 	 * resubmits this task via this method (see TECHDOC for details).
 	 */
 	private void submitAsynchronously() {
 		CompletableFuture.runAsync(this::submit);
+	}
+
+	private void logUnexpectedException(String error, Throwable t) {
+		coordinator._log(t, this, error + ": " + t);
 	}
 
 	/***********************
@@ -266,12 +295,11 @@ public class HandleImpl<V> implements ResultHandle<V>
 		if (listenerException == null) {
 			coordinatorListener.accept(this);
 		} else {
-			String message = MessageFormat.format("{0} in {1} \"{2}\": {3}",
+			String error = MessageFormat.format("{0} in {1} \"{2}\"",
 				listenerException.getClass().getSimpleName(),
 				listenerDescription,
-				exceptionalListener,
-				listenerException.getMessage());
-			coordinator._log(listenerException, this, message);
+				exceptionalListener);
+			logUnexpectedException(error, listenerException);
 		}
 	}
 }
