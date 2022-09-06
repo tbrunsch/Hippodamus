@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.impl.resources;
 
+import com.google.common.base.Suppliers;
 import dd.kms.hippodamus.api.resources.Resource;
 
 import java.util.function.Supplier;
@@ -11,49 +12,37 @@ import java.util.function.Supplier;
 class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResourceShare<?>>
 {
 	private final Resource<T>	resource;
-	private Supplier<T>			resourceShareSupplier;
-
-	private boolean				resourceShareDetermined;
-	private T					resourceShare;
+	private final Supplier<T>	resourceShareSupplier;
 
 	public WrappedResourceShare(Resource<T> resource, Supplier<T> resourceShareSupplier) {
 		this.resource = resource;
-		this.resourceShareSupplier = resourceShareSupplier;
+		this.resourceShareSupplier = Suppliers.memoize(resourceShareSupplier::get);
 	}
 
 	@Override
 	public void addPendingResourceShare() {
-		resource.addPendingResourceShare(getResourceShare());
+		resource.addPendingResourceShare(resourceShareSupplier.get());
 	}
 
 	@Override
 	public void removePendingResourceShare() {
-		resource.removePendingResourceShare(getResourceShare());
+		resource.removePendingResourceShare(resourceShareSupplier.get());
 	}
 
 	@Override
 	public boolean tryAcquire(Runnable tryAgainRunnable) {
 
-		return resource.tryAcquire(getResourceShare(), tryAgainRunnable);
+		return resource.tryAcquire(resourceShareSupplier.get(), tryAgainRunnable);
 	}
 
 	@Override
 	public void release() {
-		resource.release(getResourceShare());
+		resource.release(resourceShareSupplier.get());
 	}
 
 	@Override
 	public void remove(Runnable tryAgainRunnable) {
 		resource.remove(tryAgainRunnable);
-	}
-
-	private T getResourceShare() {
-		if (!resourceShareDetermined) {
-			resourceShare = resourceShareSupplier.get();
-			resourceShareSupplier = null;
-			resourceShareDetermined = true;
-		}
-		return resourceShare;
 	}
 
 	@Override
