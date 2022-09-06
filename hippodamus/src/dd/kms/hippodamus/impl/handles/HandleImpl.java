@@ -295,4 +295,9 @@ public class HandleImpl<V> implements ResultHandle<V>
 			logUnexpectedException(error, listenerException);
 		}
 	}
+
+	@Override
+	public String toString() {
+		return getTaskName();
+	}
 }
