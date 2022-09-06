@@ -2,6 +2,7 @@ package dd.kms.hippodamus.impl.resources;
 
 import com.google.common.base.Suppliers;
 import dd.kms.hippodamus.api.resources.Resource;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 
 import java.util.function.Supplier;
 
@@ -30,9 +31,9 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	}
 
 	@Override
-	public boolean tryAcquire(Runnable tryAgainRunnable) {
+	public boolean tryAcquire(ResourceRequestor resourceRequestor) {
 
-		return resource.tryAcquire(resourceShareSupplier.get(), tryAgainRunnable);
+		return resource.tryAcquire(resourceShareSupplier.get(), resourceRequestor);
 	}
 
 	@Override
@@ -41,8 +42,8 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	}
 
 	@Override
-	public void remove(Runnable tryAgainRunnable) {
-		resource.remove(tryAgainRunnable);
+	public void remove(ResourceRequestor resourceRequestor) {
+		resource.remove(resourceRequestor);
 	}
 
 	@Override

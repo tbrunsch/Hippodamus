@@ -4,6 +4,7 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.resources.Resource;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -54,7 +55,7 @@ class ExceptionalResourceTest
 		}
 
 		@Override
-		public boolean tryAcquire(Object resourceShare, Runnable tryAgainRunnable) {
+		public boolean tryAcquire(Object resourceShare, ResourceRequestor resourceRequestor) {
 			possiblyThrowException(ResourceMethod.TRY_ACQUIRE);
 			return true;
 		}
@@ -65,7 +66,7 @@ class ExceptionalResourceTest
 		}
 
 		@Override
-		public void remove(Runnable tryAgainRunnable) {
+		public void remove(ResourceRequestor resourceRequestor) {
 			calledRemove = true;
 		}
 

@@ -1,5 +1,7 @@
 package dd.kms.hippodamus.resources;
 
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,13 +45,13 @@ public abstract class AbstractCountableResource implements CountableResource
 	}
 
 	@Override
-	public synchronized boolean tryAcquire(Long shareSize, Runnable tryAgainRunnable) {
+	public synchronized boolean tryAcquire(Long shareSize, ResourceRequestor resourceRequestor) {
 		long availableSize = getCapacity() - totalReservedShareSize;
 		if (shareSize <= availableSize) {
 			totalReservedShareSize += shareSize;
 			return true;
 		} else {
-			ResourceRequest resourceRequest = new ResourceRequest(shareSize, tryAgainRunnable);
+			ResourceRequest resourceRequest = new ResourceRequest(shareSize, resourceRequestor);
 			postponedResourceRequests.add(resourceRequest);
 			return false;
 		}
@@ -62,11 +64,11 @@ public abstract class AbstractCountableResource implements CountableResource
 	}
 
 	@Override
-	public synchronized void remove(Runnable tryAgainRunnable) {
+	public synchronized void remove(ResourceRequestor resourceRequestor) {
 		Iterator<ResourceRequest> iter = postponedResourceRequests.iterator();
 		while (iter.hasNext()) {
 			ResourceRequest postponedRequest = iter.next();
-			if (postponedRequest.getTryAgainRunnable() == tryAgainRunnable) {
+			if (postponedRequest.getRequestor() == resourceRequestor) {
 				iter.remove();
 				return;
 			}
@@ -81,7 +83,7 @@ public abstract class AbstractCountableResource implements CountableResource
 			long postponedShareSize = postponedRequest.getShareSize();
 			if (postponedShareSize <= availableSize) {
 				availableSize -= postponedShareSize;
-				postponedRequest.getTryAgainRunnable().run();
+				postponedRequest.getRequestor().retryRequest();
 				iter.remove();
 			}
 		}
@@ -94,20 +96,20 @@ public abstract class AbstractCountableResource implements CountableResource
 
 	private static class ResourceRequest
 	{
-		private final long		shareSize;
-		private final Runnable	tryAgainRunnable;
+		private final long				shareSize;
+		private final ResourceRequestor requestor;
 
-		ResourceRequest(long shareSize, Runnable tryAgainRunnable) {
+		ResourceRequest(long shareSize, ResourceRequestor requestor) {
 			this.shareSize = shareSize;
-			this.tryAgainRunnable = tryAgainRunnable;
+			this.requestor = requestor;
 		}
 
 		long getShareSize() {
 			return shareSize;
 		}
 
-		Runnable getTryAgainRunnable() {
-			return tryAgainRunnable;
+		ResourceRequestor getRequestor() {
+			return requestor;
 		}
 	}
 }

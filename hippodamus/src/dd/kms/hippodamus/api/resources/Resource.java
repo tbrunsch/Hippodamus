@@ -8,8 +8,8 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
  * acquire from it. For instance, if the resource something countable, then {@code T = Long}. If the resource is a file
  * system, then {@code T} could represent a file.<br>
  * <br>
- * Resources have to decide whether to accept or reject requests for a certain resource share (see {@link #tryAcquire(Object, Runnable)}.
- * If a resource rejects a request, it is the resource's responsibility to resubmit the task later.<br>
+ * Resources have to decide whether to accept or reject requests for a certain resource share (see {@link #tryAcquire(Object, ResourceRequestor)}.
+ * If a resource rejects a request, it is the resource's responsibility to let the requestor retry its request later.<br>
  * <br>
  * Resource implementations should distinguish between
  * <ol>
@@ -23,9 +23,9 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
  * @implSpec Hippodamus will always inform a resource about any change in one of these types of resource shares:
  * <ol>
  *     <li>
- *         Before a task starts its execution, Hippodamus calls {@link #tryAcquire(Object, Runnable)}. If this method
- *         accepts the request, then it has to update its information about the acquired resource shares. When a task
- *         finishes, Hippodamus calls {@link #release(Object)}, in which case the resource also has to update this
+ *         Before a task starts its execution, Hippodamus calls {@link #tryAcquire(Object, ResourceRequestor)}. If this
+ *         method accepts the request, then it has to update its information about the acquired resource shares. When a
+ *         task finishes, Hippodamus calls {@link #release(Object)}, in which case the resource also has to update this
  *         information.
  *     </li>
  *     <li>
@@ -55,7 +55,7 @@ public interface Resource<T>
 	 * <br>
 	 * Note that Hippodamus automatically calls this method, among others, after a resource request, independent of
 	 * whether it has been accepted or not. Resources <b>must not update</b> information about pending resource shares
-	 * their own, e.g., in {@link #tryAcquire(Object, Runnable)}.
+	 * their own, e.g., in {@link #tryAcquire(Object, ResourceRequestor)}.
 	 */
 	void removePendingResourceShare(T resourceShare);
 
@@ -65,33 +65,35 @@ public interface Resource<T>
 	 * <ul>
 	 *     <li>
 	 *         If it accepts the request, then the task will execute immediately. In this case the resource <b>must not</b>
-	 *         run the {@code tryAgainRunnable}.
+	 *         call {@code ResourceRequestor.retryRequest()} for the specified {@code resourceRequestor}.
 	 *     </li>
 	 *     <li>
-	 *         If it rejects the request, then it is the {@code Resource}'s responsibility to let the task repeat its
-	 *         request later. This is done by running the {@code tryAgainRunnable}. The resource <b>must not</b> submit
-	 *         the task again to the {@link ExecutionCoordinator} via {@link ExecutionCoordinator#execute(ExceptionalRunnable)}!
+	 *         If it rejects the request, then it is the {@code Resource}'s responsibility to let the requestor repeat
+	 *         its request later. This is done by calling {@link ResourceRequestor#retryRequest()} for the specified
+	 *         {@code resourceRequestor}. The resource <b>must not</b> submit the task again to the {@link ExecutionCoordinator}
+	 *         via {@link ExecutionCoordinator#execute(ExceptionalRunnable)}!
 	 *     </li>
 	 * </ul>
 	 * @return true if the request has been accepted
 	 */
-	boolean tryAcquire(T resourceShare, Runnable tryAgainRunnable);
+	boolean tryAcquire(T resourceShare, ResourceRequestor resourceRequestor);
 
 	/**
 	 * This method is called when a task that has acquired a resource share terminates. The specified {@code resourceShare}
 	 * is the same as the one specified when the resource has been acquired. The {@code Resource} may use this information
 	 * to update internal information based on which it decides whether it accepts resource requests or not. The resource
 	 * should now also decide whether some of the resource requests that have been rejected should be repeated. This is
-	 * done by calling the corresponding {@code tryAgainRunnable} (see {@link #tryAcquire(Object, Runnable)}.
+	 * done by calling {@link ResourceRequestor#retryRequest()} on the corresponding {@code resourceRequestor} (see
+	 * {@link #tryAcquire(Object, ResourceRequestor)}.
 	 */
 	void release(T resourceShare);
 
 	/**
 	 * This method is called by tasks whose {@link ExecutionCoordinator} has been stopped. If such tasks failed to acquire
-	 * a share of this resource, then this resource holds a reference to the runnable that repeats the resource request.
-	 * This runnable is also referenced by the argument {@code tryAgainRunnable} and must now be removed from this resource.
-	 * Note, however, that this method might also be called when this resource does not hold a reference to this
-	 * {@code Runnable}.
+	 * a share of this resource, then this resource holds a reference to the {@link ResourceRequestor} of that resource
+	 * request. This requestor is also referenced by the argument {@code resourceRequestor} and must now be removed from
+	 * this resource. Note, however, that this method might also be called even if this resource does not hold a reference
+	 * to this requestor.
 	 */
-	void remove(Runnable tryAgainRunnable);
+	void remove(ResourceRequestor resourceRequestor);
 }

@@ -327,7 +327,7 @@ Alternatively, you can specify the maximum parallelism for a certain task type. 
 
 The term "resource" is very abstract: It could be something countable from which you can acquire pieces of certain sizes. It could also be, e.g., a file in a file system. In Hippodamus, a resource is represented by the interface `Resource`. This interface has a generic parameter that describes the type the pieces of this resource are.
 
-By implementing this interface a user can control whether to accept a task's resource request or whether to reject it. If the resource request has been rejected, the `Resource` implementation is responsible for letting the task repeat the request later. In some scenarios such resource constraints could have been implemented by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
+By implementing this interface a user can control whether to accept a task's resource request or whether to reject it. If the resource request has been rejected, the `Resource` implementation is responsible for letting the requestor retry the request later. In some scenarios such resource constraints could have been implemented by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
 
 * Any such locking concept would block the task when the requested (amount of) resource is currently not available. This prevents the execution of other tasks that are ready to execute but cannot because all threads of the `ExecutorService` are already assigned a task, including this blocked task. In Hippodamus, the execution of a task is postponed when its resource request is rejected, but for the underlying `ExecutorService` (not for Hippodamus) it seems that the task has terminated and that it can now process the next task. The `Resource` can resubmit the postponed task later. For the `ExecutorService` this is another task, but for Hippodamus it is the same.
 * Memory, which is one of the most important resources, cannot be managed that way because there is no semaphore whose `acquire()` method will return when enough memory is available.
@@ -356,15 +356,15 @@ You can specify the resources a task depends on by calling `coordinator.configur
 
 * When a task becomes eligible for execution and Hippodamus submits it to its underlying `ExecutorService`, it evaluates the `resourceShareSupplier` specified when configuring the task (if specified) and calls `Resource.addPendingResourceShare()` with that resource share. This call does not try to acquire the resource yet, but it informs the resource about pending resource shares. The resource can leverage this information when deciding which and how many tasks it should resubmit at a certain point in time.
 
-* When the task is going to be executed, Hippodamus calls `Resource.tryAcquire()` with the resource share and a `Runnable tryAgainRunnable`. The `Resource` then decides whether it accepts the resource request or not:
-  * If it accepts the request, then it must return `true` and ignore the provided `tryAgainRunnable`.
-  * If it rejects the request, then it must return `false` and keep a reference to the `tryAgainRunnable`. The `Resource` is now responsible for calling the `tryAgainRunnable` at a later point in time. This resubmits the task such that it can repeat its resource request.
+* When the task is going to be executed, Hippodamus calls `Resource.tryAcquire()` with the resource share and a `ResourceRequestor`. The `Resource` then decides whether it accepts the resource request or not:
+  * If it accepts the request, then it must return `true` and ignore the provided `ResourceRequestor`.
+  * If it rejects the request, then it must return `false` and keep a reference to the `ResourceRequestor`. The `Resource` is now responsible for calling `ResourceRequestor.retryRequest()` at a later point in time. This resubmits the task such that it can repeat its resource request.
 
   After calling `Resource.tryAcquire()`, Hippodamus calls `Resource.removePendingResourceShare()` with the same resource share to inform the resource that the task does not count as submitted anymore. The method `tryAcquire()` could also have taken that conclusion, but we decided that everything that can be controlled by Hippodamus should be controlled by it. Additionally, the method `removePendingResourceShare()` must exist nevertheless because it is called when the coordinator is stopped. This method is a good point to decide whether to resubmit postponed tasks and, if so, which.
 
 * When a task terminates, the method `Resource.release()` is called with the resource share as parameter. The `Resource` can then update internal information and decide whether to resubmit postponed tasks.
 
-* When the coordinator is stopped, then `Resource.remove()` is called for every postponed task with the `tryAgainRunnable` that was supposed to be used to resubmit the task. The `Resource` can then clean up data that is related to the corresponding task if available.
+* When the coordinator is stopped, then `Resource.remove()` is called for every postponed task with the `ResourceRequestor` that was supposed to be used to resubmit the task. The `Resource` can then clean up data that is related to the corresponding task if available.
 
 ## Aggregation
 

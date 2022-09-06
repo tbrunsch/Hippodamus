@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.resources;
 
 import com.google.common.collect.ImmutableList;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 
 import java.util.List;
 
@@ -32,8 +33,8 @@ class CompoundResourceShare implements ResourceShare
 	}
 
 	@Override
-	public boolean tryAcquire(Runnable tryAgainRunnable) {
-		int rejectedResourceIndex = acquireResources(tryAgainRunnable);
+	public boolean tryAcquire(ResourceRequestor resourceRequestor) {
+		int rejectedResourceIndex = acquireResources(resourceRequestor);
 		if (rejectedResourceIndex == -1) {
 			return true;
 		}
@@ -41,11 +42,11 @@ class CompoundResourceShare implements ResourceShare
 		return false;
 	}
 
-	private int acquireResources(Runnable tryAgainRunnable) {
+	private int acquireResources(ResourceRequestor resourceRequestor) {
 		int numResources = resourcesShares.size();
 		for (int i = 0; i < numResources; i++) {
 			ResourceShare resource = resourcesShares.get(i);
-			if (!resource.tryAcquire(tryAgainRunnable)) {
+			if (!resource.tryAcquire(resourceRequestor)) {
 				return i;
 			}
 		}
@@ -65,10 +66,10 @@ class CompoundResourceShare implements ResourceShare
 	}
 
 	@Override
-	public void remove(Runnable tryAgainRunnable) {
+	public void remove(ResourceRequestor resourceRequestor) {
 		if (rejectedResourceIndex >= 0) {
 			ResourceShare resource = resourcesShares.get(rejectedResourceIndex);
-			resource.remove(tryAgainRunnable);
+			resource.remove(resourceRequestor);
 		}
 	}
 }

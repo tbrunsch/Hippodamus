@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.resources.memory;
 
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 import dd.kms.hippodamus.resources.CountableResource;
 
 class UnlimitedCountableResource implements CountableResource
@@ -17,7 +18,7 @@ class UnlimitedCountableResource implements CountableResource
 	}
 
 	@Override
-	public boolean tryAcquire(Long resourceShare, Runnable tryAgainRunnable) {
+	public boolean tryAcquire(Long resourceShare, ResourceRequestor resourceRequestor) {
 		return true;
 	}
 
@@ -27,7 +28,7 @@ class UnlimitedCountableResource implements CountableResource
 	}
 
 	@Override
-	public void remove(Runnable tryAgainRunnable) {
+	public void remove(ResourceRequestor resourceRequestor) {
 		/* nothing to do */
 	}
 

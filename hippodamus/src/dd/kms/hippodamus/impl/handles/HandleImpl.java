@@ -5,8 +5,10 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.resources.ResourceRequestorImpl;
 import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import javax.annotation.Nullable;
@@ -15,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -24,7 +25,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
-	private final Runnable					submitLaterRunnable					= this::submitAsynchronously;
+	private final ResourceRequestor			resourceRequestor					= new ResourceRequestorImpl(this);
 
 	private final ExecutionCoordinatorImpl	coordinator;
 	private final String					taskName;
@@ -128,7 +129,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 				if (taskStage == TaskStage.SUBMITTED) {
 					requiredResourceShare.removePendingResourceShare();
 				} else if (taskStage == TaskStage.ON_HOLD) {
-					requiredResourceShare.remove(submitLaterRunnable);
+					requiredResourceShare.remove(resourceRequestor);
 				}
 			} catch (Throwable t) {
 				logUnexpectedException("Exception when trying to update resource state when stopping task", t);
@@ -211,7 +212,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	private boolean _startExecution() {
 		boolean permitTaskExecution;
 		try {
-			permitTaskExecution = requiredResourceShare.tryAcquire(submitLaterRunnable);
+			permitTaskExecution = requiredResourceShare.tryAcquire(resourceRequestor);
 		} catch (Throwable t) {
 			logUnexpectedException("Exception when trying to acquire resource", t);
 			stateController._transitionTo(TaskStage.TERMINATED);
@@ -240,14 +241,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
 		}
-	}
-
-	/**
-	 * Calls {@link #submit()} asynchronously. This is required to avoid deadlocks when a {@link dd.kms.hippodamus.api.resources.Resource}
-	 * resubmits this task via this method (see TECHDOC for details).
-	 */
-	private void submitAsynchronously() {
-		CompletableFuture.runAsync(this::submit);
 	}
 
 	private void logUnexpectedException(String error, Throwable t) {
