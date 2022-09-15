@@ -210,6 +210,10 @@ public class HandleImpl<V> implements ResultHandle<V>
 	}
 
 	private boolean _startExecution() {
+		if (coordinator._hasStopped()) {
+			return false;
+		}
+
 		boolean permitTaskExecution;
 		try {
 			permitTaskExecution = requiredResourceShare.tryAcquire(resourceRequestor);
@@ -229,7 +233,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 
 		_executingThread = Thread.currentThread();
-		return !coordinator._hasStopped() && stateController._transitionTo(TaskStage.EXECUTING);
+		return stateController._transitionTo(TaskStage.EXECUTING);
 	}
 
 	private boolean removePendingResourceShare() {
