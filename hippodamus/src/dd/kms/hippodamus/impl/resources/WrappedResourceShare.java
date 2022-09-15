@@ -15,6 +15,9 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	private final Resource<T>	resource;
 	private final Supplier<T>	resourceShareSupplier;
 
+	private boolean				addedPendingResourceShare;
+	private boolean				acquiredResourceShare;
+
 	public WrappedResourceShare(Resource<T> resource, Supplier<T> resourceShareSupplier) {
 		this.resource = resource;
 		this.resourceShareSupplier = Suppliers.memoize(resourceShareSupplier::get);
@@ -22,23 +25,38 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 
 	@Override
 	public void addPendingResourceShare() {
+		if (addedPendingResourceShare) {
+			return;	// should not happen
+		}
 		resource.addPendingResourceShare(resourceShareSupplier.get());
+		addedPendingResourceShare = true;
 	}
 
 	@Override
 	public void removePendingResourceShare() {
+		if (!addedPendingResourceShare) {
+			return;	// should not happen
+		}
 		resource.removePendingResourceShare(resourceShareSupplier.get());
+		addedPendingResourceShare = false;
 	}
 
 	@Override
 	public boolean tryAcquire(ResourceRequestor resourceRequestor) {
-
-		return resource.tryAcquire(resourceShareSupplier.get(), resourceRequestor);
+		if (acquiredResourceShare) {
+			return false;	// should not happen
+		}
+		acquiredResourceShare = resource.tryAcquire(resourceShareSupplier.get(), resourceRequestor);
+		return acquiredResourceShare;
 	}
 
 	@Override
 	public void release() {
+		if (!acquiredResourceShare) {
+			return;	// should not happen
+		}
 		resource.release(resourceShareSupplier.get());
+		acquiredResourceShare = false;
 	}
 
 	@Override
