@@ -222,7 +222,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 			stateController._transitionTo(TaskStage.TERMINATED);
 			return false;
 		} finally {
-			if (!removePendingResourceShare()) {
+			if (!_removePendingResourceShare()) {
 				return false;
 			}
 		}
@@ -236,7 +236,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		return stateController._transitionTo(TaskStage.EXECUTING);
 	}
 
-	private boolean removePendingResourceShare() {
+	private boolean _removePendingResourceShare() {
 		try {
 			requiredResourceShare.removePendingResourceShare();
 			return true;
