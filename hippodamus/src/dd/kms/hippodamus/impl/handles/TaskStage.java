@@ -62,9 +62,9 @@ enum TaskStage
 		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.EXECUTING);
 		SUCCESSOR_STATES.put(TaskStage.EXECUTING, TaskStage.FINISHED);
 
-		// add transition to TERMINATED except from EXECUTING
+		// add transition to TERMINATED except from EXECUTING and TERMINATED
 		for (TaskStage taskStage : TaskStage.values()) {
-			if (taskStage != TaskStage.EXECUTING) {
+			if (taskStage != TaskStage.EXECUTING && taskStage != TaskStage.TERMINATED) {
 				SUCCESSOR_STATES.put(taskStage, TaskStage.TERMINATED);
 			}
 		}
