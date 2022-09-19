@@ -53,7 +53,7 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	@Override
 	public void release() {
 		if (!acquiredResourceShare) {
-			return;	// should not happen
+			return;	// do nothing
 		}
 		resource.release(resourceShareSupplier.get());
 		acquiredResourceShare = false;
