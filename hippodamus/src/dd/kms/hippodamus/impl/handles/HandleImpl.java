@@ -77,14 +77,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
-				try {
-					requiredResourceShare.addPendingResourceShare();
-				} catch (Throwable t) {
-					_logUnexpectedException("Exception when trying to update pending resource shares", t);
-					_terminate();
-					return;
-				}
-				executorServiceWrapper._submit(this);
+				_submit();
 			}
 		}
 	}
@@ -106,8 +99,19 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 	}
 
+	private void _submit() {
+		try {
+			requiredResourceShare.addPendingResourceShare();
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to update pending resource shares", t);
+			return;
+		}
+		executorServiceWrapper._submit(this);
+	}
+
 	private void _terminate() {
-		if (_isTerminating || stateController.getTaskStage() == TaskStage.TERMINATED) {
+		TaskStage taskStage = stateController.getTaskStage();
+		if (_isTerminating || taskStage == TaskStage.TERMINATED) {
 			return;
 		}
 		_isTerminating = true;
@@ -117,6 +121,17 @@ public class HandleImpl<V> implements ResultHandle<V>
 		} catch (Throwable t) {
 			_logUnexpectedException("Exception when releasing resource share", t);
 		}
+
+		try {
+			if (taskStage == TaskStage.SUBMITTED) {
+				requiredResourceShare.removePendingResourceShare();
+			} else if (taskStage == TaskStage.ON_HOLD) {
+				requiredResourceShare.remove(resourceRequestor);
+			}
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to update resource state when stopping task", t);
+		}
+
 		stateController._transitionTo(TaskStage.TERMINATED);
 		_executingThread = null;
 		_future = null;
@@ -134,15 +149,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			try {
-				if (taskStage == TaskStage.SUBMITTED) {
-					requiredResourceShare.removePendingResourceShare();
-				} else if (taskStage == TaskStage.ON_HOLD) {
-					requiredResourceShare.remove(resourceRequestor);
-				}
-			} catch (Throwable t) {
-				_logUnexpectedException("Exception when trying to update resource state when stopping task", t);
-			}
 			_terminate();
 		}
 		if (_future != null) {
@@ -228,7 +234,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 			permitTaskExecution = requiredResourceShare.tryAcquire(resourceRequestor);
 		} catch (Throwable t) {
 			_logUnexpectedException("Exception when trying to acquire resource", t);
-			_terminate();
 			return false;
 		} finally {
 			if (!_removePendingResourceShare()) {
@@ -251,7 +256,6 @@ public class HandleImpl<V> implements ResultHandle<V>
 			return true;
 		} catch (Throwable t) {
 			_logUnexpectedException("Exception when trying to update pending resource shares", t);
-			_terminate();
 			return false;
 		}
 	}
