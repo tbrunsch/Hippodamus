@@ -1,6 +1,7 @@
 package dd.kms.hippodamus.impl.resources;
 
 import com.google.common.base.Suppliers;
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.resources.Resource;
 import dd.kms.hippodamus.api.resources.ResourceRequestor;
 
@@ -26,7 +27,7 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	@Override
 	public void addPendingResourceShare() {
 		if (addedPendingResourceShare) {
-			return;	// should not happen
+			throw new CoordinatorException("Trying to add resource share to pending resource shares twice");
 		}
 		resource.addPendingResourceShare(resourceShareSupplier.get());
 		addedPendingResourceShare = true;
@@ -35,7 +36,7 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	@Override
 	public void removePendingResourceShare() {
 		if (!addedPendingResourceShare) {
-			return;	// should not happen
+			return;	// can happen, do nothing
 		}
 		resource.removePendingResourceShare(resourceShareSupplier.get());
 		addedPendingResourceShare = false;
@@ -44,7 +45,7 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	@Override
 	public boolean tryAcquire(ResourceRequestor resourceRequestor) {
 		if (acquiredResourceShare) {
-			return false;	// should not happen
+			throw new CoordinatorException("Trying to acquire resource share twice");
 		}
 		acquiredResourceShare = resource.tryAcquire(resourceShareSupplier.get(), resourceRequestor);
 		return acquiredResourceShare;
@@ -53,7 +54,7 @@ class WrappedResourceShare<T> implements ResourceShare, Comparable<WrappedResour
 	@Override
 	public void release() {
 		if (!acquiredResourceShare) {
-			return;	// do nothing
+			return;	// can happen, do nothing
 		}
 		resource.release(resourceShareSupplier.get());
 		acquiredResourceShare = false;
