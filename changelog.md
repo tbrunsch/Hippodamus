@@ -2,6 +2,9 @@
 
 ## v0.2.0
 
+Features:
+  * Hippodamus now supports specifying resource constraints via `ExecutionCoordinator.configure().requiredResource()`.
+
 API changes:
   * The package structure has been changed: All API classes are now in the package `dd.kms.hippodamus.api`.
   * `ExecutionCoordinatorBuilder` does not have a generic parameter anymore.
