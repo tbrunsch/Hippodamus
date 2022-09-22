@@ -14,6 +14,7 @@ import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -78,11 +79,12 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, TaskConfiguration taskConfiguration) {
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
+		ResourceShare resourceShare = taskConfiguration.getRequiredResourceShare();
 		synchronized (this) {
 			checkException();
 			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
-			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, verifyDependencies);
+			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, resourceShare, verifyDependencies);
 			_handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!_hasStopped() && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				_scheduleForSubmission(resultHandle);
@@ -180,9 +182,20 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 	}
 
 	/**
-	 * Logs a message for a certain handle at a certain log message.
+	 * Logs a message for a certain handle at a certain log level.
 	 */
 	public void _log(LogLevel logLevel, Handle handle, String message) {
+		_log(logLevel, handle, message, null);
+	}
+
+	/**
+	 * Logs a message for a certain handle with the given cause at {@link LogLevel#INTERNAL_ERROR}.
+	 */
+	public void _log(Throwable cause, Handle handle, String message) {
+		_log(LogLevel.INTERNAL_ERROR, handle, message, cause);
+	}
+
+	private void _log(LogLevel logLevel, Handle handle, String message, Throwable cause) {
 		if (minimumLogLevel.compareTo(logLevel) < 0) {
 			return;
 		}
@@ -194,7 +207,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		try {
 			logger.log(logLevel, name, message);
 			if (logLevel == LogLevel.INTERNAL_ERROR){
-				_onException(new CoordinatorException(message), true);
+				_onException(new CoordinatorException(message, cause), true);
 			}
 		} catch (Throwable t) {
 			_exceptionalState.onLoggerException(t);

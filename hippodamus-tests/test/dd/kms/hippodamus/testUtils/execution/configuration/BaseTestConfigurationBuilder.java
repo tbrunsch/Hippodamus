@@ -6,11 +6,13 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.resources.Resource;
 import dd.kms.hippodamus.testUtils.coordinator.BaseTestCoordinator;
 import dd.kms.hippodamus.testUtils.exceptions.TestCallable;
 import dd.kms.hippodamus.testUtils.exceptions.TestRunnable;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 abstract class BaseTestConfigurationBuilder<B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
 {
@@ -39,6 +41,12 @@ abstract class BaseTestConfigurationBuilder<B extends ExecutionConfigurationBuil
 	@Override
 	public B dependencies(Handle... dependencies) {
 		wrappedBuilder.dependencies(dependencies);
+		return getBuilder();
+	}
+
+	@Override
+	public <T> B requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier) {
+		wrappedBuilder.requiredResource(resource, resourceShareSupplier);
 		return getBuilder();
 	}
 

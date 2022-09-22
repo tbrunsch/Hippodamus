@@ -23,7 +23,14 @@ The same rule applies for accessors of fields whose names are prepended by an un
 1. `ExecutorServiceWrapper.submit()`:
     1. If the task can be submitted (taking the maximum parallelism into account), then it is submitted to the `ExecutorService` via `ExecutorServiceWrapper.submitNow()`. The resulting `Future` is then propagated to the `HandleImpl`, which uses it to stop the task on demand. 
     1. If the task cannot be submitted, then it is added to a collection of unsubmitted tasks and will be submitted later if the load on the `ExecutorService` permits it
+    
+## Deadlock Prevention When Interacting With Resources   
 
+`Resource`s are implemented by the user and they will most likely have their own synchronization mechanism. We must avoid deadlocks that may occur when this mechanism interlocks with Hippodamus' synchronization mechanism. Such interlocking could happen in the following scenario:
+
+* `HandleImpl.executeCallable()` locks the coordinator and then calls `Resource.tryAcquire()` via `_startExecution()` and `ResourceShare.tryAcquire()`. Usually, this call will acquire some kind of lock.
+* When a task terminates, then the `Resource` gets informed via `Resource.release()` and might trigger the submission of a task that has been put on hold until now. When this happens, the `Resource` will most likely hold its synchronization lock. The task submission happens by calling `ResourceRequestorImpl.retryRequest()`, which calls `HandleImpl.submit()` asynchronously. If it would call `HandleImpl.submit()` directly, then we would have the inverse locking order as in `HandleImpl.executeCallable()` because `HandleImpl.submit()` locks the coordinator. This would be a potential deadlock.
+    
 ## ExecutorServiceWrapper and Maximum Parallelism
 
 The maximum parallelism that is specified for each task type is internally considered by the `ExecutorServiceWrapper`. When a task is submitted to the `ExecutorServiceWrapper` and there have are already been `maxParallelism` many tasks submitted to the underlying `ExecutorService` that have not terminated yet, then the `ExecutorServiceWrapper` will queue the new task. We use a priority queue rather than a FIFO queue in which tasks that have been submitted earlier have a higher priority. In the remainer of this section we discuss why.

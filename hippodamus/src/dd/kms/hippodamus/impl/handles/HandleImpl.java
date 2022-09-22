@@ -5,8 +5,11 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.api.logging.LogLevel;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.resources.ResourceRequestorImpl;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
@@ -22,11 +25,14 @@ public class HandleImpl<V> implements ResultHandle<V>
 {
 	private static final Consumer<Handle>	NO_HANDLE_CONSUMER	= handle -> {};
 
+	private final ResourceRequestor			resourceRequestor					= new ResourceRequestorImpl(this);
+
 	private final ExecutionCoordinatorImpl	coordinator;
 	private final String					taskName;
 	private final int						id;
 	private final ExecutorServiceWrapper	executorServiceWrapper;
 	private final ExceptionalCallable<V, ?> callable;
+	private final ResourceShare				requiredResourceShare;
 	private final boolean					verifyDependencies;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
@@ -48,12 +54,15 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 */
 	private Thread							_executingThread;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, boolean verifyDependencies) {
+	private boolean							_isTerminating;
+
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ResourceShare requiredResourceShare, boolean verifyDependencies) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
 		this.executorServiceWrapper = executorServiceWrapper;
 		this.callable = callable;
+		this.requiredResourceShare = requiredResourceShare;
 		this.verifyDependencies = verifyDependencies;
 		this.stateController = new TaskStateController<>(this, coordinator);
 	}
@@ -68,18 +77,8 @@ public class HandleImpl<V> implements ResultHandle<V>
 	public void submit() {
 		synchronized (coordinator) {
 			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
-				executorServiceWrapper._submit(this);
+				_submit();
 			}
-		}
-	}
-
-	/**
-	 * @return true if task should be executed
-	 */
-	private boolean startExecution() {
-		synchronized (coordinator) {
-			_executingThread = Thread.currentThread();
-			return !coordinator._hasStopped() && stateController._transitionTo(TaskStage.EXECUTING);
 		}
 	}
 
@@ -87,9 +86,8 @@ public class HandleImpl<V> implements ResultHandle<V>
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-			executorServiceWrapper._onTaskCompleted();
-			stateController._transitionTo(TaskStage.TERMINATED);
-			_executingThread = null;
+			executorServiceWrapper._onExecutionCompleted();
+			_terminate();
 		}
 	}
 
@@ -97,22 +95,61 @@ public class HandleImpl<V> implements ResultHandle<V>
 		synchronized (coordinator) {
 			stateController._setException(exception);
 			_notifyListeners(exceptionListeners, "exception listener", coordinator::onException);
-			stateController._transitionTo(TaskStage.TERMINATED);
-			_executingThread = null;
+			_terminate();
 		}
+	}
+
+	private void _submit() {
+		try {
+			requiredResourceShare.addPendingResourceShare();
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to update pending resource shares", t);
+			return;
+		}
+		executorServiceWrapper._submit(this);
+	}
+
+	private void _terminate() {
+		TaskStage taskStage = stateController.getTaskStage();
+		if (_isTerminating || taskStage == TaskStage.TERMINATED) {
+			return;
+		}
+		_isTerminating = true;
+
+		try {
+			requiredResourceShare.release();
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when releasing resource share", t);
+		}
+
+		try {
+			if (taskStage == TaskStage.SUBMITTED) {
+				requiredResourceShare.removePendingResourceShare();
+			} else if (taskStage == TaskStage.ON_HOLD) {
+				requiredResourceShare.remove(resourceRequestor);
+			}
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to update resource state when stopping task", t);
+		}
+
+		stateController._transitionTo(TaskStage.TERMINATED);
+		_executingThread = null;
+		_future = null;
+		_isTerminating = false;
 	}
 
 	public void _stop() {
 		if (coordinator._hasStopped()) {
 			return;
 		}
-		if (stateController.isExecuting()) {
+		TaskStage taskStage = stateController.getTaskStage();
+		if (taskStage == TaskStage.EXECUTING) {
 			// since we stop the task, the current result type won't change anymore
 			_executingThread.interrupt();
 			_executingThread = null;
 			stateController._makeReadyToJoin();
 		} else {
-			stateController._transitionTo(TaskStage.TERMINATED);
+			_terminate();
 		}
 		if (_future != null) {
 			_future.cancel(true);
@@ -162,12 +199,18 @@ public class HandleImpl<V> implements ResultHandle<V>
 		this._future = future;
 	}
 
-	public void _executeCallable() {
+	public void executeCallable() {
 		clearInterruptionFlag();
-		try {
-			if (!startExecution()) {
+
+		synchronized (coordinator) {
+			if (!_startExecution()) {
+				_future = null;
+				_executingThread = null;
 				return;
 			}
+		}
+
+		try {
 			V result = callable.call();
 			complete(result);
 		} catch (Throwable throwable) {
@@ -179,6 +222,46 @@ public class HandleImpl<V> implements ResultHandle<V>
 
 	private void clearInterruptionFlag() {
 		Thread.interrupted();
+	}
+
+	private boolean _startExecution() {
+		if (coordinator._hasStopped()) {
+			return false;
+		}
+
+		boolean permitTaskExecution;
+		try {
+			permitTaskExecution = requiredResourceShare.tryAcquire(resourceRequestor);
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to acquire resource", t);
+			return false;
+		} finally {
+			if (!_removePendingResourceShare()) {
+				return false;
+			}
+		}
+		if (!permitTaskExecution) {
+			stateController._transitionTo(TaskStage.ON_HOLD);
+			executorServiceWrapper._onExecutionCompleted();
+			return false;
+		}
+
+		_executingThread = Thread.currentThread();
+		return stateController._transitionTo(TaskStage.EXECUTING);
+	}
+
+	private boolean _removePendingResourceShare() {
+		try {
+			requiredResourceShare.removePendingResourceShare();
+			return true;
+		} catch (Throwable t) {
+			_logUnexpectedException("Exception when trying to update pending resource shares", t);
+			return false;
+		}
+	}
+
+	public void _logUnexpectedException(String error, Throwable t) {
+		coordinator._log(t, this, error + ": " + t);
 	}
 
 	/***********************
@@ -222,12 +305,16 @@ public class HandleImpl<V> implements ResultHandle<V>
 		if (listenerException == null) {
 			coordinatorListener.accept(this);
 		} else {
-			String message = MessageFormat.format("{0} in {1} \"{2}\": {3}",
+			String error = MessageFormat.format("{0} in {1} \"{2}\"",
 				listenerException.getClass().getSimpleName(),
 				listenerDescription,
-				exceptionalListener,
-				listenerException.getMessage());
-			coordinator._log(LogLevel.INTERNAL_ERROR, this, message);
+				exceptionalListener);
+			_logUnexpectedException(error, listenerException);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return getTaskName();
 	}
 }

@@ -28,6 +28,9 @@ public abstract class BaseTestCoordinator<C extends ExecutionCoordinator> implem
 
 	public void handleState(Handle handle, HandleState state) {
 		encounteredEvent(new HandleEvent(handle, state));
+		if (state == HandleState.COMPLETED || state == HandleState.TERMINATED_EXCEPTIONALLY) {
+			encounteredEvent(new HandleEvent(handle, HandleState.TERMINATED));
+		}
 	}
 
 	public void setException(Handle handle, Throwable t) {

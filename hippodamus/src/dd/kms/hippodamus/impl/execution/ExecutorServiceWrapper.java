@@ -59,7 +59,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		}
 	}
 
-	public void _onTaskCompleted() {
+	public void _onExecutionCompleted() {
 		_numPendingSubmittedTasks--;
 		if (_canSubmitTask()) {
 			HandleImpl<?> handle = _unsubmittedTasks.poll();
@@ -77,9 +77,10 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		_numPendingSubmittedTasks++;
 		Future<?> future;
 		try {
-			future = executorService.submit(handle::_executeCallable);
+			future = executorService.submit(handle::executeCallable);
 		} catch (RejectedExecutionException e) {
-			handle.getExecutionCoordinator()._log(LogLevel.INTERNAL_ERROR, handle, e.toString());
+			String error = "Submitting task to ExecutorService failed: " + e;
+			handle._logUnexpectedException(error, e);
 			return;
 		}
 		handle._setFuture(future);

@@ -5,9 +5,11 @@ import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.resources.Resource;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 /**
  * Use this interface to specify information about a task and how it will be executed. You can specify
@@ -49,9 +51,18 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	ExecutionConfigurationBuilder dependencies(Handle... dependencies);
 
 	/**
-	 * Specifies the tasks dependencies.
+	 * Specifies the task's dependencies.
 	 *
 	 * @see ExecutionConfigurationBuilder#dependencies(Handle...)
 	 */
 	ExecutionConfigurationBuilder dependencies(Collection<? extends Handle> dependencies);
+
+	/**
+	 * Specifies a resource the task requires and what/how much of it it requires. If the underlying {@link ExecutorService}
+	 * schedules the task for execution, but the required resource is currently not available, then the resource
+	 * postpones the tasks execution and resubmits it at a later point in time.<br>
+	 * <br>
+	 * Note that you can call the method multiple times when the task requires multiple resources.
+	 */
+	<T> ExecutionConfigurationBuilder requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier);
 }

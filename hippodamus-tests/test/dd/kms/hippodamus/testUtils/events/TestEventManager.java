@@ -1,27 +1,25 @@
 package dd.kms.hippodamus.testUtils.events;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.states.HandleState;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TestEventManager
 {
 	private final long							initialTimestamp	= System.currentTimeMillis();
-	private final Map<TestEvent, Long>			eventTimesMs		= new LinkedHashMap<>();
+	private final ListMultimap<TestEvent, Long>	eventTimesMs		= ArrayListMultimap.create();
 	private final Map<Handle, Throwable>		taskExceptions		= new HashMap<>();
 	private final Multimap<TestEvent, Runnable> eventListeners		= ArrayListMultimap.create();
 
 	public synchronized void fireEvent(TestEvent event) {
-		if (eventTimesMs.containsKey(event)) {
-			throw new IllegalStateException("Encountered event '" + event + "' twice");
-		}
-		eventTimesMs.put(event, System.currentTimeMillis() - initialTimestamp);
+		eventTimesMs.put(event, getElapsedTimeMs());
 		Collection<Runnable> listeners = eventListeners.get(event);
 		for (Runnable listener : listeners) {
 			listener.run();
@@ -104,10 +102,16 @@ public class TestEventManager
 	}
 
 	public long getElapsedTimeMs(TestEvent event) {
-		Long timestamp = eventTimesMs.get(event);
-		if (timestamp == null) {
+		List<Long> timestamps = getElapsedTimesMs(event);
+		if (timestamps.isEmpty()) {
 			throw new IllegalArgumentException("Event '" + event + "' has not been encountered");
+		} else if (timestamps.size() > 1) {
+			throw new IllegalArgumentException("Event '" + event + "' has been encountered multiple times");
 		}
-		return timestamp;
+		return timestamps.get(0);
+	}
+
+	public List<Long> getElapsedTimesMs(TestEvent event) {
+		return eventTimesMs.get(event);
 	}
 }

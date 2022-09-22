@@ -97,8 +97,8 @@ class TaskStateController<V>
 		return state.hasTerminatedExceptionally();
 	}
 
-	boolean isExecuting() {
-		return state.isExecuting();
+	TaskStage getTaskStage() {
+		return state.getTaskStage();
 	}
 
 	private void _log(LogLevel logLevel, String message) {

@@ -8,11 +8,17 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.resources.Resource;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
+import dd.kms.hippodamus.impl.resources.ResourceShares;
 
 import javax.annotation.Nullable;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Base class for {@link ExecutionConfigurationBuilderImpl} and {@link AggregationConfigurationBuilderImpl}
@@ -21,11 +27,12 @@ import java.util.Collection;
  */
 abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B extends ExecutionConfigurationBuilder> implements ExecutionConfigurationBuilder
 {
-	final C						coordinator;
+	final C								coordinator;
 
-	private @Nullable String	name			= null;
-	private TaskType			taskType		= TaskType.COMPUTATIONAL;
-	private Collection<Handle>	dependencies	= ImmutableList.of();
+	private @Nullable String			name					= null;
+	private TaskType					taskType				= TaskType.COMPUTATIONAL;
+	private Collection<Handle>			dependencies			= ImmutableList.of();
+	private final List<ResourceShare>	requiredResourcesShares	= new ArrayList<>();
 
 	ConfigurationBuilderBase(C coordinator) {
 		this.coordinator = coordinator;
@@ -69,6 +76,13 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	@Override
+	public <T> B requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier) {
+		ResourceShare wrappedResourceShare = ResourceShares.wrapResourceShare(resource, resourceShareSupplier);
+		requiredResourcesShares.add(wrappedResourceShare);
+		return getBuilder();
+	}
+
+	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
 		ExceptionalCallable<Void, T> callable = () -> {
 			runnable.run();
@@ -83,6 +97,7 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	TaskConfiguration createConfiguration() {
-		return new TaskConfiguration(name, taskType, dependencies);
+		ResourceShare compoundResourceShare = ResourceShares.createCompoundResourceShare(requiredResourcesShares);
+		return new TaskConfiguration(name, taskType, dependencies, compoundResourceShare);
 	}
 }

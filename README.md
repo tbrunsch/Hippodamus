@@ -3,7 +3,7 @@
 Hippodamus is a Java library for writing parallel code in an elegant way. It provides some features of sequential code that parallel code usually lacks:
 
 ---
-Hippodamus = [Nursery](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/) + Dependency Management + Exception Handling
+Hippodamus = [Nursery](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/) + Dependency Management + Exception Handling + Resource Management Support
 ___
 
 The API design was motivated by several practical applications that were ugly to implement with [CompletableFuture](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html).  
@@ -31,6 +31,10 @@ In Hippodamus, you write a try-with-resources block, in which you may execute ta
 Since Hippodamus assumes that everything within a try-block forms one supertask that has been split into subtask, it will stop all running tasks if at least one task terminates exceptionally.
 
 When working with Hippodamus, it is advantageous to understand how exception handling is realized by the framework. For further details see Section [Exception Handling Magic](#exception-handling-magic).
+
+## Resource Management Support
+
+Parallelization frameworks often do not consider resource constraints. Probably the most important resource is memory. When too many memory intensive tasks are executed in parallel, then an `OutOfMemoryError` might occur. The only option common parallelization frameworks offer is to specify the maximum parallelism. However, such a constraint is often unnecessarily restrictive. Hippodamus provides a way to postpone the execution of individual tasks until a required resource is available. See Section [Managing Resources](#managing-resources) for further details.
 
 ## When To Use Hippodamus
 
@@ -318,6 +322,49 @@ Sometimes it is useful to specify a limit for the number of tasks of a certain t
 One possibility is to specify a dedicated `ExecutorService` for theses tasks (see Section [Configuring Coordinators](#configuring-coordinators)) whose parallelism is limited to the desired number. However, specifying dedicated `ExecutorService`s does not scale as well as using a shared `ExecutorService`.
 
 Alternatively, you can specify the maximum parallelism for a certain task type. This is the maximum number of tasks of that type processed by their `ExecutorService` at any time. Surplus tasks will be queued until one of the tasks currently be processed by the `ExecutorService` terminates.
+
+## Managing Resources
+
+The term "resource" is very abstract: It could be something countable from which you can acquire pieces of certain sizes. It could also be, e.g., a file in a file system. In Hippodamus, a resource is represented by the interface `Resource`. This interface has a generic parameter that describes the type the pieces of this resource are.
+
+By implementing this interface a user can control whether to accept a task's resource request or whether to reject it. If the resource request has been rejected, the `Resource` implementation is responsible for letting the requestor retry the request later. In some scenarios such resource constraints could have been implemented by the tasks themselves by acquiring some kind of lock or a certain number of permits of a semaphore, but this approach would have several drawbacks:
+
+* Any such locking concept would block the task when the requested (amount of) resource is currently not available. This prevents the execution of other tasks that are ready to execute but cannot because all threads of the `ExecutorService` are already assigned a task, including this blocked task. In Hippodamus, the execution of a task is postponed when its resource request is rejected, but for the underlying `ExecutorService` (not for Hippodamus) it seems that the task has terminated and that it can now process the next task. The `Resource` can resubmit the postponed task later. For the `ExecutorService` this is another task, but for Hippodamus it is the same.
+* Memory, which is one of the most important resources, cannot be managed that way because there is no semaphore whose `acquire()` method will return when enough memory is available.
+* Tasks could starve if one cannot guarantee that there will be enough of the resource available for the postponed task in the future. Implementers of `Resource` also have to keep this issue in mind, but at least they have a chance to react: They could implement a fallback strategy to make more of the resource available somehow, e.g., swapping data to the hard disk to make some memory available or performing some clean-up. However, this strategy is highly individual and cannot be implemented by Hippodamus.
+
+It should be clear by now that resource management is very complicated and application-specific. There is no silver bullet for resource management that could be implemented once and for all. Instead, Hippodamus only gives users the chance to interfere in its scheduling algorithm by taking resource constraints into consideration.
+
+In the remainder of this section we discuss some further points that have to be considered when implementing some kind of memory management:
+
+* It is not even clear what memory consumption of a task means: In the simplest scenario, each task allocates some amount of memory during its life time and finally releases all of it. The amount of memory allocated by that task can be considered its memory consumption. However, tasks might also model state transitions in a stateful system like an in-memory database. In this case, the allocated memory can be categorized into two classes:
+
+  1. Memory the task needs for its execution. This memory is released again when the task terminates. This is the same type as in the simple scenario.
+  2. Memory that is allocated as a result of the state change the task caused. This could be, e.g., memory for additional tables the task creates within an in-memory database. This memory does not get released when the task terminates. 
+  
+  In this case it is not clear what the memory consumption of the task is. You will probably have to consider both categories of allocated memory, but maybe treat them differently.
+  
+* You have to be careful with nested parallelization and counting resources twice: When a task executes a method that also utilizes Hippodamus for parallelization, then you need a concept whether the consumed resources required by the nested tasks are also considered as consumed resources of the parent task. It is clear that you must count it exactly once, but you have to decide whether to count it for the parent task or for the nested tasks.
+
+* Memory is a resource that is hard to track: If you use a counter that is initialized with the amount of memory currently available and update this counter whenever a task starts executing or terminates, then this counter will diverge from the real amount of available memory over time because you most likely will not have full control of the memory consumption in your application. On the other hand, when you do not maintain a counter, but always consider the currently available memory, then it is hard to say whether the tasks that are currently running have already allocated the memory they claimed to allocate (optimistic assumption) or whether they have not allocated any memory yet (pessimistic assumption). Hence, the available memory a new task can count on is something between the currently available memory minus the sum of the memory claimed to be allocated by the tasks that are currently executing and the currently available memory. For our unit tests we have implemented the counting variant and the variant that always consideres the currently available memory (`DefaultCountableResource` and `MemoryResource`) under the pessimistic assumption and documented the drawbacks (e.g., potential starvation of postponed tasks). They are sufficient for the purpose of testing and give a hint of how to implement a `Resource`, but we strongly advise you to implement your own `Resource` that takes your individual requirements into consideration.
+
+In Section [Resources](#resources) we explain how `Resources`s are used by Hippodamus and how they should be implemented. 
+
+### Resources
+
+You can specify the resources a task depends on by calling `coordinator.configure().requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier)` for every resource. The `resourceShareSupplier` provides information what or how much of the resource is required. The supplier will not be executed until the task is eligible for execution. This allows modelling scenarios in which the resource requirement depends on the task's dependencies and cannot be predicted easily.
+
+* When a task becomes eligible for execution and Hippodamus submits it to its underlying `ExecutorService`, it evaluates the `resourceShareSupplier` specified when configuring the task (if specified) and calls `Resource.addPendingResourceShare()` with that resource share. This call does not try to acquire the resource yet, but it informs the resource about pending resource shares. The resource can leverage this information when deciding which and how many tasks it should resubmit at a certain point in time.
+
+* When the task is going to be executed, Hippodamus calls `Resource.tryAcquire()` with the resource share and a `ResourceRequestor`. The `Resource` then decides whether it accepts the resource request or not:
+  * If it accepts the request, then it must return `true` and ignore the provided `ResourceRequestor`.
+  * If it rejects the request, then it must return `false` and keep a reference to the `ResourceRequestor`. The `Resource` is now responsible for calling `ResourceRequestor.retryRequest()` at a later point in time. This resubmits the task such that it can repeat its resource request.
+
+  After calling `Resource.tryAcquire()`, Hippodamus calls `Resource.removePendingResourceShare()` with the same resource share to inform the resource that the task does not count as submitted anymore. The method `tryAcquire()` could also have taken that conclusion, but we decided that everything that can be controlled by Hippodamus should be controlled by it. Additionally, the method `removePendingResourceShare()` must exist nevertheless because it is called when the coordinator is stopped. This method is a good point to decide whether to resubmit postponed tasks and, if so, which.
+
+* When a task terminates, the method `Resource.release()` is called with the resource share as parameter. The `Resource` can then update internal information and decide whether to resubmit postponed tasks.
+
+* When the coordinator is stopped, then `Resource.remove()` is called for every postponed task with the `ResourceRequestor` that was supposed to be used to resubmit the task. The `Resource` can then clean up data that is related to the corresponding task if available.
 
 ## Aggregation
 
