@@ -41,6 +41,6 @@ class MemoryResource extends AbstractCountableResource
 
 	@Override
 	protected long getCapacity() {
-		return MemoryUtils.getAvailableMemory();
+		return MemoryUtils.estimateAvailableMemory(0.7);
 	}
 }

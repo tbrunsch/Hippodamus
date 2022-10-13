@@ -31,7 +31,7 @@ class MemoryTest
 
 		TestUtils.waitForEmptyCommonForkJoinPool();
 
-		CountableResource resource = createResource(resourceType, taskParameters.getAvailableMemory());
+		CountableResource resource = createResource(resourceType);
 
 		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
 			.logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
@@ -73,14 +73,16 @@ class MemoryTest
 		}
 	}
 
-	private static CountableResource createResource(ResourceType resourceType, long availableMemory) {
+	private static CountableResource createResource(ResourceType resourceType) {
 		switch (resourceType) {
 			case UNLIMITED:
 				return UnlimitedCountableResource.RESOURCE;
 			case MONITORED_MEMORY:
 				return MemoryResource.RESOURCE;
-			case CONTROLLABLE_COUNTABLE_RESOURCE:
-				return new DefaultCountableResource("Countable resource for " + MemoryUtils.formatMemory(availableMemory), availableMemory);
+			case CONTROLLABLE_COUNTABLE_RESOURCE: {
+				long estimatedAvailableMemory = MemoryUtils.estimateAvailableMemory(0.7);
+				return new DefaultCountableResource("Countable resource for " + MemoryUtils.formatMemory(estimatedAvailableMemory), estimatedAvailableMemory);
+			}
 			default:
 				throw new IllegalArgumentException("Unsupported resource type " + resourceType);
 		}
@@ -143,17 +145,13 @@ class MemoryTest
 				throw new IllegalStateException("Cannot run OutOfMemory tests because the common ForkJoinPool has parallelism < 2");
 			}
 
-			availableMemory = MemoryUtils.getAvailableMemory();
+			availableMemory = MemoryUtils.estimateAvailableMemory(1.0);
 			numTasks = NUMBER_OF_TASKS_OVER_PARALLELISM*parallelism;
 
 			// ensure that parallelism many tasks will require more memory than available
 			taskSize = (long) Math.ceil(1.1 * availableMemory / parallelism);
 			chunkSize = Math.toIntExact(Math.min(taskSize / PREFERRED_NUMBER_OF_CHUNKS, Integer.MAX_VALUE));
 			numChunksPerTask = taskSize / chunkSize;
-		}
-
-		long getAvailableMemory() {
-			return availableMemory;
 		}
 
 		int getNumberOfTasks() {
