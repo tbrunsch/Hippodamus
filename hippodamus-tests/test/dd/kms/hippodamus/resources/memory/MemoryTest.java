@@ -2,9 +2,7 @@ package dd.kms.hippodamus.resources.memory;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.resources.CountableResource;
 import dd.kms.hippodamus.resources.DefaultCountableResource;
 import dd.kms.hippodamus.testUtils.TestUtils;
@@ -33,12 +31,8 @@ class MemoryTest
 
 		CountableResource resource = createResource(resourceType);
 
-		ExecutionCoordinatorBuilder coordinatorBuilder = Coordinators.configureExecutionCoordinator()
-			.logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
-			.minimumLogLevel(LogLevel.STATE);
-
 		boolean outOfMemoryErrorOccurred = false;
-		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
+		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 0; i < taskParameters.getNumberOfTasks(); i++) {
 				ExecutionConfigurationBuilder builder = coordinator.configure();
 				builder.requiredResource(resource, () -> taskParameters.getTaskSize());
