@@ -108,7 +108,8 @@ public class ResourceManagementTest
 	}
 
 	private static void checkClearedResource(TestResource resource, Map<Handle, TaskDescription> taskDescriptionByHandle) {
-		int threadIndex = getThreadIndex(taskDescriptionByHandle.values());
+		Collection<TaskDescription> threadHandles = taskDescriptionByHandle.values();
+		int threadIndex = getThreadIndex(threadHandles);
 
 		long totalPendingResourceShares = resource.getTotalPendingResourceShares(threadIndex);
 		Assertions.assertEquals(0, totalPendingResourceShares, "Unexpected pending resource shares");
@@ -120,8 +121,7 @@ public class ResourceManagementTest
 		for (ResourceRequest postponedResourceRequest : postponedResourceRequests) {
 			ResourceRequestor resourceRequestor = postponedResourceRequest.getResourceRequestor();
 			Handle handle = resourceRequestor.getHandle();
-			TaskDescription taskDescription = taskDescriptionByHandle.get(handle);
-			Assertions.assertNotEquals(threadIndex, taskDescription.getThreadIndex(), "Postponed resource request of '" + taskDescription + "' has not been removed");
+			Assertions.assertFalse(threadHandles.contains(handle), "Postponed resource request of '" + handle.getTaskName() + "' has not been removed");
 		}
 	}
 
