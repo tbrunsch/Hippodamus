@@ -34,7 +34,7 @@ class CompoundResourceShare implements ResourceShare
 
 	@Override
 	public boolean tryAcquire(ResourceRequestor resourceRequestor) {
-		int rejectedResourceIndex = acquireResources(resourceRequestor);
+		rejectedResourceIndex = acquireResources(resourceRequestor);
 		if (rejectedResourceIndex == -1) {
 			return true;
 		}
