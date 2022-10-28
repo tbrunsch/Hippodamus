@@ -1,16 +1,15 @@
 package dd.kms.hippodamus.impl.handles;
 
+import java.util.concurrent.ExecutorService;
+
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
-import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-
-import java.util.concurrent.ExecutorService;
 
 /**
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
- *                  ON_HOLD ----------------------------------
- *                    ↕                                      |
+ *                           ON_HOLD ----------------------------------
+ *                             ↕                                      |
  *     INITIAL -→ SUBMITTED -→ EXECUTING -→ FINISHED         |
  *       ↓            ↓                        ↓             ↓
  *       ----------------------------------------------→ TERMINATED
@@ -24,10 +23,12 @@ public enum TaskStage
 	INITIAL("initial state"),
 
 	/**
-	 * The task is submitted to the {@link ExecutorServiceWrapper}. It is either
-	 * queued by the wrapper or directly submitted to the underlying {@link ExecutorService}.
+	 * All tasks the tasks depends on have completed successfully. The task will immediately be submitted to the
+	 * underlying {@link ExecutorService} as long as no maximum parallelism has been specified. If this is the case
+	 * and there are already enough tasks in the {@code ExecutorService}'s pipeline, then the task will be queued
+	 * internally and submitted later.
 	 */
-	SUBMITTED("submitted"),
+	READY("ready"),
 
 	/**
 	 * The task execution has been put on hold because one of the resources required by the task was not available
@@ -58,8 +59,8 @@ public enum TaskStage
 		SUCCESSOR_STATES = ArrayListMultimap.create();
 
 		// add default transition chain
-		SUCCESSOR_STATES.put(TaskStage.INITIAL, TaskStage.SUBMITTED);
-		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.EXECUTING);
+		SUCCESSOR_STATES.put(TaskStage.INITIAL, TaskStage.READY);
+		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.EXECUTING);
 		SUCCESSOR_STATES.put(TaskStage.EXECUTING, TaskStage.FINISHED);
 
 		// add transition to TERMINATED except from EXECUTING and TERMINATED
@@ -70,8 +71,8 @@ public enum TaskStage
 		}
 
 		// add transitions between SUBMITTED and ON_HOLD
-		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.ON_HOLD);
-		SUCCESSOR_STATES.put(TaskStage.ON_HOLD, TaskStage.SUBMITTED);
+		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.ON_HOLD);
+		SUCCESSOR_STATES.put(TaskStage.ON_HOLD, TaskStage.READY);
 	}
 
 	private final String	description;

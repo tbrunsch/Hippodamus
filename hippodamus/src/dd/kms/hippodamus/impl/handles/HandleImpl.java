@@ -78,7 +78,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 ****************/
 	public void submit() {
 		synchronized (coordinator) {
-			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
+			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.READY)) {
 				_submit();
 			}
 		}
@@ -127,7 +127,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 
 		try {
-			if (taskStage == TaskStage.SUBMITTED) {
+			if (taskStage == TaskStage.READY) {
 				requiredResourceShare.removePendingResourceShare();
 			} else if (taskStage == TaskStage.ON_HOLD) {
 				requiredResourceShare.remove(resourceRequestor);

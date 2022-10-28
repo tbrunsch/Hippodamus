@@ -40,7 +40,7 @@ class LoggingTest
 		}
 		Assertions.assertEquals(0, logger.getNumberOfErrors(), "An internal error occurred");
 
-		Set<TaskStage> expectedTaskStages = ImmutableSet.of(TaskStage.SUBMITTED, TaskStage.EXECUTING, TaskStage.FINISHED, TaskStage.TERMINATED);
+		Set<TaskStage> expectedTaskStages = ImmutableSet.of(TaskStage.READY, TaskStage.EXECUTING, TaskStage.FINISHED, TaskStage.TERMINATED);
 		for (TaskStage taskStage : TaskStage.values()) {
 			boolean stageExpected = expectedTaskStages.contains(taskStage);
 			int expectedNumOccurrences = stageExpected ? NUM_TASKS : 0;
