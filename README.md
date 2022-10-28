@@ -85,18 +85,38 @@ This returns a builder that allows you to configure:
 
 - Which `ExecutorService` to use for which *task type* and whether to shutdown the service when the coordinator is closed. See Section [Task Types](#task-types) for more details about task types.
 - The maximum number of tasks of a certain type that may be processed in parallel (see Section [Controlling Parallelism](#controlling-parallelism))
-- The minimum log level and which logger to use.
 - Whether to verify task dependencies (see sections [Task Dependencies](#task-dependencies) and [Dependency Verification](#dependency-verification)).
 
 **LoggingSample.java:**
 
 ```
-ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-    .logger((logLevel, taskName, message) -> System.out.println(taskName + ": " + message))
-    .minimumLogLevel(LogLevel.STATE);
+ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator().logger(new SampleLogger());
 try (ExecutionCoordinator coordinator = builder.build()) {
     coordinator.configure().name("'Hello' task").execute(() -> System.out.println("Hello "));
     coordinator.configure().name("'World' task").execute(() -> System.out.println("World!"));
+}
+```
+
+with
+
+```
+private static class SampleLogger implements Logger
+{
+    @Override
+    public void log(@Nullable Handle handle, String message) {
+        String prefix = handle != null ? handle.getTaskName() + ": " : "";
+        System.out.println(prefix + message);
+    }
+
+    @Override
+    public void logStateChange(Handle handle, TaskStage taskStage) {
+        log(handle, "changed to state '" + taskStage + "'");
+    }
+
+    @Override
+    public void logError(@Nullable Handle handle, String error, @Nullable Throwable cause) {
+        log(handle, "Error: " + error);
+    }
 }
 ```
 
