@@ -1,15 +1,17 @@
 package dd.kms.hippodamus.impl.handles;
 
+import dd.kms.hippodamus.api.handles.TaskStage;
+
 /**
  * Stores information about whether a task has finished regularly or exceptionally and,
  * if so, what the result was or which exception had been thrown, respectively.
  */
 class TaskState<V>
 {
-	private volatile boolean	finished;
-	private volatile V			result;
-	private volatile Throwable	exception;
-	private volatile TaskStage	taskStage;
+	private volatile boolean   finished;
+	private volatile V         result;
+	private volatile Throwable exception;
+	private volatile TaskStage taskStage;
 
 	TaskState() {
 		taskStage = TaskStage.INITIAL;

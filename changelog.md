@@ -4,6 +4,7 @@
 
 Features:
   * Hippodamus now supports specifying resource constraints via `ExecutionCoordinator.configure().requiredResource()`.
+  * Enhanced logging: Instead of plain and human-only readable log messages, the `Logger` interface now provides a method that allows a type-safe retrieval of the state a task is currently in. 
 
 API changes:
   * The package structure has been changed: All API classes are now in the package `dd.kms.hippodamus.api`.
@@ -17,6 +18,7 @@ API changes:
   * The interfaces `StoppableExceptionalRunnable` and `StoppableExceptionalCallable` have been removed. A task now simply has to check `Thread.isInterrupted()` or `Thread.interrupted()` to determine whether it should stop instead of checking the Boolean supplier `stopFlag`.
   * The enum `WaitMode` has been removed. You cannot specify anymore how long the `ExecutionCoordinator` waits when all tasks have terminated or been stopped. Now, the coordinator's `close()` method will not return as long as any of its tasks is being executed. This behavior has formerly been described by `WaitMode.UNTIL_TERMINATION`.
   * The class `TaskStoppedException` has been removed. It had been thrown when trying to retrieve the value of a task via `ResultHandle.get()` when the task had already been stopped. Now, a `CancellationException` is thrown instead in this case.
+  * The interface `Logger` has been reworked completely. The minimum log level has been abandoned. Instead, `Logger` now has multiple methods for each type of log message.
 
 Behavioral changes:
   * When trying to retrieve the value of task that has thrown an exception, then a `CompletionException` is thrown that wraps that exception.

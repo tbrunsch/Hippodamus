@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.impl.execution;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
 
 import java.util.Comparator;
@@ -78,6 +77,7 @@ public class ExecutorServiceWrapper implements AutoCloseable
 		Future<?> future;
 		try {
 			future = executorService.submit(handle::executeCallable);
+			handle._onSubmission();
 		} catch (RejectedExecutionException e) {
 			String error = "Submitting task to ExecutorService failed: " + e;
 			handle._logUnexpectedException(error, e);

@@ -1,17 +1,5 @@
 package dd.kms.hippodamus.impl.handles;
 
-import dd.kms.hippodamus.api.exceptions.CoordinatorException;
-import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
-import dd.kms.hippodamus.api.handles.Handle;
-import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.logging.LogLevel;
-import dd.kms.hippodamus.api.resources.ResourceRequestor;
-import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
-import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-import dd.kms.hippodamus.impl.resources.ResourceRequestorImpl;
-import dd.kms.hippodamus.impl.resources.ResourceShare;
-
-import javax.annotation.Nullable;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,6 +8,19 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+
+import javax.annotation.Nullable;
+
+import dd.kms.hippodamus.api.exceptions.CoordinatorException;
+import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.handles.TaskStage;
+import dd.kms.hippodamus.api.resources.ResourceRequestor;
+import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
+import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
+import dd.kms.hippodamus.impl.resources.ResourceRequestorImpl;
+import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 public class HandleImpl<V> implements ResultHandle<V>
 {
@@ -34,6 +35,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	private final ExceptionalCallable<V, ?> callable;
 	private final ResourceShare				requiredResourceShare;
 	private final boolean					verifyDependencies;
+	private final boolean					ignoreResult;
 
 	private final List<Runnable>			completionListeners					= new ArrayList<>();
 	private final List<Runnable>			exceptionListeners					= new ArrayList<>();
@@ -56,7 +58,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 
 	private boolean							_isTerminating;
 
-	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ResourceShare requiredResourceShare, boolean verifyDependencies) {
+	public HandleImpl(ExecutionCoordinatorImpl coordinator, String taskName, int id, ExecutorServiceWrapper executorServiceWrapper, ExceptionalCallable<V, ?> callable, ResourceShare requiredResourceShare, boolean verifyDependencies, boolean ignoreResult) {
 		this.coordinator = coordinator;
 		this.taskName = taskName;
 		this.id = id;
@@ -65,6 +67,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		this.requiredResourceShare = requiredResourceShare;
 		this.verifyDependencies = verifyDependencies;
 		this.stateController = new TaskStateController<>(this, coordinator);
+		this.ignoreResult = ignoreResult;
 	}
 
 	public int getId() {
@@ -76,7 +79,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 ****************/
 	public void submit() {
 		synchronized (coordinator) {
-			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.SUBMITTED)) {
+			if (!coordinator._hasStopped() && stateController._transitionTo(TaskStage.READY)) {
 				_submit();
 			}
 		}
@@ -86,7 +89,9 @@ public class HandleImpl<V> implements ResultHandle<V>
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-			executorServiceWrapper._onExecutionCompleted();
+			if (!coordinator._hasStopped()) {
+				executorServiceWrapper._onExecutionCompleted();
+			}
 			_terminate();
 		}
 	}
@@ -123,7 +128,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 
 		try {
-			if (taskStage == TaskStage.SUBMITTED) {
+			if (taskStage == TaskStage.READY || taskStage == TaskStage.SUBMITTED) {
 				requiredResourceShare.removePendingResourceShare();
 			} else if (taskStage == TaskStage.ON_HOLD) {
 				requiredResourceShare.remove(resourceRequestor);
@@ -176,6 +181,10 @@ public class HandleImpl<V> implements ResultHandle<V>
 		return coordinator;
 	}
 
+	boolean isIgnoreResult() {
+		return ignoreResult;
+	}
+
 	@Override
 	public V get() {
 		stateController.join(taskName, verifyDependencies);
@@ -190,7 +199,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 				throw new CancellationException("Trying to access value of task '" + taskName + "' that has been stopped");
 			}
 			String error = "The task has not been stopped nor did it terminate, but has been considered joinable.";
-			coordinator._log(LogLevel.INTERNAL_ERROR, this, error);
+			coordinator._logError(this, error, null);
 			throw new CoordinatorException(error);
 		}
 	}
@@ -218,6 +227,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 		} finally {
 			clearInterruptionFlag();
 		}
+	}
+
+	/**
+	 * Called by the {@link ExecutorServiceWrapper} to inform the handle that it has been submitted
+	 */
+	public void _onSubmission() {
+		stateController._transitionTo(TaskStage.SUBMITTED);
 	}
 
 	private void clearInterruptionFlag() {
@@ -261,7 +277,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	}
 
 	public void _logUnexpectedException(String error, Throwable t) {
-		coordinator._log(t, this, error + ": " + t);
+		coordinator._logError(this, error + ": " + t, t);
 	}
 
 	/***********************

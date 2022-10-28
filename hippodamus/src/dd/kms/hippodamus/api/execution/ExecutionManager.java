@@ -28,5 +28,4 @@ public interface ExecutionManager
 	 * @throws T    The exception is not really thrown here, but it forces the caller to handle T.
 	 */
 	<V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) throws T;
-
 }

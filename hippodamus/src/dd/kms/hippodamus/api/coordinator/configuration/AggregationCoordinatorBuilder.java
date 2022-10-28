@@ -1,11 +1,10 @@
 package dd.kms.hippodamus.api.coordinator.configuration;
 
+import java.util.concurrent.ExecutorService;
+
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-
-import java.util.concurrent.ExecutorService;
 
 /**
  * Builder for an {@link AggregationCoordinator} that allows specifying
@@ -27,9 +26,6 @@ public interface AggregationCoordinatorBuilder<S, R> extends ExecutionCoordinato
 
 	@Override
 	AggregationCoordinatorBuilder<S, R> logger(Logger logger);
-
-	@Override
-	AggregationCoordinatorBuilder<S, R> minimumLogLevel(LogLevel minimumLogLevel);
 
 	@Override
 	AggregationCoordinatorBuilder<S, R> verifyDependencies(boolean verifyDependencies);

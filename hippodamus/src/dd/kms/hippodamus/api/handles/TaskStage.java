@@ -1,22 +1,21 @@
-package dd.kms.hippodamus.impl.handles;
+package dd.kms.hippodamus.api.handles;
+
+import java.util.concurrent.ExecutorService;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
-import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-
-import java.util.concurrent.ExecutorService;
 
 /**
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
- *                  ON_HOLD ----------------------------------
- *                    ↕                                      |
- *     INITIAL -→ SUBMITTED -→ EXECUTING -→ FINISHED         |
- *       ↓            ↓                        ↓             ↓
- *       ----------------------------------------------→ TERMINATED
+ *                  ------- ON_HOLD ----------------------------------
+ *                  ↓          ↑                                      |
+ *     INITIAL -→ READY -> SUBMITTED -→ EXECUTING -→ FINISHED         |
+ *       ↓          ↓          ↓                        ↓             ↓
+ *       -------------------------------------------------------→ TERMINATED
  * </pre>
  */
-enum TaskStage
+public enum TaskStage
 {
 	/**
 	 * The task has not yet been submitted.
@@ -24,8 +23,15 @@ enum TaskStage
 	INITIAL("initial state"),
 
 	/**
-	 * The task is submitted to the {@link ExecutorServiceWrapper}. It is either
-	 * queued by the wrapper or directly submitted to the underlying {@link ExecutorService}.
+	 * All tasks the tasks depends on have completed successfully. The task will immediately be submitted to the
+	 * underlying {@link ExecutorService} as long as no maximum parallelism has been specified. If this is the case
+	 * and there are already enough tasks in the {@code ExecutorService}'s pipeline, then the task will be queued
+	 * internally and submitted later.
+	 */
+	READY("ready"),
+
+	/**
+	 * The task has been submitted to the underlying {@link ExecutorService}.
 	 */
 	SUBMITTED("submitted"),
 
@@ -58,7 +64,8 @@ enum TaskStage
 		SUCCESSOR_STATES = ArrayListMultimap.create();
 
 		// add default transition chain
-		SUCCESSOR_STATES.put(TaskStage.INITIAL, TaskStage.SUBMITTED);
+		SUCCESSOR_STATES.put(TaskStage.INITIAL, TaskStage.READY);
+		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.SUBMITTED);
 		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.EXECUTING);
 		SUCCESSOR_STATES.put(TaskStage.EXECUTING, TaskStage.FINISHED);
 
@@ -69,9 +76,9 @@ enum TaskStage
 			}
 		}
 
-		// add transitions between SUBMITTED and ON_HOLD
+		// add transitions SUBMITTED -> ON_HOLD -> READY
 		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.ON_HOLD);
-		SUCCESSOR_STATES.put(TaskStage.ON_HOLD, TaskStage.SUBMITTED);
+		SUCCESSOR_STATES.put(TaskStage.ON_HOLD, TaskStage.READY);
 	}
 
 	private final String	description;
@@ -80,11 +87,11 @@ enum TaskStage
 		this.description = description;
 	}
 
-	boolean isReadyToJoin() {
+	public boolean isReadyToJoin() {
 		return compareTo(FINISHED) >= 0;
 	}
 
-	boolean canTransitionTo(TaskStage nextStage) {
+	public boolean canTransitionTo(TaskStage nextStage) {
 		return SUCCESSOR_STATES.get(this).contains(nextStage);
 	}
 
