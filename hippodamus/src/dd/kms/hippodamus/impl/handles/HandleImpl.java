@@ -127,7 +127,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 
 		try {
-			if (taskStage == TaskStage.READY) {
+			if (taskStage == TaskStage.READY || taskStage == TaskStage.SUBMITTED) {
 				requiredResourceShare.removePendingResourceShare();
 			} else if (taskStage == TaskStage.ON_HOLD) {
 				requiredResourceShare.remove(resourceRequestor);
@@ -232,7 +232,7 @@ public class HandleImpl<V> implements ResultHandle<V>
 	 * Called by the {@link ExecutorServiceWrapper} to inform the handle that it has been submitted
 	 */
 	public void _onSubmission() {
-
+		stateController._transitionTo(TaskStage.SUBMITTED);
 	}
 
 	private void clearInterruptionFlag() {

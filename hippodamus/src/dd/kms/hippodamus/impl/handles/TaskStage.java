@@ -8,11 +8,11 @@ import com.google.common.collect.ListMultimap;
 /**
  * Describes the stage a task is in. The following diagram shows the possible stage transitions.
  * <pre>
- *                           ON_HOLD ----------------------------------
- *                             ↕                                      |
- *     INITIAL -→ SUBMITTED -→ EXECUTING -→ FINISHED         |
- *       ↓            ↓                        ↓             ↓
- *       ----------------------------------------------→ TERMINATED
+ *                  ------- ON_HOLD ----------------------------------
+ *                  ↓          ↑                                      |
+ *     INITIAL -→ READY -> SUBMITTED -→ EXECUTING -→ FINISHED         |
+ *       ↓          ↓          ↓                        ↓             ↓
+ *       -------------------------------------------------------→ TERMINATED
  * </pre>
  */
 public enum TaskStage
@@ -29,6 +29,11 @@ public enum TaskStage
 	 * internally and submitted later.
 	 */
 	READY("ready"),
+
+	/**
+	 * The task has been submitted to the underlying {@link ExecutorService}.
+	 */
+	SUBMITTED("submitted"),
 
 	/**
 	 * The task execution has been put on hold because one of the resources required by the task was not available
@@ -60,7 +65,8 @@ public enum TaskStage
 
 		// add default transition chain
 		SUCCESSOR_STATES.put(TaskStage.INITIAL, TaskStage.READY);
-		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.EXECUTING);
+		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.SUBMITTED);
+		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.EXECUTING);
 		SUCCESSOR_STATES.put(TaskStage.EXECUTING, TaskStage.FINISHED);
 
 		// add transition to TERMINATED except from EXECUTING and TERMINATED
@@ -70,8 +76,8 @@ public enum TaskStage
 			}
 		}
 
-		// add transitions between SUBMITTED and ON_HOLD
-		SUCCESSOR_STATES.put(TaskStage.READY, TaskStage.ON_HOLD);
+		// add transitions SUBMITTED -> ON_HOLD -> READY
+		SUCCESSOR_STATES.put(TaskStage.SUBMITTED, TaskStage.ON_HOLD);
 		SUCCESSOR_STATES.put(TaskStage.ON_HOLD, TaskStage.READY);
 	}
 
