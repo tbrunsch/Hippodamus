@@ -226,6 +226,13 @@ public class HandleImpl<V> implements ResultHandle<V>
 		}
 	}
 
+	/**
+	 * Called by the {@link ExecutorServiceWrapper} to inform the handle that it has been submitted
+	 */
+	public void _onSubmission() {
+
+	}
+
 	private void clearInterruptionFlag() {
 		Thread.interrupted();
 	}
