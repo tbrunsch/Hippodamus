@@ -15,6 +15,7 @@ import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.handles.TaskStage;
 import dd.kms.hippodamus.api.resources.ResourceRequestor;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;

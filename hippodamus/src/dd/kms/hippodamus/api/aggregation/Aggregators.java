@@ -1,7 +1,5 @@
 package dd.kms.hippodamus.api.aggregation;
 
-import dd.kms.hippodamus.impl.aggregation.AggregatorImpl;
-
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -25,7 +23,7 @@ public class Aggregators
 	 * short circuit evaluation can be applied.
 	 */
 	public static <S, R> Aggregator<S, R> createAggregator(R initValue, BiFunction<R, S, R> aggregationFunction, Predicate<R> finalValuePredicate) {
-		return new AggregatorImpl<>(initValue, aggregationFunction, finalValuePredicate);
+		return new dd.kms.hippodamus.impl.aggregation.AggregatorImpl<>(initValue, aggregationFunction, finalValuePredicate);
 	}
 
 	/**

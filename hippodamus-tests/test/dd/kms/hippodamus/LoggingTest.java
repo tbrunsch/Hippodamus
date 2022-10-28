@@ -11,8 +11,8 @@ import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.TaskStage;
 import dd.kms.hippodamus.api.logging.Logger;
-import dd.kms.hippodamus.impl.handles.TaskStage;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

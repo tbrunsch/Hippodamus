@@ -14,12 +14,12 @@ import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.handles.TaskStage;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.execution.configuration.ExecutionConfigurationBuilderImpl;
 import dd.kms.hippodamus.impl.execution.configuration.TaskConfiguration;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
-import dd.kms.hippodamus.impl.handles.TaskStage;
 import dd.kms.hippodamus.impl.resources.ResourceShare;
 
 public class ExecutionCoordinatorImpl implements ExecutionCoordinator

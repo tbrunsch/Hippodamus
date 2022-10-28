@@ -1,4 +1,4 @@
-package dd.kms.hippodamus.impl.handles;
+package dd.kms.hippodamus.api.handles;
 
 import java.util.concurrent.ExecutorService;
 
@@ -87,11 +87,11 @@ public enum TaskStage
 		this.description = description;
 	}
 
-	boolean isReadyToJoin() {
+	public boolean isReadyToJoin() {
 		return compareTo(FINISHED) >= 0;
 	}
 
-	boolean canTransitionTo(TaskStage nextStage) {
+	public boolean canTransitionTo(TaskStage nextStage) {
 		return SUCCESSOR_STATES.get(this).contains(nextStage);
 	}
 

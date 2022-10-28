@@ -4,7 +4,6 @@ import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestException;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.ValueReference;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.Test;
 class ValueRetrievedByExceptionListenerTest
 {
 	private static final long	TASK_TIME_MS	= 500;
-	private static final long	PRECISION_MS	= 300;
 
 	@Test
 	void testValueRetrieval() {

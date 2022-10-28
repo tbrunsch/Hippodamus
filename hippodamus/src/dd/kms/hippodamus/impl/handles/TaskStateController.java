@@ -3,6 +3,7 @@ package dd.kms.hippodamus.impl.handles;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
+import dd.kms.hippodamus.api.handles.TaskStage;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
 /**

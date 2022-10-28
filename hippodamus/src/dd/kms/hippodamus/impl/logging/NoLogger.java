@@ -3,8 +3,8 @@ package dd.kms.hippodamus.impl.logging;
 import javax.annotation.Nullable;
 
 import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.handles.TaskStage;
 import dd.kms.hippodamus.api.logging.Logger;
-import dd.kms.hippodamus.impl.handles.TaskStage;
 
 public class NoLogger implements Logger
 {
