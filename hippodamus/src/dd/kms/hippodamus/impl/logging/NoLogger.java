@@ -1,14 +1,27 @@
 package dd.kms.hippodamus.impl.logging;
 
-import dd.kms.hippodamus.api.logging.LogLevel;
+import javax.annotation.Nullable;
+
+import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.logging.Logger;
+import dd.kms.hippodamus.impl.handles.TaskStage;
 
 public class NoLogger implements Logger
 {
 	public static final Logger	LOGGER	= new NoLogger();
 
 	@Override
-	public void log(LogLevel logLevel, String taskName, String message) {
-		/* ignore message */
+	public void log(@Nullable Handle handle, String message) {
+		/* do nothing */
+	}
+
+	@Override
+	public void logStateChange(Handle handle, TaskStage taskStage) {
+		/* do nothing */
+	}
+
+	@Override
+	public void logError(@Nullable Handle handle, String error, @Nullable Throwable cause) {
+		/* do nothing */
 	}
 }

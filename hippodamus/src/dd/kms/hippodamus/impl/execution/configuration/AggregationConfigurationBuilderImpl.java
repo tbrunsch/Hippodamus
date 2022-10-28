@@ -20,6 +20,6 @@ public class AggregationConfigurationBuilderImpl<S, R>
 
 	@Override
 	public <T extends Throwable> ResultHandle<S> aggregate(ExceptionalCallable<S, T> callable) throws T {
-		return coordinator.aggregate(callable, createConfiguration());
+		return coordinator.aggregate(callable, createConfiguration(false));
 	}
 }

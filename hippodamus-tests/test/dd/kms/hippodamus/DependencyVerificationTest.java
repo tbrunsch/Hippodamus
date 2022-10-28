@@ -7,8 +7,8 @@ import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
+import dd.kms.hippodamus.impl.handles.TaskStage;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.events.HandleEvent;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
@@ -20,6 +20,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+
+import javax.annotation.Nullable;
 
 /**
  * The {@link ExecutionCoordinator} only submits tasks to the underlying {@link ExecutorService} if all of its
@@ -101,7 +103,7 @@ class DependencyVerificationTest
 		}
 	}
 
-	static Object getParameters() {
+	static List<Object[]> getParameters() {
 		List<Object[]> parameters = new ArrayList<>();
 		for (boolean verifyDependencies : TestUtils.BOOLEANS) {
 			for (boolean dependencyAlreadyRunning : TestUtils.BOOLEANS) {
@@ -116,8 +118,18 @@ class DependencyVerificationTest
 		private boolean encounteredInternalError;
 
 		@Override
-		public void log(LogLevel logLevel, String taskName, String message) {
-			encounteredInternalError |= (logLevel == LogLevel.INTERNAL_ERROR);
+		public void log(@Nullable Handle handle, String message) {
+			/* do nothing */
+		}
+
+		@Override
+		public void logStateChange(Handle handle, TaskStage taskStage) {
+			/* do nothing */
+		}
+
+		@Override
+		public void logError(@Nullable Handle handle, String error, @Nullable Throwable cause) {
+			encounteredInternalError = true;
 		}
 
 		boolean hasEncounteredInternalError() {

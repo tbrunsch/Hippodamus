@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
 import dd.kms.hippodamus.impl.logging.NoLogger;
@@ -28,7 +27,6 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	private final Set<TaskType> 						taskTypesThatRequireShutdown		= new HashSet<>();
 	private final Map<TaskType, Integer>				maximumParallelismByTaskType		= new HashMap<>();
 	private Logger										logger								= NoLogger.LOGGER;
-	private LogLevel									minimumLogLevel						= LogLevel.STATE;
 	private boolean										verifyDependencies					= false;
 
 	CoordinatorBuilderBase() {
@@ -37,7 +35,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	}
 
 	abstract B getBuilder();
-	abstract C createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies);
+	abstract C createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, boolean verifyDependencies);
 
 	@Override
 	public B executorService(TaskType taskType, ExecutorService executorService, boolean shutdownRequired) {
@@ -64,12 +62,6 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 	}
 
 	@Override
-	public B minimumLogLevel(LogLevel minimumLogLevel) {
-		this.minimumLogLevel = minimumLogLevel;
-		return getBuilder();
-	}
-
-	@Override
 	public B verifyDependencies(boolean verifyDependencies) {
 		this.verifyDependencies = verifyDependencies;
 		return getBuilder();
@@ -90,7 +82,7 @@ abstract class CoordinatorBuilderBase<B extends ExecutionCoordinatorBuilder, C e
 			executorServiceWrappersByTaskType.put(taskType, executorServiceWrapper);
 		}
 
-		return createCoordinator(executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies);
+		return createCoordinator(executorServiceWrappersByTaskType, logger, verifyDependencies);
 	}
 
 	private Set<TaskType> getConfiguredTaskTypes() {

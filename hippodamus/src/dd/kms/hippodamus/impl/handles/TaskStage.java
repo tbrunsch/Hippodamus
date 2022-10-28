@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutorService;
  *       ----------------------------------------------→ TERMINATED
  * </pre>
  */
-enum TaskStage
+public enum TaskStage
 {
 	/**
 	 * The task has not yet been submitted.

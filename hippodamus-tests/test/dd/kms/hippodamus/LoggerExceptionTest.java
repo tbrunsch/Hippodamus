@@ -1,12 +1,17 @@
 package dd.kms.hippodamus;
 
+import javax.annotation.Nullable;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
-import dd.kms.hippodamus.api.logging.LogLevel;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import dd.kms.hippodamus.api.handles.Handle;
+import dd.kms.hippodamus.api.logging.Logger;
+import dd.kms.hippodamus.impl.handles.TaskStage;
 
 /**
  * This test checks that the coordinator works as expected when a logger throws an exception.
@@ -18,10 +23,7 @@ class LoggerExceptionTest
 	@Test
 	void testExceptionInLogger() {
 		ExecutionCoordinatorBuilder builder = Coordinators.configureExecutionCoordinator()
-			.logger((logLevel, taskName, message) -> {
-				throw new RuntimeException(EXCEPTION_TEXT);
-			})
-			.minimumLogLevel(LogLevel.STATE);
+			.logger(new ExceptionalLogger());
 		try (ExecutionCoordinator coordinator = builder.build()) {
 			coordinator.execute(() -> {});
 		} catch (CoordinatorException e){
@@ -29,5 +31,23 @@ class LoggerExceptionTest
 			return;
 		}
 		Assertions.fail("Swallowed logger exception");
+	}
+
+	private static class ExceptionalLogger implements Logger
+	{
+		@Override
+		public void log(@Nullable Handle handle, String message) {
+			/* do nothing */
+		}
+
+		@Override
+		public void logStateChange(Handle handle, TaskStage taskStage) {
+			throw new RuntimeException(EXCEPTION_TEXT);
+		}
+
+		@Override
+		public void logError(@Nullable Handle handle, String error, @Nullable Throwable cause) {
+			/* do nothing */
+		}
 	}
 }

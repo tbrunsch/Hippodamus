@@ -1,15 +1,14 @@
 package dd.kms.hippodamus.api.coordinator.configuration;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
 
 /**
  * Builder for an {@link ExecutionCoordinator} that allows specifying
@@ -74,12 +73,6 @@ public interface ExecutionCoordinatorBuilder
 	 * Specifies the logger that is used to log received messages. If not specified, then nothing will be logged.
 	 */
 	ExecutionCoordinatorBuilder logger(Logger logger);
-
-	/**
-	 * Specifies the minimum {@link LogLevel} that should be logged. Messages with a lower {@code LogLevel}
-	 * will be swallowed. If not specified, then {@link LogLevel#STATE} will be used.
-	 */
-	ExecutionCoordinatorBuilder minimumLogLevel(LogLevel minimumLogLevel);
 
 	/**
 	 * Specifies whether accessing values of tasks that have not yet completed results in an exception. This

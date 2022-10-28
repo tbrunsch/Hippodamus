@@ -16,12 +16,14 @@ public class TaskConfiguration
 {
 	private final @Nullable String		name;
 	private final TaskType				taskType;
+	private final boolean				ignoreResult;
 	private final Collection<Handle>	dependencies;
 	private final ResourceShare			requiredResourceShare;
 
-	TaskConfiguration(@Nullable String name, TaskType taskType, Collection<Handle> dependencies, ResourceShare requiredResourceShare) {
+	TaskConfiguration(@Nullable String name, TaskType taskType, boolean ignoreResult, Collection<Handle> dependencies, ResourceShare requiredResourceShare) {
 		this.name = name;
 		this.taskType = taskType;
+		this.ignoreResult = ignoreResult;
 		this.dependencies = dependencies;
 		this.requiredResourceShare = requiredResourceShare;
 	}
@@ -32,6 +34,10 @@ public class TaskConfiguration
 
 	public TaskType getTaskType() {
 		return taskType;
+	}
+
+	public boolean isIgnoreResult() {
+		return ignoreResult;
 	}
 
 	public Collection<Handle> getDependencies() {

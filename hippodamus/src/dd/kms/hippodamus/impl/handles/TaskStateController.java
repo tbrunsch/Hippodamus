@@ -3,7 +3,6 @@ package dd.kms.hippodamus.impl.handles;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.exceptions.CoordinatorException;
 import dd.kms.hippodamus.api.handles.ResultHandle;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.coordinator.ExecutionCoordinatorImpl;
 
 /**
@@ -70,13 +69,15 @@ class TaskStateController<V>
 
 	void _setResult(V result) {
 		state.setResult(result);
-		_log(LogLevel.STATE, "result = " + result);
+		if (!handle.isIgnoreResult()) {
+			coordinator._log(handle, "result: " + result);
+		}
 		_transitionTo(TaskStage.FINISHED);
 	}
 
 	void _setException(Throwable exception) {
 		state.setException(exception);
-		_log(LogLevel.STATE, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
+		coordinator._log(handle, "encountered " + exception.getClass().getSimpleName() + ": " + exception.getMessage());
 		_transitionTo(TaskStage.FINISHED);
 	}
 
@@ -101,10 +102,6 @@ class TaskStateController<V>
 		return state.getTaskStage();
 	}
 
-	private void _log(LogLevel logLevel, String message) {
-		coordinator._log(logLevel, handle, message);
-	}
-
 	boolean _transitionTo(TaskStage newStage) {
 		String transitionError = state.transitionTo(newStage);
 		if (!checkCondition(transitionError == null, transitionError)) {
@@ -116,7 +113,7 @@ class TaskStateController<V>
 		if (newStage == TaskStage.TERMINATED) {
 			_releaseCoordinator();
 		}
-		_log(LogLevel.STATE, newStage.toString());
+		coordinator._logStateChange(handle, newStage);
 		return true;
 	}
 
@@ -139,7 +136,7 @@ class TaskStateController<V>
 		if (verifyDependencies) {
 			synchronized (coordinator) {
 				String error = "Waiting for task '" + taskName + "' that has not yet finished. Did you forget to specify its handle as dependency?";
-				_log(LogLevel.INTERNAL_ERROR, error);
+				coordinator._logError(handle, error, null);
 				throw new CoordinatorException(error);
 			}
 		}
@@ -186,10 +183,10 @@ class TaskStateController<V>
 		releaseCoordinatorFlag.set();
 	}
 
-	private boolean checkCondition(boolean condition, String message) {
+	private boolean checkCondition(boolean condition, String error) {
 		if (!condition) {
 			synchronized (coordinator) {
-				coordinator._log(LogLevel.INTERNAL_ERROR, handle, message);
+				coordinator._logError(handle, error, null);
 			}
 		}
 		return condition;

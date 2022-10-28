@@ -1,15 +1,14 @@
 package dd.kms.hippodamus.impl.coordinator.configuration;
 
+import java.util.Map;
+
 import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.api.logging.Logger;
 import dd.kms.hippodamus.impl.coordinator.AggregationCoordinatorImpl;
 import dd.kms.hippodamus.impl.execution.ExecutorServiceWrapper;
-
-import java.util.Map;
 
 public class AggregationCoordinatorBuilderImpl<S, R>
 	extends CoordinatorBuilderBase<AggregationCoordinatorBuilder<S, R>, AggregationCoordinator<S, R>>
@@ -27,7 +26,7 @@ public class AggregationCoordinatorBuilderImpl<S, R>
 	}
 
 	@Override
-	AggregationCoordinator<S, R> createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, LogLevel minimumLogLevel, boolean verifyDependencies) {
-		return new AggregationCoordinatorImpl<>(aggregator, executorServiceWrappersByTaskType, logger, minimumLogLevel, verifyDependencies);
+	AggregationCoordinator<S, R> createCoordinator(Map<TaskType, ExecutorServiceWrapper> executorServiceWrappersByTaskType, Logger logger, boolean verifyDependencies) {
+		return new AggregationCoordinatorImpl<>(aggregator, executorServiceWrappersByTaskType, logger, verifyDependencies);
 	}
 }

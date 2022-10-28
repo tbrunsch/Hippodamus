@@ -88,16 +88,20 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 			runnable.run();
 			return null;
 		};
-		return execute(callable);
+		return execute(callable, true);
 	}
 
 	@Override
 	public <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable) {
-		return coordinator.execute(callable, createConfiguration());
+		return execute(callable, false);
 	}
 
-	TaskConfiguration createConfiguration() {
+	private <V, T extends Throwable> ResultHandle<V> execute(ExceptionalCallable<V, T> callable, boolean ignoreResult) {
+		return coordinator.execute(callable, createConfiguration(ignoreResult));
+	}
+
+	TaskConfiguration createConfiguration(boolean ignoreResult) {
 		ResourceShare compoundResourceShare = ResourceShares.createCompoundResourceShare(requiredResourcesShares);
-		return new TaskConfiguration(name, taskType, dependencies, compoundResourceShare);
+		return new TaskConfiguration(name, taskType, ignoreResult, dependencies, compoundResourceShare);
 	}
 }

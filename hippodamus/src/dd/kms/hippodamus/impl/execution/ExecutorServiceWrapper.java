@@ -1,7 +1,6 @@
 package dd.kms.hippodamus.impl.execution;
 
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.logging.LogLevel;
 import dd.kms.hippodamus.impl.handles.HandleImpl;
 
 import java.util.Comparator;
