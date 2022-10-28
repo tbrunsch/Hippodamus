@@ -88,7 +88,9 @@ public class HandleImpl<V> implements ResultHandle<V>
 		synchronized (coordinator) {
 			stateController._setResult(result);
 			_notifyListeners(completionListeners, "completion listener", coordinator::onCompletion);
-			executorServiceWrapper._onExecutionCompleted();
+			if (!coordinator._hasStopped()) {
+				executorServiceWrapper._onExecutionCompleted();
+			}
 			_terminate();
 		}
 	}
