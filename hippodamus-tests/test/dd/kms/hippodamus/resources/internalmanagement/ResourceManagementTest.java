@@ -107,8 +107,9 @@ public class ResourceManagementTest
 	}
 
 	private static void checkClearedResource(TestResource resource, Map<Handle, TaskDescription> taskDescriptionByHandle) {
-		Collection<TaskDescription> threadHandles = taskDescriptionByHandle.values();
-		int threadIndex = getThreadIndex(threadHandles);
+		Set<Handle> threadHandles = taskDescriptionByHandle.keySet();
+		Collection<TaskDescription> taskDescriptions = taskDescriptionByHandle.values();
+		int threadIndex = getThreadIndex(taskDescriptions);
 
 		long totalPendingResourceShares = resource.getTotalPendingResourceShares(threadIndex);
 		Assertions.assertEquals(0, totalPendingResourceShares, "Unexpected pending resource shares");
