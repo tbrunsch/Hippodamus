@@ -139,7 +139,9 @@ To configure tasks before executing them, you must call `ExecutionCoordinator.co
 
 - The name of the task. The name will be used for logging and can be useful for debugging.
 - The type of the task. For more information see Section [Task Types](#task-types).
-- The handles of the tasks the task depends on. See Section [Task Dependencies](#task-dependencies) for more details. 
+- The handles of the tasks the task depends on. See Section [Task Dependencies](#task-dependencies) for more details.
+- The resources a task requires (see Section [Managing Resources](#managing-resources)).
+- A consumer that is informed when a task handle has been created. See Section [Handle Propagation](#handle-propagation)
 
 ## Task Types
 
@@ -387,6 +389,31 @@ You can specify the resources a task depends on by calling `coordinator.configur
 * When a task terminates, the method `Resource.release()` is called with the resource share as parameter. The `Resource` can then update internal information and decide whether to resubmit postponed tasks.
 
 * When the coordinator is stopped, then `Resource.remove()` is called for every postponed task with the `ResourceRequestor` that was supposed to be used to resubmit the task. The `Resource` can then clean up data that is related to the corresponding task if available.
+
+## Handle Propagation
+
+When executing a task in the coordinator's thread, you obtain the handle associated with a task e.g. as result of the call `ExecutionCoordinator.execute()`:
+
+```
+List<Handle> tasks = new ArrayList<>();
+try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+    Handle task = coordinator.execute(() -> System.out.println("Hello World"));
+    tasks.add(task);
+}
+```
+
+While this might be sufficient in many cases, it carries a risk: Between the creation of the handle and when `execute()` returns the handle several things can happen. In extreme cases, the task might have already started and even finished. During this time the handle, which is not yet known in the coordinator's thread, is used, e.g., in log messages. This can be problematic if you associate data with each task and store it on the basis of the tasks' handles.
+
+To avoid such problems, Hippodamus allows to specify a consumer for the handle that is called immediately after the handle has been created:
+
+```
+List<Handle> tasks = new ArrayList<>();
+try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
+    coordinator.configure()
+        .onHandleCreation(tasks::add)
+        .execute(() -> System.out.println("Hello World"));
+}
+```
 
 ## Aggregation
 

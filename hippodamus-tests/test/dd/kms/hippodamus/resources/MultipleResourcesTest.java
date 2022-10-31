@@ -4,7 +4,6 @@ import dd.kms.hippodamus.api.aggregation.Aggregator;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.execution.configuration.AggregationConfigurationBuilder;
-import dd.kms.hippodamus.testUtils.StopWatch;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -38,7 +37,6 @@ class MultipleResourcesTest
 
 		List<BitVector> bitVectors = getBitVectors(numResources, HALF_NUMBER_OF_RESOURCES);
 		final int expectedNumTasks = binomialCoefficient(numResources, HALF_NUMBER_OF_RESOURCES);
-		final int expectedParallelism = 2;
 
 		Assertions.assertEquals(expectedNumTasks, bitVectors.size(), "Internal error: Unexpected number of tasks");
 

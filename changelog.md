@@ -5,6 +5,7 @@
 Features:
   * Hippodamus now supports specifying resource constraints via `ExecutionCoordinator.configure().requiredResource()`.
   * Enhanced logging: Instead of plain and human-only readable log messages, the `Logger` interface now provides a method that allows a type-safe retrieval of the state a task is currently in. 
+  * Hippodamus now provides a way to get informed about the creation of a `Handle` before it is used, e.g., in log messages by registering a consumer via `ExecutionCoordinator.configure().onHandleCreation()`.
 
 API changes:
   * The package structure has been changed: All API classes are now in the package `dd.kms.hippodamus.api`.

@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.testUtils.exceptions;
 
+import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.exceptions.ExceptionalCallable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.coordinator.BaseTestCoordinator;
@@ -7,10 +8,10 @@ import dd.kms.hippodamus.testUtils.states.HandleState;
 
 public class TestCallable<V, T extends Throwable> implements ExceptionalCallable<V, T>
 {
-	private final BaseTestCoordinator<?> coordinator;
+	private final BaseTestCoordinator<?>	coordinator;
 	private final ExceptionalCallable<V, T>	wrappedCallable;
 
-	private Handle handle;
+	private volatile Handle					handle;
 
 	public TestCallable(BaseTestCoordinator<?> coordinator, ExceptionalCallable<V, T> wrappedCallable) {
 		this.coordinator = coordinator;
@@ -23,7 +24,7 @@ public class TestCallable<V, T extends Throwable> implements ExceptionalCallable
 
 	@Override
 	public V call() throws T {
-		while (handle == null);
+		Preconditions.checkState(handle != null, "Handle should have been set before start of execution");
 		coordinator.handleState(handle, HandleState.STARTED);
 		V result;
 		try {

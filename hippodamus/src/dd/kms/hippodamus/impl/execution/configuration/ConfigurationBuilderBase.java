@@ -18,6 +18,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -33,6 +34,7 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	private TaskType					taskType				= TaskType.COMPUTATIONAL;
 	private Collection<Handle>			dependencies			= ImmutableList.of();
 	private final List<ResourceShare>	requiredResourcesShares	= new ArrayList<>();
+	private Consumer<Handle>			handleConsumer			= handle -> {};
 
 	ConfigurationBuilderBase(C coordinator) {
 		this.coordinator = coordinator;
@@ -83,6 +85,12 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 	}
 
 	@Override
+	public B onHandleCreation(Consumer<Handle> handleConsumer) {
+		this.handleConsumer = handleConsumer;
+		return getBuilder();
+	}
+
+	@Override
 	public <T extends Throwable> Handle execute(ExceptionalRunnable<T> runnable) {
 		ExceptionalCallable<Void, T> callable = () -> {
 			runnable.run();
@@ -102,6 +110,6 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 
 	TaskConfiguration createConfiguration(boolean ignoreResult) {
 		ResourceShare compoundResourceShare = ResourceShares.createCompoundResourceShare(requiredResourcesShares);
-		return new TaskConfiguration(name, taskType, ignoreResult, dependencies, compoundResourceShare);
+		return new TaskConfiguration(name, taskType, ignoreResult, dependencies, compoundResourceShare, handleConsumer);
 	}
 }

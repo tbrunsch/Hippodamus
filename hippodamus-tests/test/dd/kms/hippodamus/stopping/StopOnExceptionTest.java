@@ -54,8 +54,9 @@ class StopOnExceptionTest
 		List<Handle> tasks = new ArrayList<>();
 		try (ExecutionCoordinator coordinator = TestUtils.wrap(builder.build(), eventManager)) {
 			for (int i = 0; i < NUM_TASKS; i++) {
-				Handle task = coordinator.execute(() -> run(counter));
-				tasks.add(task);
+				coordinator.configure()
+					.onHandleCreation(tasks::add)
+					.execute(() -> run(counter));
 			}
 		} catch (TestException e) {
 			caughtException = true;

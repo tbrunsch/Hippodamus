@@ -15,7 +15,7 @@ public class TestAggregationCoordinator<S, R> extends BaseTestCoordinator<Aggreg
 
 	@Override
 	public AggregationConfigurationBuilder<S, R> configure() {
-		return new TestAggregationConfigurationBuilder(wrappedCoordinator.configure(), this);
+		return new TestAggregationConfigurationBuilder<>(wrappedCoordinator.configure(), this);
 	}
 
 	@Override

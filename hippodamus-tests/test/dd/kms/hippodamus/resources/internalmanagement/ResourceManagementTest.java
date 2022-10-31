@@ -70,7 +70,6 @@ public class ResourceManagementTest
 	}
 
 	private static void executeTasks(List<TaskDescription> taskDescriptions, Behavior coordinatorBehavior, TestResource resource) {
-		int threadIndex = getThreadIndex(taskDescriptions);
 		int numTaskDescriptions = taskDescriptions.size();
 		int specialTaskIndex = (int) (0.9*(NUM_TASKS-1));
 		Map<Handle, TaskDescription> taskDescriptionByHandle = new HashMap<>();
@@ -79,11 +78,11 @@ public class ResourceManagementTest
 			for (int i = 0; i < numTaskDescriptions; i++) {
 				TaskDescription taskDescription = taskDescriptions.get(i);
 				Behavior taskBehavior = i == specialTaskIndex ? coordinatorBehavior : Behavior.TERMINATE_REGULARLY;
-				Handle handle = coordinator.configure()
+				coordinator.configure()
 					.name(taskDescription.getName())
 					.requiredResource(resource, () -> taskDescription)
-					.execute(() -> runTask(coordinator, taskBehavior, eventManager, threadIndex));
-				taskDescriptionByHandle.put(handle, taskDescription);
+					.onHandleCreation(handle -> taskDescriptionByHandle.put(handle, taskDescription))
+					.execute(() -> runTask(coordinator, taskBehavior));
 				TestUtils.simulateWork(TASK_SUBMISSION_DELAY_MS);
 			}
 		} catch (TestException e) {
@@ -92,7 +91,7 @@ public class ResourceManagementTest
 		checkResourceState(resource, taskDescriptionByHandle);
 	}
 
-	private static void runTask(ExecutionCoordinator coordinator, Behavior taskBehavior, TestEventManager eventManager, int threadIndex) throws TestException {
+	private static void runTask(ExecutionCoordinator coordinator, Behavior taskBehavior) throws TestException {
 		TestUtils.simulateWork(TASK_TIME_MS);
 		if (taskBehavior == Behavior.STOP_MANUALLY) {
 			coordinator.stop();
@@ -108,8 +107,9 @@ public class ResourceManagementTest
 	}
 
 	private static void checkClearedResource(TestResource resource, Map<Handle, TaskDescription> taskDescriptionByHandle) {
-		Collection<TaskDescription> threadHandles = taskDescriptionByHandle.values();
-		int threadIndex = getThreadIndex(threadHandles);
+		Set<Handle> threadHandles = taskDescriptionByHandle.keySet();
+		Collection<TaskDescription> taskDescriptions = taskDescriptionByHandle.values();
+		int threadIndex = getThreadIndex(taskDescriptions);
 
 		long totalPendingResourceShares = resource.getTotalPendingResourceShares(threadIndex);
 		Assertions.assertEquals(0, totalPendingResourceShares, "Unexpected pending resource shares");
