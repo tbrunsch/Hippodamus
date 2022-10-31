@@ -35,8 +35,9 @@ class ResourceVsParallelismTest
 		StopWatch stopWatch = new StopWatch();
 		try (ExecutionCoordinator coordinator = coordinatorBuilder.build()) {
 			for (int i = 0; i < numTasks; i++) {
-				final int taskIndex = i;
-				coordinator.configure().requiredResource(resource, () -> 1L).execute(() -> executeTask(taskIndex));
+				coordinator.configure()
+					.requiredResource(resource, () -> 1L)
+					.execute(this::executeTask);
 			}
 		}
 		long elapsedTimeMs = stopWatch.getElapsedTimeMs();
@@ -44,7 +45,7 @@ class ResourceVsParallelismTest
 		TestUtils.assertTimeBounds(expectedDurationMs, PRECISION_MS, elapsedTimeMs);
 	}
 
-	private void executeTask(int taskIndex) {
+	private void executeTask() {
 		TestUtils.simulateWork(TASK_TIME_MS);
 	}
 

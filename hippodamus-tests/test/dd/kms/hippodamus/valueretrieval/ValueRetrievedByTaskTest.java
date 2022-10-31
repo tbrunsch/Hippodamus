@@ -145,7 +145,7 @@ class ValueRetrievedByTaskTest extends AbstractValueRetrievedTest
 			Assertions.assertTrue(supplierTaskException instanceof TestException);
 
 			Assertions.assertTrue(resultTaskException instanceof CompletionException);
-			Assertions.assertTrue(resultTaskException.getCause() == supplierTaskException);
+			Assertions.assertSame(resultTaskException.getCause(), supplierTaskException);
 
 			Assertions.assertTrue(eventManager.getDurationMs(supplierTerminatedExceptionallyEvent, resultTask, HandleState.TERMINATED_EXCEPTIONALLY) <= PRECISION_MS);
 		} else {

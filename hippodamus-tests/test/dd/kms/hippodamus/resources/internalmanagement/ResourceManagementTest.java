@@ -70,7 +70,6 @@ public class ResourceManagementTest
 	}
 
 	private static void executeTasks(List<TaskDescription> taskDescriptions, Behavior coordinatorBehavior, TestResource resource) {
-		int threadIndex = getThreadIndex(taskDescriptions);
 		int numTaskDescriptions = taskDescriptions.size();
 		int specialTaskIndex = (int) (0.9*(NUM_TASKS-1));
 		Map<Handle, TaskDescription> taskDescriptionByHandle = new HashMap<>();
@@ -92,7 +91,7 @@ public class ResourceManagementTest
 		checkResourceState(resource, taskDescriptionByHandle);
 	}
 
-	private static void runTask(ExecutionCoordinator coordinator, Behavior taskBehavior, TestEventManager eventManager, int threadIndex) throws TestException {
+	private static void runTask(ExecutionCoordinator coordinator, Behavior taskBehavior) throws TestException {
 		TestUtils.simulateWork(TASK_TIME_MS);
 		if (taskBehavior == Behavior.STOP_MANUALLY) {
 			coordinator.stop();

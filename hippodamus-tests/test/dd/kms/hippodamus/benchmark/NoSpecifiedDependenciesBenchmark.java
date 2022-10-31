@@ -53,7 +53,7 @@ class NoSpecifiedDependenciesBenchmark
 			for (int i = 0; i < NUM_TASKS; i++) {
 				Supplier<Integer> prevSupplier = countSupplier;
 				ResultHandle<Integer> handle = coordinator.execute(() -> plusOne(prevSupplier.get()));
-				countSupplier = () -> handle.get();
+				countSupplier = handle::get;
 			}
 		}
 		int count = countSupplier.get();

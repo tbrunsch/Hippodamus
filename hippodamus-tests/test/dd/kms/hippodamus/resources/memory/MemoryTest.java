@@ -2,7 +2,6 @@ package dd.kms.hippodamus.resources.memory;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
-import dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder;
 import dd.kms.hippodamus.resources.CountableResource;
 import dd.kms.hippodamus.resources.DefaultCountableResource;
 import dd.kms.hippodamus.testUtils.TestUtils;
@@ -34,9 +33,9 @@ class MemoryTest
 		boolean outOfMemoryErrorOccurred = false;
 		try (ExecutionCoordinator coordinator = Coordinators.createExecutionCoordinator()) {
 			for (int i = 0; i < taskParameters.getNumberOfTasks(); i++) {
-				ExecutionConfigurationBuilder builder = coordinator.configure();
-				builder.requiredResource(resource, () -> taskParameters.getTaskSize());
-				builder.execute(() -> executeTask(taskParameters));
+				coordinator.configure()
+					.requiredResource(resource, taskParameters::getTaskSize)
+					.execute(() -> executeTask(taskParameters));
 			}
 		} catch (OutOfMemoryError e) {
 			System.out.println("Caught out of memory exception");
@@ -126,7 +125,6 @@ class MemoryTest
 		private static final int	PREFERRED_NUMBER_OF_CHUNKS			= 10;
 		private static final int	CHUNK_ALLOCATION_DELAY_MS			= 500;
 
-		private final int	parallelism;
 		private final long	availableMemory;
 		private final int	numTasks;
 		private final long	taskSize;
@@ -134,13 +132,13 @@ class MemoryTest
 		private final long	numChunksPerTask;
 
 		private TaskParameters() {
-			parallelism = TestUtils.getDefaultParallelism();
+			int parallelism = TestUtils.getDefaultParallelism();
 			if (parallelism < 2) {
 				throw new IllegalStateException("Cannot run OutOfMemory tests because the common ForkJoinPool has parallelism < 2");
 			}
 
 			availableMemory = MemoryUtils.estimateAvailableMemory(1.0);
-			numTasks = NUMBER_OF_TASKS_OVER_PARALLELISM*parallelism;
+			numTasks = NUMBER_OF_TASKS_OVER_PARALLELISM * parallelism;
 
 			// ensure that parallelism many tasks will require more memory than available
 			taskSize = (long) Math.ceil(1.1 * availableMemory / parallelism);

@@ -5,7 +5,6 @@ import dd.kms.hippodamus.api.aggregation.Aggregators;
 import dd.kms.hippodamus.api.coordinator.AggregationCoordinator;
 import dd.kms.hippodamus.api.coordinator.Coordinators;
 import dd.kms.hippodamus.api.coordinator.configuration.AggregationCoordinatorBuilder;
-import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.handles.ResultHandle;
 import dd.kms.hippodamus.testUtils.TestUtils;
 import dd.kms.hippodamus.testUtils.events.TestEventManager;
@@ -82,7 +81,6 @@ class ElementwiseComparisonTest
 		TestEventManager eventManager = new TestEventManager();
 		AggregationCoordinatorBuilder<Boolean, Boolean> coordinatorBuilder = Coordinators
 			.configureAggregationCoordinator(conjunctionAggregator);
-		List<Handle> loadElementTasks = new ArrayList<>();
 		try (AggregationCoordinator<Boolean, Boolean> coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			for (int i = 0; i < numElements; i++) {
 				int index = i;
@@ -91,7 +89,6 @@ class ElementwiseComparisonTest
 					.name("Load element " + index)
 					.taskType(BLOCKING)
 					.execute(() -> simulateLoadElement(index));
-				loadElementTasks.add(loadElementTask);
 				ResultHandle<Integer> generateElementTask = coordinator.configure()
 					.name("Generate element " + index)
 					.execute(() -> simulateGenerateElement(index, elementsEqual));
