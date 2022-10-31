@@ -41,7 +41,7 @@ class NoDependencyBenchmark
 		TestUtils.waitForEmptyCommonForkJoinPool();
 		long futureTimeMs = BenchmarkUtils.measureTime(() -> runWithCompletableFutures(numTasks, taskTimeMs));
 		TestUtils.waitForEmptyCommonForkJoinPool();
-		long coordinatorTimeMs = BenchmarkUtils.measureTime(() -> runWithCompletableFutures(numTasks, taskTimeMs));
+		long coordinatorTimeMs = BenchmarkUtils.measureTime(() -> runWithCoordinator(numTasks, taskTimeMs));
 
 		System.out.println(MessageFormat.format("Times (futures/coordinator): {0} ms/{1} ms", futureTimeMs, coordinatorTimeMs));
 
