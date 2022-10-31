@@ -80,8 +80,10 @@ class TransactionTest
 		TestEventManager eventManager = new TestEventManager();
 		try (ExecutionCoordinator coordinator = TestUtils.wrap(coordinatorBuilder.build(), eventManager)) {
 			for (CreateFileAction action : actions) {
-				Handle task = coordinator.configure().taskType(TaskType.BLOCKING).execute(() -> action.apply(fileSystem));
-				tasks.add(task);
+				coordinator.configure()
+					.taskType(TaskType.BLOCKING)
+					.onHandleCreation(tasks::add)
+					.execute(() -> action.apply(fileSystem));
 			}
 		} catch (IOException e) {
 			caughtException = true;

@@ -47,8 +47,9 @@ class StopCorrectTasksTest
 			for (int i = 1; i <= NUM_TASKS; i++) {
 				int taskId = i;
 				if (isTaskManagedByCoordinator(taskId)) {
-					Handle task = coordinator.execute(() -> run(taskId));
-					managedTasks.add(task);
+					coordinator.configure()
+						.onHandleCreation(managedTasks::add)
+						.execute(() -> run(taskId));
 				} else {
 					Future<?> future = executorService.submit(() -> run(taskId));
 					unmanagedTasks.add(future);

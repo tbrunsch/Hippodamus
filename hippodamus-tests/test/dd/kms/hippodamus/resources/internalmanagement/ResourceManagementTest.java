@@ -79,11 +79,11 @@ public class ResourceManagementTest
 			for (int i = 0; i < numTaskDescriptions; i++) {
 				TaskDescription taskDescription = taskDescriptions.get(i);
 				Behavior taskBehavior = i == specialTaskIndex ? coordinatorBehavior : Behavior.TERMINATE_REGULARLY;
-				Handle handle = coordinator.configure()
+				coordinator.configure()
 					.name(taskDescription.getName())
 					.requiredResource(resource, () -> taskDescription)
-					.execute(() -> runTask(coordinator, taskBehavior, eventManager, threadIndex));
-				taskDescriptionByHandle.put(handle, taskDescription);
+					.onHandleCreation(handle -> taskDescriptionByHandle.put(handle, taskDescription))
+					.execute(() -> runTask(coordinator, taskBehavior));
 				TestUtils.simulateWork(TASK_SUBMISSION_DELAY_MS);
 			}
 		} catch (TestException e) {
