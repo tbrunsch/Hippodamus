@@ -3,6 +3,7 @@ package dd.kms.hippodamus.impl.coordinator;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
@@ -80,12 +81,15 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 		ExecutorServiceWrapper executorServiceWrapper = getExecutorServiceWrapper(taskConfiguration);
 		Collection<Handle> dependencies = taskConfiguration.getDependencies();
 		ResourceShare resourceShare = taskConfiguration.getRequiredResourceShare();
+		Consumer<Handle> handleConsumer = taskConfiguration.getHandleConsumer();
 		synchronized (this) {
 			checkException();
 			int taskIndex = _handleDependencyManager.getNumberOfManagedHandles();
 			String taskName = ExecutionCoordinatorUtils.generateTaskName(taskConfiguration, taskIndex, _taskNames);
 			boolean ignoreResult = taskConfiguration.isIgnoreResult();
 			HandleImpl<V> resultHandle = new HandleImpl<>(this, taskName, taskIndex, executorServiceWrapper, callable, resourceShare, verifyDependencies, ignoreResult);
+			// propagate handle immediately after its creation before any logging or task execution
+			handleConsumer.accept(resultHandle);
 			_handleDependencyManager.addDependencies(resultHandle, dependencies);
 			if (!_hasStopped() && dependencies.stream().allMatch(Handle::hasCompleted)) {
 				_scheduleForSubmission(resultHandle);

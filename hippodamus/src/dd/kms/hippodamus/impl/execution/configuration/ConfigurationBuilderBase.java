@@ -110,6 +110,6 @@ abstract class ConfigurationBuilderBase<C extends ExecutionCoordinatorImpl, B ex
 
 	TaskConfiguration createConfiguration(boolean ignoreResult) {
 		ResourceShare compoundResourceShare = ResourceShares.createCompoundResourceShare(requiredResourcesShares);
-		return new TaskConfiguration(name, taskType, ignoreResult, dependencies, compoundResourceShare);
+		return new TaskConfiguration(name, taskType, ignoreResult, dependencies, compoundResourceShare, handleConsumer);
 	}
 }

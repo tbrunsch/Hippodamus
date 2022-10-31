@@ -7,6 +7,7 @@ import dd.kms.hippodamus.impl.resources.ResourceShare;
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Stores all information that can be configured by a {@link dd.kms.hippodamus.api.execution.configuration.ExecutionConfigurationBuilder}
@@ -19,13 +20,15 @@ public class TaskConfiguration
 	private final boolean				ignoreResult;
 	private final Collection<Handle>	dependencies;
 	private final ResourceShare			requiredResourceShare;
+	private final Consumer<Handle>		handleConsumer;
 
-	TaskConfiguration(@Nullable String name, TaskType taskType, boolean ignoreResult, Collection<Handle> dependencies, ResourceShare requiredResourceShare) {
+	TaskConfiguration(@Nullable String name, TaskType taskType, boolean ignoreResult, Collection<Handle> dependencies, ResourceShare requiredResourceShare, Consumer<Handle> handleConsumer) {
 		this.name = name;
 		this.taskType = taskType;
 		this.ignoreResult = ignoreResult;
 		this.dependencies = dependencies;
 		this.requiredResourceShare = requiredResourceShare;
+		this.handleConsumer = handleConsumer;
 	}
 
 	public Optional<String> getName() {
@@ -46,5 +49,9 @@ public class TaskConfiguration
 
 	public ResourceShare getRequiredResourceShare() {
 		return requiredResourceShare;
+	}
+
+	public Consumer<Handle> getHandleConsumer() {
+		return handleConsumer;
 	}
 }
