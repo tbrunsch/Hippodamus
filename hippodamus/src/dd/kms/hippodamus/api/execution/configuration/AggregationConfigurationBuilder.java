@@ -6,6 +6,7 @@ import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.resources.Resource;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -30,4 +31,7 @@ public interface AggregationConfigurationBuilder<S, R> extends ExecutionConfigur
 
 	@Override
 	<T> AggregationConfigurationBuilder<S, R> requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier);
+
+	@Override
+	AggregationConfigurationBuilder<S, R> onHandleCreation(Consumer<Handle> handleConsumer);
 }

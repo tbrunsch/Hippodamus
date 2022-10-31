@@ -1,5 +1,6 @@
 package dd.kms.hippodamus.testUtils.exceptions;
 
+import com.google.common.base.Preconditions;
 import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.testUtils.coordinator.BaseTestCoordinator;
@@ -7,7 +8,7 @@ import dd.kms.hippodamus.testUtils.states.HandleState;
 
 public class TestRunnable<T extends Throwable> implements ExceptionalRunnable<T>
 {
-	private final BaseTestCoordinator<?> coordinator;
+	private final BaseTestCoordinator<?>	coordinator;
 	private final ExceptionalRunnable<T>	wrappedRunnable;
 
 	private volatile Handle					handle;
@@ -23,7 +24,7 @@ public class TestRunnable<T extends Throwable> implements ExceptionalRunnable<T>
 
 	@Override
 	public void run() throws T {
-		while (handle == null);
+		Preconditions.checkState(handle != null, "Handle should have been set before start of execution");
 		coordinator.handleState(handle, HandleState.STARTED);
 		try {
 			wrappedRunnable.run();

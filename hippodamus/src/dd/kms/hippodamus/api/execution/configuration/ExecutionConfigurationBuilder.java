@@ -1,14 +1,17 @@
 package dd.kms.hippodamus.api.execution.configuration;
 
 import dd.kms.hippodamus.api.coordinator.Coordinators;
+import dd.kms.hippodamus.api.coordinator.ExecutionCoordinator;
 import dd.kms.hippodamus.api.coordinator.TaskType;
 import dd.kms.hippodamus.api.coordinator.configuration.ExecutionCoordinatorBuilder;
+import dd.kms.hippodamus.api.exceptions.ExceptionalRunnable;
 import dd.kms.hippodamus.api.execution.ExecutionManager;
 import dd.kms.hippodamus.api.handles.Handle;
 import dd.kms.hippodamus.api.resources.Resource;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -65,4 +68,19 @@ public interface ExecutionConfigurationBuilder extends ExecutionManager
 	 * Note that you can call the method multiple times when the task requires multiple resources.
 	 */
 	<T> ExecutionConfigurationBuilder requiredResource(Resource<T> resource, Supplier<T> resourceShareSupplier);
+
+	/**
+	 * The call {@link ExecutionCoordinator#execute(ExceptionalRunnable)} returns the {@link Handle} associated with the
+	 * specified task. However, between the generation of the handle and when {@code execute()} returns the handle
+	 * several things might happen:
+	 * <ul>
+	 *     <li>The logger might already send log messages referring to this handle.</li>
+	 *     <li>The task might already start executing.</li>
+	 *     <li>The task might even have already finished.</li>
+	 * </ul>
+	 * If you want to ensure that the coordinator's thread is aware of this handle in these scenarios, then you can call
+	 * this method to register a consumer for this handle. This consumer will be called immediately after the handle
+	 * has been created.
+	 */
+	ExecutionConfigurationBuilder onHandleCreation(Consumer<Handle> handleConsumer);
 }
