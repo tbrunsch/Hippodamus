@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.1
+
+Bugs:
+  * The `ExecutionCoordinator` now restores the interrupted flag after catching an `InterruptedException`. (Propagating the exception is no option if we don't want to break the API.)
+
 ## v0.2.0
 
 Features:
