@@ -235,6 +235,7 @@ public class ExecutionCoordinatorImpl implements ExecutionCoordinator
 			} catch (InterruptedException e) {
 				stop();
 				terminationLock.acquireUninterruptibly(MAX_NUM_TASKS);
+				Thread.currentThread().interrupt();
 			}
 			checkException();
 		} finally {
